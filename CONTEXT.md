@@ -15,6 +15,7 @@
 | 术语 / 证据 | [`docs/product/references/`](docs/product/references/) |
 | 仓库形态 ADR | [`docs/adr/0001-repo-shape-fat-core-shell.md`](docs/adr/0001-repo-shape-fat-core-shell.md) |
 | Stage 0 ADR | [`docs/adr/0002-stage0-lite-android-h5.md`](docs/adr/0002-stage0-lite-android-h5.md) |
+| Lite 五席 ADR | [`docs/adr/0003-lite-official-five-scenes.md`](docs/adr/0003-lite-official-five-scenes.md) |
 | AI 工作流 | [`.cursor/agents-guide.md`](.cursor/agents-guide.md) |
 
 ## 工程壳
@@ -35,12 +36,13 @@
 - **Stage 0**：选型门禁（已关闭 → Lite）
 - **岛**：局部 GPU 表面，不替换主 UI 树
 - **霜化尖刺**：同源 GLSL ES；策略 A 程序化输入；Android GLES2 + H5 WebGL1
-- **liquid_approx**：Lite 第 3 scene（单 Pass 液态近似）；`ior`/`warp` 为 Lite 旋钮
+- **官方五席**：`frost` / `glow` / `liquid_approx` / `gradient_bg` / `fullscreen_warp`（ADR 0003）
+- **liquidBoost / liquidBend / warpAmount / scrollSpeed**：按 scene 解耦的 Lite Attr（废弃 `ior`/`warp`）
 
 更全见 [`docs/product/references/glossary.md`](docs/product/references/glossary.md)。
 
 ## 当前状态
 
-- 已落地：协作壳 + 产品文档 + **Stage 0 Lite**（frost / glow / liquid_approx；`holm_spike`）
+- 已落地：协作壳 + 产品文档 + **Stage 0 Lite 官方五席**（`holm_spike`）
 - 编译门禁：`:androidApp:compileDebugKotlin`；JS：Core / holmDemo / h5App `compileKotlinJs`
-- 下一步：继续扩官方特效（≤5）或 iOS 补跑；策略 B / Runtime 后置
+- 下一步：iOS 补跑；策略 B / Runtime 后置；质量档与黄金图非本档必做

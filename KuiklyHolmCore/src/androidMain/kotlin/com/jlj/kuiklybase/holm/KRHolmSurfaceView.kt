@@ -26,8 +26,10 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
     private val _renderer = HolmGlesRenderer()
     private var _playing: Boolean = true
     private var _scene: String = HolmSceneShaders.SCENE_FROST
-    private var _ior: Float = HolmSurfaceAttr.DEFAULT_IOR
-    private var _warp: Float = HolmSurfaceAttr.DEFAULT_WARP
+    private var _liquidBoost: Float = HolmSurfaceAttr.DEFAULT_LIQUID_BOOST
+    private var _liquidBend: Float = HolmSurfaceAttr.DEFAULT_LIQUID_BEND
+    private var _warpAmount: Float = HolmSurfaceAttr.DEFAULT_WARP_AMOUNT
+    private var _scrollSpeed: Float = HolmSurfaceAttr.DEFAULT_SCROLL_SPEED
     private var _maxFps: Int = HolmSurfaceAttr.DEFAULT_MAX_FPS
     private var _onReady: KuiklyRenderCallback? = null
     private var _onError: KuiklyRenderCallback? = null
@@ -99,22 +101,42 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
                 }
                 true
             }
-            HolmSurfaceAttr.PROP_IOR -> {
-                val next = propValue.toHolmFloat(HolmSurfaceAttr.DEFAULT_IOR)
-                if (next != _ior) {
-                    _ior = next
+            HolmSurfaceAttr.PROP_LIQUID_BOOST -> {
+                val next = propValue.toHolmFloat(HolmSurfaceAttr.DEFAULT_LIQUID_BOOST)
+                if (next != _liquidBoost) {
+                    _liquidBoost = next
                     _glView.queueEvent {
-                        _renderer.setIor(next)
+                        _renderer.setLiquidBoost(next)
                     }
                 }
                 true
             }
-            HolmSurfaceAttr.PROP_WARP -> {
-                val next = propValue.toHolmFloat(HolmSurfaceAttr.DEFAULT_WARP)
-                if (next != _warp) {
-                    _warp = next
+            HolmSurfaceAttr.PROP_LIQUID_BEND -> {
+                val next = propValue.toHolmFloat(HolmSurfaceAttr.DEFAULT_LIQUID_BEND)
+                if (next != _liquidBend) {
+                    _liquidBend = next
                     _glView.queueEvent {
-                        _renderer.setWarp(next)
+                        _renderer.setLiquidBend(next)
+                    }
+                }
+                true
+            }
+            HolmSurfaceAttr.PROP_WARP_AMOUNT -> {
+                val next = propValue.toHolmFloat(HolmSurfaceAttr.DEFAULT_WARP_AMOUNT)
+                if (next != _warpAmount) {
+                    _warpAmount = next
+                    _glView.queueEvent {
+                        _renderer.setWarpAmount(next)
+                    }
+                }
+                true
+            }
+            HolmSurfaceAttr.PROP_SCROLL_SPEED -> {
+                val next = propValue.toHolmFloat(HolmSurfaceAttr.DEFAULT_SCROLL_SPEED)
+                if (next != _scrollSpeed) {
+                    _scrollSpeed = next
+                    _glView.queueEvent {
+                        _renderer.setScrollSpeed(next)
                     }
                 }
                 true
@@ -219,16 +241,20 @@ private class HolmGlesRenderer : GLSurfaceView.Renderer {
 
     private var _program: Int = 0
     private var _timeLoc: Int = -1
-    private var _iorLoc: Int = -1
-    private var _warpLoc: Int = -1
+    private var _liquidBoostLoc: Int = -1
+    private var _liquidBendLoc: Int = -1
+    private var _warpAmountLoc: Int = -1
+    private var _scrollSpeedLoc: Int = -1
     private var _posLoc: Int = -1
     private var _animTimeSec: Float = 0f
     private var _lastFrameNs: Long = 0L
     private var _quad: FloatBuffer? = null
     private var _ready: Boolean = false
     private var _scene: String = HolmSceneShaders.SCENE_FROST
-    private var _ior: Float = HolmSurfaceAttr.DEFAULT_IOR
-    private var _warp: Float = HolmSurfaceAttr.DEFAULT_WARP
+    private var _liquidBoost: Float = HolmSurfaceAttr.DEFAULT_LIQUID_BOOST
+    private var _liquidBend: Float = HolmSurfaceAttr.DEFAULT_LIQUID_BEND
+    private var _warpAmount: Float = HolmSurfaceAttr.DEFAULT_WARP_AMOUNT
+    private var _scrollSpeed: Float = HolmSurfaceAttr.DEFAULT_SCROLL_SPEED
     private var _surfaceReady: Boolean = false
     private var _fpsWindowNs: Long = 0L
     private var _frameCount: Int = 0
@@ -241,12 +267,20 @@ private class HolmGlesRenderer : GLSurfaceView.Renderer {
         }
     }
 
-    fun setIor(ior: Float) {
-        _ior = ior
+    fun setLiquidBoost(value: Float) {
+        _liquidBoost = value
     }
 
-    fun setWarp(warp: Float) {
-        _warp = warp
+    fun setLiquidBend(value: Float) {
+        _liquidBend = value
+    }
+
+    fun setWarpAmount(value: Float) {
+        _warpAmount = value
+    }
+
+    fun setScrollSpeed(value: Float) {
+        _scrollSpeed = value
     }
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
@@ -281,11 +315,17 @@ private class HolmGlesRenderer : GLSurfaceView.Renderer {
         if (_timeLoc >= 0) {
             GLES20.glUniform1f(_timeLoc, _animTimeSec)
         }
-        if (_iorLoc >= 0) {
-            GLES20.glUniform1f(_iorLoc, _ior)
+        if (_liquidBoostLoc >= 0) {
+            GLES20.glUniform1f(_liquidBoostLoc, _liquidBoost)
         }
-        if (_warpLoc >= 0) {
-            GLES20.glUniform1f(_warpLoc, _warp)
+        if (_liquidBendLoc >= 0) {
+            GLES20.glUniform1f(_liquidBendLoc, _liquidBend)
+        }
+        if (_warpAmountLoc >= 0) {
+            GLES20.glUniform1f(_warpAmountLoc, _warpAmount)
+        }
+        if (_scrollSpeedLoc >= 0) {
+            GLES20.glUniform1f(_scrollSpeedLoc, _scrollSpeed)
         }
         val buf = _quad ?: return
         buf.position(0)
@@ -360,8 +400,10 @@ private class HolmGlesRenderer : GLSurfaceView.Renderer {
         _program = program
         _posLoc = GLES20.glGetAttribLocation(_program, "a_position")
         _timeLoc = GLES20.glGetUniformLocation(_program, "u_time")
-        _iorLoc = GLES20.glGetUniformLocation(_program, "u_ior")
-        _warpLoc = GLES20.glGetUniformLocation(_program, "u_warp")
+        _liquidBoostLoc = GLES20.glGetUniformLocation(_program, "u_liquidBoost")
+        _liquidBendLoc = GLES20.glGetUniformLocation(_program, "u_liquidBend")
+        _warpAmountLoc = GLES20.glGetUniformLocation(_program, "u_warpAmount")
+        _scrollSpeedLoc = GLES20.glGetUniformLocation(_program, "u_scrollSpeed")
     }
 
     private fun compile(type: Int, source: String): Int {

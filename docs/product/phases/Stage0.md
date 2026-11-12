@@ -61,4 +61,7 @@
 ## Lite 特效扩容（关单后）
 
 - [x] 第 2 scene=`glow`：柔光光晕；Android/H5 `scene` 热换；Demo 可切换（仍策略 A）
-- [x] 第 3 scene=`liquid_approx`：单 Pass UV 扭曲+边缘色散/高光；Attr `ior`/`warp`；Demo 步进（仍策略 A）
+- [x] 第 3 scene=`liquid_approx`：单 Pass UV 扭曲+边缘色散/高光；Attr `liquidBoost`/`liquidBend`（原 ior/warp）；Demo 步进（仍策略 A）
+- [x] 第 4 scene=`gradient_bg`：斜向多色条带平移；Attr `scrollSpeed`；Demo 步进（仍策略 A）
+- [x] 第 5 scene=`fullscreen_warp`：全屏场扭曲（无玻璃）；Attr `warpAmount`；Demo 步进（仍策略 A）
+- [x] **五席锁定**（12 个月）：见 ADR 0003；换席先改文档

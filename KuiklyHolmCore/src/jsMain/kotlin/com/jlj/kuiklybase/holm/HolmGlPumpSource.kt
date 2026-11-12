@@ -27,20 +27,26 @@ object HolmGlPumpSource {
     var program = null;
     var buffer = null;
     var timeLoc = null;
-    var iorLoc = null;
-    var warpLoc = null;
+    var liquidBoostLoc = null;
+    var liquidBendLoc = null;
+    var warpAmountLoc = null;
+    var scrollSpeedLoc = null;
     var posLoc = -1;
     var vertSrc = "";
     var fragSrc = "";
     var scene = "frost";
-    var ior = 1.35;
-    var warp = 0.05;
+    var liquidBoost = 1.35;
+    var liquidBend = 0.05;
+    var warpAmount = 0.04;
+    var scrollSpeed = 1.0;
     var maxFps = 60;
     var intervalMs = 1000 / 60;
     var nextDue = 0;
     var playing = true;
-    var dirtyIor = true;
-    var dirtyWarp = true;
+    var dirtyLiquidBoost = true;
+    var dirtyLiquidBend = true;
+    var dirtyWarpAmount = true;
+    var dirtyScrollSpeed = true;
     var rafId = 0;
     var animTime = 0;
     var lastNow = 0;
@@ -103,14 +109,18 @@ object HolmGlPumpSource {
       if (program) gl.deleteProgram(program);
       program = prog;
       timeLoc = gl.getUniformLocation(program, "u_time");
-      iorLoc = gl.getUniformLocation(program, "u_ior");
-      warpLoc = gl.getUniformLocation(program, "u_warp");
+      liquidBoostLoc = gl.getUniformLocation(program, "u_liquidBoost");
+      liquidBendLoc = gl.getUniformLocation(program, "u_liquidBend");
+      warpAmountLoc = gl.getUniformLocation(program, "u_warpAmount");
+      scrollSpeedLoc = gl.getUniformLocation(program, "u_scrollSpeed");
       posLoc = gl.getAttribLocation(program, "a_position");
       gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
       gl.enableVertexAttribArray(posLoc);
       gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
-      dirtyIor = true;
-      dirtyWarp = true;
+      dirtyLiquidBoost = true;
+      dirtyLiquidBend = true;
+      dirtyWarpAmount = true;
+      dirtyScrollSpeed = true;
       return true;
     }
 
@@ -172,13 +182,21 @@ object HolmGlPumpSource {
         if (timeLoc) {
           gl.uniform1f(timeLoc, animTime);
         }
-        if (dirtyIor && iorLoc) {
-          gl.uniform1f(iorLoc, ior);
-          dirtyIor = false;
+        if (dirtyLiquidBoost && liquidBoostLoc) {
+          gl.uniform1f(liquidBoostLoc, liquidBoost);
+          dirtyLiquidBoost = false;
         }
-        if (dirtyWarp && warpLoc) {
-          gl.uniform1f(warpLoc, warp);
-          dirtyWarp = false;
+        if (dirtyLiquidBend && liquidBendLoc) {
+          gl.uniform1f(liquidBendLoc, liquidBend);
+          dirtyLiquidBend = false;
+        }
+        if (dirtyWarpAmount && warpAmountLoc) {
+          gl.uniform1f(warpAmountLoc, warpAmount);
+          dirtyWarpAmount = false;
+        }
+        if (dirtyScrollSpeed && scrollSpeedLoc) {
+          gl.uniform1f(scrollSpeedLoc, scrollSpeed);
+          dirtyScrollSpeed = false;
         }
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         tickPerf(now);
@@ -206,12 +224,16 @@ object HolmGlPumpSource {
         vertSrc = msg.vert || "";
         fragSrc = msg.frag || "";
         scene = msg.scene || "frost";
-        ior = typeof msg.ior === "number" ? msg.ior : 1.35;
-        warp = typeof msg.warp === "number" ? msg.warp : 0.05;
+        liquidBoost = typeof msg.liquidBoost === "number" ? msg.liquidBoost : 1.35;
+        liquidBend = typeof msg.liquidBend === "number" ? msg.liquidBend : 0.05;
+        warpAmount = typeof msg.warpAmount === "number" ? msg.warpAmount : 0.04;
+        scrollSpeed = typeof msg.scrollSpeed === "number" ? msg.scrollSpeed : 1.0;
         applyMaxFps(typeof msg.maxFps === "number" ? msg.maxFps : 60);
         playing = msg.playing !== false;
-        dirtyIor = true;
-        dirtyWarp = true;
+        dirtyLiquidBoost = true;
+        dirtyLiquidBend = true;
+        dirtyWarpAmount = true;
+        dirtyScrollSpeed = true;
         gl = canvas.getContext("webgl", CTX) || canvas.getContext("experimental-webgl", CTX);
         if (!gl) {
           emitError("NO_WEBGL", "WebGL unavailable");
@@ -233,13 +255,21 @@ object HolmGlPumpSource {
         if (playing) start();
       },
       set: function (msg) {
-        if (typeof msg.ior === "number" && msg.ior !== ior) {
-          ior = msg.ior;
-          dirtyIor = true;
+        if (typeof msg.liquidBoost === "number" && msg.liquidBoost !== liquidBoost) {
+          liquidBoost = msg.liquidBoost;
+          dirtyLiquidBoost = true;
         }
-        if (typeof msg.warp === "number" && msg.warp !== warp) {
-          warp = msg.warp;
-          dirtyWarp = true;
+        if (typeof msg.liquidBend === "number" && msg.liquidBend !== liquidBend) {
+          liquidBend = msg.liquidBend;
+          dirtyLiquidBend = true;
+        }
+        if (typeof msg.warpAmount === "number" && msg.warpAmount !== warpAmount) {
+          warpAmount = msg.warpAmount;
+          dirtyWarpAmount = true;
+        }
+        if (typeof msg.scrollSpeed === "number" && msg.scrollSpeed !== scrollSpeed) {
+          scrollSpeed = msg.scrollSpeed;
+          dirtyScrollSpeed = true;
         }
         if (typeof msg.maxFps === "number") {
           var next = msg.maxFps | 0;

@@ -14,8 +14,8 @@ precision mediump float;
 #endif
 varying vec2 v_uv;
 uniform float u_time;
-uniform float u_ior;
-uniform float u_warp;
+uniform float u_liquidBoost;
+uniform float u_liquidBend;
 
 float sdRoundBox(vec2 p, vec2 b, float r) {
     vec2 q = abs(p) - b + r;
@@ -53,28 +53,28 @@ void main() {
     float rim = 1.0 - smoothstep(0.0, 0.055, abs(glass));
     float fresnel = pow(clamp(rim, 0.0, 1.0), 1.6);
 
-    float iorK = max(u_ior - 1.0, 0.0);
+    float boostK = max(u_liquidBoost - 1.0, 0.0);
     /* 折射只跟边缘 fresnel：中心近似不拧，避免「整幅缩小版」花斑 */
-    float warpAmt = u_warp * fresnel * (0.85 + 0.65 * iorK);
+    float bendAmt = u_liquidBend * fresnel * (0.85 + 0.65 * boostK);
     vec2 nDir = vec2(p.x * 0.42, p.y);
     float nLen = length(nDir);
     vec2 n = nLen > 0.001 ? (nDir / nLen) : vec2(0.0);
     float wave = sin(u_time * 0.85 + p.x * 7.0 + p.y * 9.0) * 0.3
                + sin(u_time * 0.45 + p.y * 10.0) * 0.22;
-    vec2 offset = n * warpAmt * (0.5 + 0.5 * wave);
+    vec2 offset = n * bendAmt * (0.5 + 0.5 * wave);
     offset.x *= 0.45;
 
     vec2 sampleUv = uv + offset * inside;
     vec3 blurred = softBlur(sampleUv);
 
-    float chroma = iorK * 0.022 * fresnel * inside;
+    float chroma = boostK * 0.022 * fresnel * inside;
     vec2 cOff = vec2(n.x * 0.45, n.y) * chroma;
     vec3 col = blurred;
     col.r = mix(col.r, sceneColor(sampleUv + cOff).r, 0.35);
     col.b = mix(col.b, sceneColor(sampleUv - cOff).b, 0.35);
 
     col = mix(col, vec3(0.88, 0.92, 0.98), 0.08 * inside + 0.05 * fresnel);
-    float sheen = pow(fresnel, 2.4) * (0.18 + 0.22 * iorK);
+    float sheen = pow(fresnel, 2.4) * (0.18 + 0.22 * boostK);
     col += vec3(0.92, 0.96, 1.0) * sheen;
     float spec = pow(max(1.0 - abs(p.x * 0.9 + p.y * 0.55 - 0.05), 0.0), 10.0) * inside * 0.16;
     col += vec3(1.0) * spec;
@@ -94,8 +94,8 @@ precision mediump float;
 #endif
 in vec2 v_uv;
 uniform float u_time;
-uniform float u_ior;
-uniform float u_warp;
+uniform float u_liquidBoost;
+uniform float u_liquidBend;
 out vec4 fragColor;
 
 float sdRoundBox(vec2 p, vec2 b, float r) {
@@ -134,27 +134,27 @@ void main() {
     float rim = 1.0 - smoothstep(0.0, 0.055, abs(glass));
     float fresnel = pow(clamp(rim, 0.0, 1.0), 1.6);
 
-    float iorK = max(u_ior - 1.0, 0.0);
-    float warpAmt = u_warp * fresnel * (0.85 + 0.65 * iorK);
+    float boostK = max(u_liquidBoost - 1.0, 0.0);
+    float bendAmt = u_liquidBend * fresnel * (0.85 + 0.65 * boostK);
     vec2 nDir = vec2(p.x * 0.42, p.y);
     float nLen = length(nDir);
     vec2 n = nLen > 0.001 ? (nDir / nLen) : vec2(0.0);
     float wave = sin(u_time * 0.85 + p.x * 7.0 + p.y * 9.0) * 0.3
                + sin(u_time * 0.45 + p.y * 10.0) * 0.22;
-    vec2 offset = n * warpAmt * (0.5 + 0.5 * wave);
+    vec2 offset = n * bendAmt * (0.5 + 0.5 * wave);
     offset.x *= 0.45;
 
     vec2 sampleUv = uv + offset * inside;
     vec3 blurred = softBlur(sampleUv);
 
-    float chroma = iorK * 0.022 * fresnel * inside;
+    float chroma = boostK * 0.022 * fresnel * inside;
     vec2 cOff = vec2(n.x * 0.45, n.y) * chroma;
     vec3 col = blurred;
     col.r = mix(col.r, sceneColor(sampleUv + cOff).r, 0.35);
     col.b = mix(col.b, sceneColor(sampleUv - cOff).b, 0.35);
 
     col = mix(col, vec3(0.88, 0.92, 0.98), 0.08 * inside + 0.05 * fresnel);
-    float sheen = pow(fresnel, 2.4) * (0.18 + 0.22 * iorK);
+    float sheen = pow(fresnel, 2.4) * (0.18 + 0.22 * boostK);
     col += vec3(0.92, 0.96, 1.0) * sheen;
     float spec = pow(max(1.0 - abs(p.x * 0.9 + p.y * 0.55 - 0.05), 0.0), 10.0) * inside * 0.16;
     col += vec3(1.0) * spec;

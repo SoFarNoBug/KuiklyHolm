@@ -1,5 +1,15 @@
 # stage0-lite-spike · changelog
 
+## 2026-11-12（Lite 官方五席 + Attr 改名）
+
+- [ADD] scene=`gradient_bg` / `fullscreen_warp`：同源 ShaderSource + `shaders/*.frag.glsl`；`HolmSceneShaders` 路由
+- [MODIFY] 废弃公开 Attr `ior`/`warp` → `liquidBoost`/`liquidBend`；新增 `warpAmount`/`scrollSpeed`（互不共用）
+- [MODIFY] Android/H5 桥与 `HolmGlPumpSource` uniform 对齐 `u_liquidBoost`/`u_liquidBend`/`u_warpAmount`/`u_scrollSpeed`
+- [MODIFY] Demo `holm_spike`：五席芯片 + 按 scene 条件旋钮
+- [ADD] ADR 0003；回写 Stage0 / glossary / CONTEXT
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：审讯锁定五席与解耦 Attr｜待批 0（已达标 0）
+- 本单无真机验证
+
 ## 2026-11-12（注释：Android maxFps / onPerf 语义）
 
 - [MODIFY] 注释说明：Android `setFrameRate` 仅为提示；`onPerf`=真实 GL 提交率；CONTINUOUSLY 跳画会闪故不做；真限帧需 WHEN_DIRTY 时钟（本单不做）

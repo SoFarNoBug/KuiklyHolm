@@ -30,7 +30,7 @@ class HolmSurfaceView : DeclarativeBaseView<HolmSurfaceAttr, HolmSurfaceEvent>()
 /**
  * @CreateDate: 2026/11/12
  * @Author: jlj
- * @Description: HolmSurface Attr（scene / playing / ior / warp / maxFps）。
+ * @Description: HolmSurface Attr（scene / playing / liquidBoost / liquidBend / warpAmount / scrollSpeed / maxFps）。
  */
 class HolmSurfaceAttr : ComposeAttr() {
     fun scene(value: String): HolmSurfaceAttr {
@@ -43,15 +43,27 @@ class HolmSurfaceAttr : ComposeAttr() {
         return this
     }
 
-    /** Lite 强度旋钮：liquid_approx 使用；frost/glow 忽略。 */
-    fun ior(value: Float): HolmSurfaceAttr {
-        PROP_IOR with value
+    /** liquid_approx：边缘色散/高光强度（原 ior）。其它 scene 忽略。 */
+    fun liquidBoost(value: Float): HolmSurfaceAttr {
+        PROP_LIQUID_BOOST with value
         return this
     }
 
-    /** Lite UV 扭曲幅度：liquid_approx 使用；frost/glow 忽略。 */
-    fun warp(value: Float): HolmSurfaceAttr {
-        PROP_WARP with value
+    /** liquid_approx：边缘 UV 拧曲幅度（原 warp）。其它 scene 忽略。 */
+    fun liquidBend(value: Float): HolmSurfaceAttr {
+        PROP_LIQUID_BEND with value
+        return this
+    }
+
+    /** fullscreen_warp：全屏场扭曲幅度。其它 scene 忽略。 */
+    fun warpAmount(value: Float): HolmSurfaceAttr {
+        PROP_WARP_AMOUNT with value
+        return this
+    }
+
+    /** gradient_bg：条带平移速率。其它 scene 忽略。 */
+    fun scrollSpeed(value: Float): HolmSurfaceAttr {
+        PROP_SCROLL_SPEED with value
         return this
     }
 
@@ -70,11 +82,15 @@ class HolmSurfaceAttr : ComposeAttr() {
     companion object {
         const val PROP_SCENE: String = "scene"
         const val PROP_PLAYING: String = "playing"
-        const val PROP_IOR: String = "ior"
-        const val PROP_WARP: String = "warp"
+        const val PROP_LIQUID_BOOST: String = "liquidBoost"
+        const val PROP_LIQUID_BEND: String = "liquidBend"
+        const val PROP_WARP_AMOUNT: String = "warpAmount"
+        const val PROP_SCROLL_SPEED: String = "scrollSpeed"
         const val PROP_MAX_FPS: String = "maxFps"
-        const val DEFAULT_IOR: Float = 1.35f
-        const val DEFAULT_WARP: Float = 0.05f
+        const val DEFAULT_LIQUID_BOOST: Float = 1.35f
+        const val DEFAULT_LIQUID_BEND: Float = 0.05f
+        const val DEFAULT_WARP_AMOUNT: Float = 0.04f
+        const val DEFAULT_SCROLL_SPEED: Float = 1.0f
         const val DEFAULT_MAX_FPS: Int = 60
     }
 }
@@ -187,8 +203,10 @@ fun HolmSurface(
     scene: String,
     modifier: Modifier = Modifier,
     playing: Boolean = true,
-    ior: Float = HolmSurfaceAttr.DEFAULT_IOR,
-    warp: Float = HolmSurfaceAttr.DEFAULT_WARP,
+    liquidBoost: Float = HolmSurfaceAttr.DEFAULT_LIQUID_BOOST,
+    liquidBend: Float = HolmSurfaceAttr.DEFAULT_LIQUID_BEND,
+    warpAmount: Float = HolmSurfaceAttr.DEFAULT_WARP_AMOUNT,
+    scrollSpeed: Float = HolmSurfaceAttr.DEFAULT_SCROLL_SPEED,
     maxFps: Int = HolmSurfaceAttr.DEFAULT_MAX_FPS,
     onReady: ((ReadyParams) -> Unit)? = null,
     onError: ((ErrorParams) -> Unit)? = null,
@@ -201,8 +219,10 @@ fun HolmSurface(
             view.getViewAttr().run {
                 scene(scene)
                 playing(playing)
-                ior(ior)
-                warp(warp)
+                liquidBoost(liquidBoost)
+                liquidBend(liquidBend)
+                warpAmount(warpAmount)
+                scrollSpeed(scrollSpeed)
                 maxFps(maxFps)
             }
             val readyHandler = onReady

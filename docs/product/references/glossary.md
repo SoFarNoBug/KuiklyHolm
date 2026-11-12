@@ -29,6 +29,11 @@
 | **观感一致** | 容差内一致，非逐像素 |
 | **GearUI** | Kuikly 上的 UI 组件库，非 GPU 层 |
 | **liquid_approx** | Lite scene 键；对应产品 `liquid_approx_v1` 的单 Pass 近似（非多 Pass / 非真 Backdrop） |
-| **ior / warp** | Lite Attr 强度旋钮（非光学物理 IOR；非 Scene `propsJson`）；仅 `liquid_approx` 使用 |
+| **gradient_bg** | Lite scene 键；斜向多色条带程序化背景；`scrollSpeed` 控平移速率 |
+| **fullscreen_warp** | Lite scene 键；全屏程序化场扭曲（热浪/水波）；无玻璃/色散/rim；`warpAmount` 控幅度 |
+| **liquidBoost / liquidBend** | Lite Attr（仅 `liquid_approx`）；边缘色散·高光强度 / 边缘 UV 拧曲；**Avoid**：`ior` / `warp` |
+| **warpAmount** | Lite Attr（仅 `fullscreen_warp`）；场扭曲幅度；不与 liquid 旋钮共用 |
+| **scrollSpeed** | Lite Attr（仅 `gradient_bg`）；条带平移速率 |
+| **官方五席** | 12 个月锁定：`frost` / `glow` / `liquid_approx` / `gradient_bg` / `fullscreen_warp`（ADR 0003） |
 
 更多决策见 `../00-context-and-decisions.md`。

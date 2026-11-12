@@ -19,8 +19,10 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
     private var _canvas: HTMLCanvasElement = newCanvasElement()
     private var _playing: Boolean = true
     private var _scene: String = HolmSceneShaders.SCENE_FROST
-    private var _ior: Float = HolmSurfaceAttr.DEFAULT_IOR
-    private var _warp: Float = HolmSurfaceAttr.DEFAULT_WARP
+    private var _liquidBoost: Float = HolmSurfaceAttr.DEFAULT_LIQUID_BOOST
+    private var _liquidBend: Float = HolmSurfaceAttr.DEFAULT_LIQUID_BEND
+    private var _warpAmount: Float = HolmSurfaceAttr.DEFAULT_WARP_AMOUNT
+    private var _scrollSpeed: Float = HolmSurfaceAttr.DEFAULT_SCROLL_SPEED
     private var _maxFps: Int = HolmSurfaceAttr.DEFAULT_MAX_FPS
     private var _onReady: KuiklyRenderCallback? = null
     private var _onError: KuiklyRenderCallback? = null
@@ -56,13 +58,23 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                 postPlaying(effectivePlaying())
                 true
             }
-            HolmSurfaceAttr.PROP_IOR -> {
-                _ior = propValue.toHolmFloat(HolmSurfaceAttr.DEFAULT_IOR)
+            HolmSurfaceAttr.PROP_LIQUID_BOOST -> {
+                _liquidBoost = propValue.toHolmFloat(HolmSurfaceAttr.DEFAULT_LIQUID_BOOST)
                 postSet()
                 true
             }
-            HolmSurfaceAttr.PROP_WARP -> {
-                _warp = propValue.toHolmFloat(HolmSurfaceAttr.DEFAULT_WARP)
+            HolmSurfaceAttr.PROP_LIQUID_BEND -> {
+                _liquidBend = propValue.toHolmFloat(HolmSurfaceAttr.DEFAULT_LIQUID_BEND)
+                postSet()
+                true
+            }
+            HolmSurfaceAttr.PROP_WARP_AMOUNT -> {
+                _warpAmount = propValue.toHolmFloat(HolmSurfaceAttr.DEFAULT_WARP_AMOUNT)
+                postSet()
+                true
+            }
+            HolmSurfaceAttr.PROP_SCROLL_SPEED -> {
+                _scrollSpeed = propValue.toHolmFloat(HolmSurfaceAttr.DEFAULT_SCROLL_SPEED)
                 postSet()
                 true
             }
@@ -244,8 +256,10 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
         o.vert = HolmSceneShaders.gles2Vertex()
         o.frag = HolmSceneShaders.gles2Fragment(_scene)
         o.scene = _scene
-        o.ior = _ior.toDouble()
-        o.warp = _warp.toDouble()
+        o.liquidBoost = _liquidBoost.toDouble()
+        o.liquidBend = _liquidBend.toDouble()
+        o.warpAmount = _warpAmount.toDouble()
+        o.scrollSpeed = _scrollSpeed.toDouble()
         o.maxFps = _maxFps
         o.playing = effectivePlaying()
         o.w = w
@@ -257,8 +271,10 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
         if (!_started) return
         val msg = js("{}")
         msg.type = "set"
-        msg.ior = _ior.toDouble()
-        msg.warp = _warp.toDouble()
+        msg.liquidBoost = _liquidBoost.toDouble()
+        msg.liquidBend = _liquidBend.toDouble()
+        msg.warpAmount = _warpAmount.toDouble()
+        msg.scrollSpeed = _scrollSpeed.toDouble()
         msg.maxFps = _maxFps
         dispatch(msg)
     }
