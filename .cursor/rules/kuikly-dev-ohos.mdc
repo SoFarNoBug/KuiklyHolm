@@ -1,0 +1,68 @@
+---
+description: kuikly-holm 鸿蒙码农规则（编码约束）。触发：鸿蒙、Ohos、ArkTS、ETS、NAPI、Native Drawing、ohosApp、ohosArm64 编码/实现/修复/按计划行事/速速改。流程见 skill kuikly-ohos-coding。
+alwaysApply: false
+---
+
+# 鸿蒙码农规则（Cursor · 角色 Rule · ACL + 红线）
+
+**编码约束在本 Rule；流程在 Skill；规范全文在 skill-references。**
+**须配合 Skill**：`.cursor/skills/kuikly-ohos-coding/SKILL.md`
+**项目配置**：`.cursor/skills/kuikly-ohos-coding/project.yaml`
+
+> 规范冲突：**L3 > L2 > L1（项目优先）**。
+
+## 可写
+
+- `KuiklyHolmCore/` / `holmDemo/` 的 `ohosArm64Main/`、`ohosApp/`（含 `.ets` / `.cpp` / `.c` / `.h`）
+- `docs/specs/*/changelog.md` **仅 append**；`docs/specs/kuikly-dev-ohos/`
+- 触发时：`docs/context/*`、`docs/product/*`、`CONTEXT.md`、runbook
+- 小结级：本 skill 的 `SKILL.md` / `project.yaml` / `docs/skill-references/kuikly-ohos-coding/` 与共享 `coding-norms/base` 中本 skill 已挂载的规范（规范级改 `norms[]` 只入 `_backlog.md`）
+
+## 不可写
+
+- `docs/reviews/`
+- `docs/specs/**/spec.md`、`tasks.md`、`checklist.md`
+- `.cursor/rules/`（本文件经确认闸除外）、其他 skill、`.cursor/hooks*`
+
+## 编码原则（最小改动）
+
+- 只改必要代码；匹配现有壳风格（`KR*` View/Module、NAPI 注册表）
+- 不重构未损坏逻辑
+
+## 编码惯例（本仓鸿蒙）
+
+- Holm 岛宿主优先 `XComponent`（SURFACE/TEXTURE）+ 原生绘制 / Lite GLES 或 Standard Runtime（D9 Caps 子集）
+- 决策 SoT：`docs/product/00-context-and-decisions.md`；硬问题：`docs/product/07-p0-hard-problems.md`
+- runbook：`docs/specs/kuikly-dev-ohos/runbook.md`（业务落地后维护）
+
+## 硬约束 · L1 ArkTS
+
+- 2 空格；行宽≤120；控制流必须 `{}`；禁滥用 `ESObject`；数组用 `T[]`
+- 全文：`docs/skill-references/coding-norms/base/lang_arkts.md`
+
+## 硬约束 · L1 C / C++
+
+- C：`.c` 纯 C；`#ifndef` 头保护；全局 `g_`；定宽整数
+- C++：OpenHarmony 命名（成员尾 `_`、函数 UpperCamel）；禁应用侧 `#pragma once`；优先 RAII
+- 全文：`lang_c.md` / `lang_cpp.md`
+
+## 硬约束 · L2 鸿蒙平台
+
+- 耗时不堵 UI；仅 UI 线程改 ArkUI
+- NAPI 校验参数与状态；Native 资源 **成对释放**
+- 全文：`docs/skill-references/coding-norms/base/platform_ohos.md`
+- 反例 → `docs/skill-references/kuikly-ohos-coding/misuse.md`
+
+## 硬约束 · L1 Kotlin / L2 Kuikly Compose
+
+- `ohosArm64` Kotlin 遵 `lang_kotlin`；Compose 遵 `platform_kuikly_compose`
+
+## 硬约束 · L3 新建文件 / Holm API
+
+- 语言落点：库 Kotlin / 壳 `.ets` / NAPI `.cpp`；全文见 ohos `new_code_file_guidelines`
+- 公开 API 遵 `holm_api`（与 Android 共用全文）
+
+## 完成门
+
+- **按计划行事**：append changelog，并询问是否 Review
+- **速速改**：条件性 changelog；默认不问 Review

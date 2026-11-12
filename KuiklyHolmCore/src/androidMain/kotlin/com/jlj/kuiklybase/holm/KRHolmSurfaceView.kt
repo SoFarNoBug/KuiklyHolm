@@ -1,0 +1,405 @@
+package com.jlj.kuiklybase.holm
+
+import android.content.Context
+import android.os.Build
+import android.opengl.GLES20
+import android.opengl.GLSurfaceView
+import android.view.Surface
+import android.view.SurfaceHolder
+import com.tencent.kuikly.core.render.android.expand.component.KRView
+import com.tencent.kuikly.core.render.android.export.KuiklyRenderCallback
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.nio.FloatBuffer
+import javax.microedition.khronos.egl.EGLConfig
+import javax.microedition.khronos.opengles.GL10
+import org.json.JSONObject
+
+/**
+ * @CreateDate: 2026/11/12
+ * @Author: jlj
+ * @Description: Android KRHolmSurface — GLES2 执行器；按 scene 热换同源 shader（策略 A）。
+ */
+class KRHolmSurfaceView(context: Context) : KRView(context) {
+
+    private val _glView = GLSurfaceView(context)
+    private val _renderer = HolmGlesRenderer()
+    private var _playing: Boolean = true
+    private var _scene: String = HolmSceneShaders.SCENE_FROST
+    private var _ior: Float = HolmSurfaceAttr.DEFAULT_IOR
+    private var _warp: Float = HolmSurfaceAttr.DEFAULT_WARP
+    private var _maxFps: Int = HolmSurfaceAttr.DEFAULT_MAX_FPS
+    private var _onReady: KuiklyRenderCallback? = null
+    private var _onError: KuiklyRenderCallback? = null
+    private var _onPerf: KuiklyRenderCallback? = null
+    private var _readyFired: Boolean = false
+    private var _surfaceAlive: Boolean = false
+    private var _appliedSurfaceFps: Float = -1f
+
+    private val _surfaceCallback = object : SurfaceHolder.Callback {
+        override fun surfaceCreated(holder: SurfaceHolder) {
+            _surfaceAlive = true
+            _appliedSurfaceFps = -1f
+            applySurfaceFrameRate()
+        }
+
+        override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+            applySurfaceFrameRate()
+        }
+
+        override fun surfaceDestroyed(holder: SurfaceHolder) {
+            _surfaceAlive = false
+            _appliedSurfaceFps = -1f
+        }
+    }
+
+    init {
+        _glView.setEGLContextClientVersion(2)
+        _glView.setRenderer(_renderer)
+        _glView.renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
+        _glView.holder.addCallback(_surfaceCallback)
+        addView(
+            _glView,
+            LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT),
+        )
+        _renderer.onReady = {
+            post {
+                if (!_readyFired) {
+                    _readyFired = true
+                    fireReady()
+                }
+            }
+        }
+        _renderer.onError = { code, message ->
+            post { fireError(code, message) }
+        }
+        _renderer.onPerf = { fps, frameMs ->
+            post { firePerf(fps, frameMs) }
+        }
+    }
+
+    override fun setProp(propKey: String, propValue: Any): Boolean {
+        return when (propKey) {
+            HolmSurfaceAttr.PROP_SCENE -> {
+                val next = propValue.toString()
+                if (next != _scene) {
+                    _scene = next
+                    _glView.queueEvent {
+                        _renderer.setScene(next)
+                    }
+                }
+                true
+            }
+            HolmSurfaceAttr.PROP_PLAYING -> {
+                _playing = propValue.toBool()
+                _glView.renderMode = if (_playing) {
+                    GLSurfaceView.RENDERMODE_CONTINUOUSLY
+                } else {
+                    GLSurfaceView.RENDERMODE_WHEN_DIRTY
+                }
+                true
+            }
+            HolmSurfaceAttr.PROP_IOR -> {
+                val next = propValue.toHolmFloat(HolmSurfaceAttr.DEFAULT_IOR)
+                if (next != _ior) {
+                    _ior = next
+                    _glView.queueEvent {
+                        _renderer.setIor(next)
+                    }
+                }
+                true
+            }
+            HolmSurfaceAttr.PROP_WARP -> {
+                val next = propValue.toHolmFloat(HolmSurfaceAttr.DEFAULT_WARP)
+                if (next != _warp) {
+                    _warp = next
+                    _glView.queueEvent {
+                        _renderer.setWarp(next)
+                    }
+                }
+                true
+            }
+            HolmSurfaceAttr.PROP_MAX_FPS -> {
+                val next = propValue.toHolmInt(HolmSurfaceAttr.DEFAULT_MAX_FPS).coerceAtLeast(0)
+                if (next != _maxFps) {
+                    _maxFps = next
+                    // 见 applySurfaceFrameRate KDoc：此处不跳画限帧（会闪），只转发系统帧率提示。
+                    applySurfaceFrameRate()
+                }
+                true
+            }
+            HolmSurfaceEvent.ON_READY -> {
+                _onReady = propValue as? KuiklyRenderCallback
+                if (_readyFired) {
+                    fireReady()
+                }
+                true
+            }
+            HolmSurfaceEvent.ON_ERROR -> {
+                _onError = propValue as? KuiklyRenderCallback
+                true
+            }
+            HolmSurfaceEvent.ON_PERF -> {
+                _onPerf = propValue as? KuiklyRenderCallback
+                true
+            }
+            else -> super.setProp(propKey, propValue)
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        // GL 删除必须在 GL 线程；先 queueEvent 再 onPause
+        _glView.queueEvent {
+            _renderer.release()
+        }
+        _glView.onPause()
+        super.onDetachedFromWindow()
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        _glView.onResume()
+        applySurfaceFrameRate()
+    }
+
+    /**
+     * API 31+：把 maxFps 写成 Surface 帧率**提示**（0→峰值档 120）；同值不重复申请。
+     *
+     * 已知限制（本单不修）：
+     * - `setFrameRate` 对系统只是建议，`RENDERMODE_CONTINUOUSLY` 仍常按显示 vsync（如 60）回调
+     *   `onDrawFrame`，故 Demo 设 30 时 `onPerf` 仍可能报 ~60——那是**真实 GL 提交率**，不是统计错误。
+     * - 在 CONTINUOUSLY 里用累加器跳过 clear/draw 会 swap 未画缓冲 → 闪烁，已去掉。
+     * - 若将来要「设 30 则真实提交也到 ~30」，需改 WHEN_DIRTY + Choreographer/`requestRender` 自建时钟。
+     */
+    private fun applySurfaceFrameRate() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+        if (!_surfaceAlive) return
+        val surface = _glView.holder.surface ?: return
+        if (!surface.isValid) return
+        val fps = if (_maxFps <= 0) UNLIMITED_SURFACE_FPS else _maxFps.toFloat()
+        if (fps == _appliedSurfaceFps) return
+        runCatching {
+            surface.setFrameRate(fps, Surface.FRAME_RATE_COMPATIBILITY_DEFAULT)
+            _appliedSurfaceFps = fps
+        }
+    }
+
+    private fun fireReady() {
+        val payload = JSONObject()
+            .put("backend", "gles2")
+            .put("quality", "auto")
+            .put("scene", _scene)
+        _onReady?.invoke(payload)
+    }
+
+    private fun fireError(code: String, message: String) {
+        val payload = JSONObject()
+            .put("code", code)
+            .put("message", message)
+        _onError?.invoke(payload)
+    }
+
+    private fun firePerf(fps: Float, frameMs: Float) {
+        val payload = JSONObject()
+            .put("fps", fps.toDouble())
+            .put("frameMs", frameMs.toDouble())
+        _onPerf?.invoke(payload)
+    }
+
+    companion object {
+        const val VIEW_NAME: String = HolmSurfaceView.VIEW_NAME
+        private const val UNLIMITED_SURFACE_FPS: Float = 120f
+    }
+}
+
+private class HolmGlesRenderer : GLSurfaceView.Renderer {
+    var onReady: (() -> Unit)? = null
+    var onError: ((String, String) -> Unit)? = null
+    var onPerf: ((Float, Float) -> Unit)? = null
+
+    private var _program: Int = 0
+    private var _timeLoc: Int = -1
+    private var _iorLoc: Int = -1
+    private var _warpLoc: Int = -1
+    private var _posLoc: Int = -1
+    private var _animTimeSec: Float = 0f
+    private var _lastFrameNs: Long = 0L
+    private var _quad: FloatBuffer? = null
+    private var _ready: Boolean = false
+    private var _scene: String = HolmSceneShaders.SCENE_FROST
+    private var _ior: Float = HolmSurfaceAttr.DEFAULT_IOR
+    private var _warp: Float = HolmSurfaceAttr.DEFAULT_WARP
+    private var _surfaceReady: Boolean = false
+    private var _fpsWindowNs: Long = 0L
+    private var _frameCount: Int = 0
+
+    fun setScene(scene: String) {
+        if (scene == _scene && _program != 0) return
+        _scene = scene
+        if (_surfaceReady) {
+            rebuildProgram()
+        }
+    }
+
+    fun setIor(ior: Float) {
+        _ior = ior
+    }
+
+    fun setWarp(warp: Float) {
+        _warp = warp
+    }
+
+    override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
+        _animTimeSec = 0f
+        _lastFrameNs = 0L
+        _surfaceReady = true
+        ensureQuad()
+        rebuildProgram()
+        if (_program != 0 && !_ready) {
+            _ready = true
+            onReady?.invoke()
+        }
+    }
+
+    override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
+        GLES20.glViewport(0, 0, width, height)
+    }
+
+    override fun onDrawFrame(gl: GL10?) {
+        if (_program == 0) return
+        val nowNs = System.nanoTime()
+        if (_lastFrameNs == 0L) {
+            _lastFrameNs = nowNs
+        } else {
+            val dtSec = ((nowNs - _lastFrameNs) / 1_000_000_000.0).toFloat()
+            _animTimeSec += dtSec.coerceIn(0f, MAX_DT_SEC)
+            _lastFrameNs = nowNs
+        }
+        GLES20.glClearColor(0.05f, 0.07f, 0.1f, 1f)
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+        GLES20.glUseProgram(_program)
+        if (_timeLoc >= 0) {
+            GLES20.glUniform1f(_timeLoc, _animTimeSec)
+        }
+        if (_iorLoc >= 0) {
+            GLES20.glUniform1f(_iorLoc, _ior)
+        }
+        if (_warpLoc >= 0) {
+            GLES20.glUniform1f(_warpLoc, _warp)
+        }
+        val buf = _quad ?: return
+        buf.position(0)
+        GLES20.glEnableVertexAttribArray(_posLoc)
+        GLES20.glVertexAttribPointer(_posLoc, 2, GLES20.GL_FLOAT, false, 0, buf)
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
+        GLES20.glDisableVertexAttribArray(_posLoc)
+        tickPerf(nowNs)
+    }
+
+    private fun tickPerf(nowNs: Long) {
+        if (_fpsWindowNs == 0L) {
+            _fpsWindowNs = nowNs
+            _frameCount = 0
+            return
+        }
+        _frameCount += 1
+        val elapsed = nowNs - _fpsWindowNs
+        if (elapsed >= 1_000_000_000L) {
+            val fps = _frameCount * 1_000_000_000f / elapsed.toFloat()
+            val frameMs = if (fps > 0.01f) 1000f / fps else 0f
+            onPerf?.invoke(fps, frameMs)
+            _fpsWindowNs = nowNs
+            _frameCount = 0
+        }
+    }
+
+    fun release() {
+        if (_program != 0) {
+            GLES20.glDeleteProgram(_program)
+            _program = 0
+        }
+        _surfaceReady = false
+    }
+
+    private fun ensureQuad() {
+        if (_quad != null) return
+        val verts = floatArrayOf(
+            -1f, -1f,
+            1f, -1f,
+            -1f, 1f,
+            1f, 1f,
+        )
+        _quad = ByteBuffer.allocateDirect(verts.size * 4)
+            .order(ByteOrder.nativeOrder())
+            .asFloatBuffer()
+            .put(verts)
+        _quad?.position(0)
+    }
+
+    private fun rebuildProgram() {
+        val vert = compile(GLES20.GL_VERTEX_SHADER, HolmSceneShaders.gles2Vertex())
+        val frag = compile(GLES20.GL_FRAGMENT_SHADER, HolmSceneShaders.gles2Fragment(_scene))
+        if (vert == 0 || frag == 0) {
+            onError?.invoke("SHADER_COMPILE", "Holm GLES compile failed scene=$_scene")
+            return
+        }
+        val program = GLES20.glCreateProgram()
+        GLES20.glAttachShader(program, vert)
+        GLES20.glAttachShader(program, frag)
+        GLES20.glLinkProgram(program)
+        val link = IntArray(1)
+        GLES20.glGetProgramiv(program, GLES20.GL_LINK_STATUS, link, 0)
+        if (link[0] == 0) {
+            onError?.invoke("SHADER_LINK", GLES20.glGetProgramInfoLog(program) ?: "link failed")
+            GLES20.glDeleteProgram(program)
+            return
+        }
+        if (_program != 0) {
+            GLES20.glDeleteProgram(_program)
+        }
+        _program = program
+        _posLoc = GLES20.glGetAttribLocation(_program, "a_position")
+        _timeLoc = GLES20.glGetUniformLocation(_program, "u_time")
+        _iorLoc = GLES20.glGetUniformLocation(_program, "u_ior")
+        _warpLoc = GLES20.glGetUniformLocation(_program, "u_warp")
+    }
+
+    private fun compile(type: Int, source: String): Int {
+        val shader = GLES20.glCreateShader(type)
+        GLES20.glShaderSource(shader, source)
+        GLES20.glCompileShader(shader)
+        val status = IntArray(1)
+        GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, status, 0)
+        if (status[0] == 0) {
+            val log = GLES20.glGetShaderInfoLog(shader)
+            GLES20.glDeleteShader(shader)
+            onError?.invoke("SHADER_COMPILE", log ?: "compile failed")
+            return 0
+        }
+        return shader
+    }
+
+    companion object {
+        /** 单帧动画步进上限，避免掉帧时墙钟猛跳造成拖影感 */
+        private const val MAX_DT_SEC: Float = 0.05f
+    }
+}
+
+private fun Any.toBool(): Boolean = when (this) {
+    is Boolean -> this
+    is Number -> this.toInt() != 0
+    is String -> this == "1" || this.equals("true", ignoreCase = true)
+    else -> false
+}
+
+private fun Any.toHolmFloat(default: Float): Float = when (this) {
+    is Number -> this.toFloat()
+    is String -> this.toFloatOrNull() ?: default
+    else -> default
+}
+
+private fun Any.toHolmInt(default: Int): Int = when (this) {
+    is Number -> this.toInt()
+    is String -> this.toIntOrNull() ?: default
+    else -> default
+}

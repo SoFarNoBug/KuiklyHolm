@@ -1,0 +1,55 @@
+# Local IDE / gate
+.cursor/hooks/.gate-off
+.cursor/hooks/.skill-gate-off
+# 本机移植的真机验证核（不入库）
+.cursor/skills/android-device-verify-core/
+.idea/
+**/.idea/
+*.iml
+.DS_Store
+
+# Build
+**/build/
+.gradle/
+**/local.properties
+local.properties
+*.apk
+*.aab
+*.xcuserstate
+DerivedData/
+iosApp/Pods/
+iosApp/Podfile.lock
+*.xcworkspace
+!default.xcworkspace
+**/.cxx/
+
+# Ohos local / regenerated
+ohosApp/oh_modules/
+ohosApp/.hvigor/
+
+# Kotlin / IDE caches
+.kotlin/
+
+# Node
+node_modules/
+
+# Env / signing
+.env
+.env.*
+*.jks
+*.keystore
+*.p12
+*.pem
+
+# Logs / temp
+*.log
+*.tmp
+
+# Local JDK / tools
+.tools/
+
+# Local probes / scratch
+docs/_probe/
+
+xcuserdata/
+*.xcuserdatad/

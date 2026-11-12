@@ -1,0 +1,1 @@
+../../../../KuiklyHolmIOS/KRHolmMagnifier.swift

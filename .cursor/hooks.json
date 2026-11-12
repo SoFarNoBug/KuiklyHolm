@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeSubmitPrompt": [
+      {
+        "command": "node .cursor/hooks/coding-gate-ask.mjs",
+        "timeout": 5
+      },
+      {
+        "command": "node .cursor/hooks/coding-skill-gate.mjs",
+        "timeout": 5
+      }
+    ],
+    "preToolUse": [
+      {
+        "command": "node .cursor/hooks/coding-gate-ask.mjs",
+        "timeout": 5
+      },
+      {
+        "command": "node .cursor/hooks/coding-skill-gate.mjs",
+        "timeout": 5
+      }
+    ],
+    "postToolUse": [
+      {
+        "command": "node .cursor/hooks/coding-gate-ask.mjs",
+        "timeout": 5
+      },
+      {
+        "command": "node .cursor/hooks/coding-skill-gate.mjs",
+        "timeout": 5
+      }
+    ]
+  }
+}

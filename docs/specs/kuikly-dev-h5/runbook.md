@@ -1,0 +1,151 @@
+﻿# runbook · kuikly-dev-h5
+
+> 浏览器冒烟 / 双端口起服 / 白屏与构建排障。维护者入口亦见根 [CONTRIBUTING.md](../../../CONTRIBUTING.md)。
+
+## 结论
+
+本仓 H5 可冒烟：**双进程 + 双端口**；业务包走精简 Node 静态服（**不用** Kuikly 官方 whistle / npm serve）。  
+已验证（本机）：`8080` / `8083` 均 200；入口 `?page_name=home` → **Frost 尖刺** / `holm_spike`。
+
+## 拓扑
+
+```text
+浏览器
+  └─ http://localhost:8080/          ← h5App webpack-dev-server（宿主：h5App.js + index.html + assets）
+         │  <script> 拉取
+         └─ http://127.0.0.1:8083/nativevue2.js
+                                       ← static_server/serve（业务 KMP 包，CORS *）
+```
+
+| 端口 | 产物 | 谁生成 / 谁托管 |
+|---|---|---|
+| **8080** | `h5App.js`、`index.html`、样例图 | `:h5App:jsBrowserDevelopmentRun` + `copyAssetsToWebpackDevServer` |
+| **8083** | `nativevue2.js`（约 10+ MB） | `:holmDemo:packLocalJsBundleDebug` + `node static_server/serve/index.js` |
+
+`index.html` 脚本顺序必须是：**先** `nativevue2.js`，**再** `h5App.js`。中间不要插会挂起的同步 CDN。
+
+## 前置
+
+| 项 | 本机约定 |
+|---|---|
+| JDK | **17**（例：`D:\tool\jdk-17`；勿用 25） |
+| node | 在 PATH（例：Cursor helpers `d:\tool\cursor\resources\app\resources\helpers`） |
+| Yarn 缓存 | 若 pack 因 GitHub 超时：先 `node static_server/fetch-yarn-ivy.js` |
+
+PowerShell 示例：
+
+```powershell
+$env:JAVA_HOME = "D:\tool\jdk-17"
+$nodeDir = "d:\tool\cursor\resources\app\resources\helpers"
+$env:Path = "$env:JAVA_HOME\bin;$nodeDir;" + $env:Path
+cd D:\code_space\kuikly-holm
+```
+
+## 标准步骤
+
+```bash
+# 若 pack 因 GitHub 拉 Yarn 超时（一次即可）
+node static_server/fetch-yarn-ivy.js
+
+# 终端 1：业务包 + 8083
+./gradlew :holmDemo:packLocalJsBundleDebug
+node static_server/serve/index.js
+
+# 终端 2：宿主
+./gradlew :h5App:copyAssetsToWebpackDevServer
+./gradlew :h5App:jsBrowserDevelopmentRun
+```
+
+打开：`http://localhost:8080/?page_name=home` → Holm 入口。
+
+| pageName | 角色 |
+|---|---|
+| `home` | 入口 |
+| `holm_spike` | Stage 0 Lite 尖刺（frost / glow / liquid_approx） |
+
+| 改了什么 | 重跑什么 |
+|---|---|
+| Demo / Core common 或 js 逻辑 | `packLocalJsBundleDebug`，并**重启** 8083（或确认 serve 读到新文件） |
+| `h5App` 宿主 / `webpack.config.d` | 重启 `jsBrowserDevelopmentRun`（config.d **不会**热更新） |
+| `src/.../assets` 样例图 | `copyAssetsToWebpackDevServer` |
+| 仅 `index.html` | 一般 `jsProcessResources` 后刷新即可；不保险时重启 webpack |
+
+仅编译宿主（不起服）：
+
+```bash
+./gradlew :h5App:jsBrowserDevelopmentWebpack
+```
+
+## 工程约定（务必保留）
+
+1. **`h5App/webpack.config.d/output.js`（方案 X）**  
+   把 `h5App.js` 打成 **IIFE**，禁止 UMD 整 key 覆盖 `window.com`。  
+   多模块下 `nativevue2` 挂的是 `com.tencent.kuikly.core.nvi.*`，`h5App` 挂的是 `…render.web.*`；UMD 后加载会整块抹掉 `nvi` → `registerCallNative` 失败 → 白屏。  
+   官方说明见 Kuikly `h5App/README.md`「多模块工程下 UMD 全局命名空间被覆盖」。备选方案 Y（深合并）本仓未启用；**勿与 X 同时开**。
+
+2. **`static_server/serve`**  
+   零 npm 依赖的纯 `http` 服；按候选目录找够大的 `nativevue2.js`；对 JS 回 `Access-Control-Allow-Origin: *`。不要为冒烟再引回 whistle。  
+   可选：`H5_BUNDLE_PORT`、`H5_BUNDLE_DIR`。
+
+3. **`index.html` 不要默认同步挂 libpag CDN**  
+   CDN 超时会卡住后续 `h5App.js`（白屏）。需要 PAG 时再加，并保证可访问或改本地/async。
+
+4. **Yarn / Node 下载**  
+   根 `build.gradle.kts` 指向 `%USERPROFILE%\.gradle\caches\manual-yarn\ivy`；GitHub 不通时先跑 `fetch-yarn-ivy.js`（腾讯镜像）。
+
+5. **Windows + 未装 CocoaPods**  
+   `gradle.properties` 可设 `kotlin.native.ignoreDisabledTargets=true`，避免无关 native 目标拖死配置。
+
+## Holm 尖刺目视（holm_spike）
+
+- scene：霜化 / 柔光 / 液态  
+- `maxFps`：`0 / 30 / 60 / 120`  
+- **H5 限帧语义**：`onPerf` = 真实 WebGL 提交率；`maxFps` 经 rAF + `nextDue` **跳提交**（与 Android `setFrameRate` 提示不同）。见 `HolmGlPumpSource`。  
+- backend：`onReady` 报 `webgl` 或 `webgl-worker`
+
+## 与 Android 对照
+
+| | H5 | Android |
+|---|---|---|
+| 命令 | 本 runbook 双端口 | 见 [kuikly-dev-android/runbook.md](../kuikly-dev-android/runbook.md) |
+| 后端标签 | `webgl` / `webgl-worker` | `gles2` |
+| maxFps | rAF + nextDue 跳提交 | setFrameRate 提示；CONTINUOUSLY 下 30 仍可能 ~60 |
+
+## 白屏 / 构建排障（本仓踩过）
+
+| 现象 | 先查 | 处理 |
+|---|---|---|
+| `#root` 空、无 UI | Network：`libpag` / 外链是否 Pending | 去掉或本地化阻塞脚本；保证 `h5App.js` 能执行 |
+| Console：`registerCallNative` / `nvi` undefined | `h5App.js` 是否仍为 UMD（头尾含 `webpackUniversalModuleDefinition`） | 确认存在 `webpack.config.d/output.js` 并**重启** webpack |
+| 8080 200 但仍空 | 8083 的 `nativevue2.js` 是否 200、体积是否数 MB | 重跑 pack；看 serve 启动日志解析到的目录 |
+| pack 卡在 Yarn | GitHub 超时 | `node static_server/fetch-yarn-ivy.js` 后再 pack |
+| 改了 config.d 无效 | 旧 webpack 进程仍在 | 杀 8080 占用进程后重跑 `jsBrowserDevelopmentRun` |
+| `Cannot expand ZIP … kotlin_resources.zip` / zip 仅几百字节 | Gradle 缓存损坏的 `compose-js` 资源包 | 删坏包后重编，见下节 |
+
+### compose-js `kotlin_resources.zip` 损坏
+
+`:h5App:jsBrowserDevelopmentWebpack` / `compileKotlinJs` 报类似：
+
+`Cannot expand ZIP '…\compose-js\2.31.0-2.1.21\…\compose-2.31.0-2.1.21.kotlin_resources.zip'`
+
+且该文件体积异常小（例：~1 KB）时：
+
+1. `./gradlew --stop`  
+2. 删除该损坏 zip（路径在报错里；通常在 `%USERPROFILE%\.gradle\caches\modules-2\files-2.1\com.tencent.kuikly-open\compose-js\…`）  
+3. 再跑 `:h5App:jsBrowserDevelopmentWebpack` 或 `jsBrowserDevelopmentRun`（会重新下载）
+
+快速自检（PowerShell 思路）：
+
+- `http://127.0.0.1:8080/`、`/h5App.js`、`http://127.0.0.1:8083/nativevue2.js` 均 200  
+- `h5App.js` **不含** `webpackUniversalModuleDefinition`  
+- 浏览器：`#root` 下出现业务节点；可进 `holm_spike`
+
+## 相关路径
+
+| 路径 | 说明 |
+|---|---|
+| `h5App/` | 宿主壳；`webpack.config.d/output.js` |
+| `static_server/serve/index.js` | 8083 业务包静态服 |
+| `KuiklyHolmCore/src/jsMain/.../HolmGlPumpSource.kt` | WebGL 泵 / maxFps |
+| `holmDemo/.../HolmSpikePager.kt` | `holm_spike` |
+| `docs/specs/stage0-lite-spike/changelog.md` | 尖刺业务 changelog |
