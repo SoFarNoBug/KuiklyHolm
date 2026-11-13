@@ -149,6 +149,7 @@ private fun HolmRuntimeM0Screen() {
                 maxFps = maxFps,
                 executor = HolmExecutor.RUNTIME,
                 onReady = { ready ->
+                    errorText = ""
                     backendText = "onReady backend=${ready.backend} quality=${ready.quality}"
                 },
                 onError = { err ->
@@ -162,7 +163,7 @@ private fun HolmRuntimeM0Screen() {
         }
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            text = "对照 C：回 Home 进 Lite 五席页。maxFps>60 走 timer 泵（冲高档）；屏刷仍可能限制观感。失败 BLOCKED。",
+            text = "对照 C：回 Home 进 Lite。maxFps>60=timer；0=rAF+AutoNoVsync。backend 可能为 wgpu-m0-gl。失败 BLOCKED。",
             fontSize = 12.sp,
             lineHeight = 14.sp,
             color = DemoTheme.TextSecondary,

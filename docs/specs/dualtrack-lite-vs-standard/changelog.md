@@ -1,5 +1,16 @@
 # dualtrack-lite-vs-standard · changelog
 
+## 2026-11-13（审查 r3 整改：executor 对称拆泵 / Worker 失败回退 / 竞态）
+
+- [MODIFY] H5：`runtime→lite` 走 `destroyPump()` 再 `startPump()`（修 P0 Worker 残留）
+- [MODIFY] H5：Worker `CREATE_SESSION` 等异步失败 → 拆泵 + 主线程回退一次，再失败 BLOCKED+ready（修 P0 卡死）
+- [MODIFY] H5：`_attached` + wasm `setInterval` 可取消；`createSession` 卸岛守卫（P1-concurrency）
+- [MODIFY] `backendId`：WebGPU=`wgpu-m0`，GL 后端=`wgpu-m0-gl`（P1 能力诚实）
+- [MODIFY] uncapped 改回 rAF（降 P2 busy-spin）；Worker `reportPerf` 门控；Demo ready 清 errorText
+- 已知遗留：主线程预载 + Worker 再载 wasm（双载）未解｜不修理由：探针与泵生命周期拆分，改动面大
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：r3 打回整改｜待批 0
+- 本单无真机验证（表仍挂 P1-device-verify）
+
 ## 2026-11-13（Runtime maxFps=0 对齐高刷：uncapped timer + AutoNoVsync）
 
 - [MODIFY] Runtime 泵：`maxFps<=0` 也走 `setTimeout(0)` 紧调度（Worker 上纯 rAF+WebGPU 常吃不满 165Hz，Lite WebGL 可以）

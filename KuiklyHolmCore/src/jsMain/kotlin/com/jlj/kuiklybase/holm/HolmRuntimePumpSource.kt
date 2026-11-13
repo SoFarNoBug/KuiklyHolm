@@ -37,9 +37,11 @@ object HolmRuntimePumpSource {
       nextDue = 0;
     }
 
-    // maxFps==0（不限）或 >60：timer 紧调度。Worker 上仅 rAF 时 WebGPU 常吃不满高刷（Lite WebGL 可以）
+    var reportPerf = false;
+
+    // maxFps>60：timer；0=不限走 rAF（对齐 Lite，配合 AutoNoVsync 吃高刷，避免 setTimeout(0) 空转）
     function useTimerPump() {
-      return maxFps <= 0 || maxFps > 60;
+      return maxFps > 60;
     }
 
     function scheduleNext(now) {
@@ -53,7 +55,6 @@ object HolmRuntimePumpSource {
           if (delay < 0) delay = 0;
           if (delay > intervalMs) delay = intervalMs;
         }
-        // uncapped：delay=0，尽快再 tick（present 侧已尽量 AutoNoVsync）
         timerId = setTimeout(function () {
           timerId = 0;
           draw(performance.now());
@@ -68,6 +69,7 @@ object HolmRuntimePumpSource {
     }
 
     function tickPerf(nowMs) {
+      if (!reportPerf) return;
       if (!fpsWindowMs) {
         fpsWindowMs = nowMs;
         frameCount = 0;
@@ -159,6 +161,7 @@ object HolmRuntimePumpSource {
         liquidBend = typeof msg.liquidBend === "number" ? msg.liquidBend : 0.05;
         applyMaxFps(typeof msg.maxFps === "number" ? msg.maxFps : 60);
         playing = msg.playing !== false;
+        reportPerf = msg.reportPerf === true;
         var glueUrl = msg.glueUrl;
         var wasmUrl = msg.wasmUrl;
         if (!canvas) {
@@ -226,6 +229,9 @@ object HolmRuntimePumpSource {
         if (typeof msg.liquidBend === "number") liquidBend = msg.liquidBend;
         if (session && typeof session.setLiquid === "function") {
           session.setLiquid(liquidBoost, liquidBend);
+        }
+        if (typeof msg.reportPerf === "boolean") {
+          reportPerf = msg.reportPerf;
         }
         if (typeof msg.maxFps === "number") {
           var next = msg.maxFps | 0;

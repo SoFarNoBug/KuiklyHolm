@@ -6,7 +6,13 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::{HtmlCanvasElement, OffscreenCanvas};
 
-const BACKEND_ID: &str = "wgpu-m0";
+fn backend_label(backend: wgpu::Backend) -> &'static str {
+    match backend {
+        wgpu::Backend::BrowserWebGpu => "wgpu-m0",
+        wgpu::Backend::Gl => "wgpu-m0-gl",
+        _ => "wgpu-m0",
+    }
+}
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -58,6 +64,7 @@ pub struct HolmRuntimeSession {
     liquid_bend: f32,
     playing: bool,
     time: f32,
+    backend_id: &'static str,
 }
 
 #[wasm_bindgen]
@@ -111,6 +118,8 @@ impl HolmRuntimeSession {
             })
             .await
             .ok_or_else(|| JsValue::from_str("no wgpu adapter"))?;
+
+        let backend_id = backend_label(adapter.get_info().backend);
 
         let (device, queue) = adapter
             .request_device(
@@ -262,12 +271,13 @@ impl HolmRuntimeSession {
             liquid_bend: 0.05,
             playing: true,
             time: 0.0,
+            backend_id,
         })
     }
 
     #[wasm_bindgen(js_name = backendId)]
     pub fn backend_id(&self) -> String {
-        BACKEND_ID.to_string()
+        self.backend_id.to_string()
     }
 
     #[wasm_bindgen(js_name = setScene)]
