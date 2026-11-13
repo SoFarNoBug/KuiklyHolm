@@ -9,3 +9,4 @@
 | [0001](./0001-repo-shape-fat-core-shell.md) | 仓库形态 · 胖 Core 同构空壳 |
 | [0002](./0002-stage0-lite-android-h5.md) | Stage 0 选 Lite(A) · Android+H5 霜化尖刺 |
 | [0003](./0003-lite-official-five-scenes.md) | Lite 官方五席锁定 + Attr 可读改名 |
+| [0004](./0004-lite-vs-standard-dualtrack.md) | DualTrack 收口 · Keep Lite（O0 不改） |

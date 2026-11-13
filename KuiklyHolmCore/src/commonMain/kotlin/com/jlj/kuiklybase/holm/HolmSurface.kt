@@ -79,6 +79,15 @@ class HolmSurfaceAttr : ComposeAttr() {
         return this
     }
 
+    /**
+     * DualTrack 旁路：`lite`（默认，GLES/WebGL 五席）或 `runtime`（holm-runtime wgpu M0）。
+     * runtime 缺 native 时平台侧 `onError(BLOCKED)`，不静默回落 GLES。
+     */
+    fun executor(value: String): HolmSurfaceAttr {
+        PROP_EXECUTOR with HolmExecutor.normalize(value)
+        return this
+    }
+
     companion object {
         const val PROP_SCENE: String = "scene"
         const val PROP_PLAYING: String = "playing"
@@ -87,11 +96,13 @@ class HolmSurfaceAttr : ComposeAttr() {
         const val PROP_WARP_AMOUNT: String = "warpAmount"
         const val PROP_SCROLL_SPEED: String = "scrollSpeed"
         const val PROP_MAX_FPS: String = "maxFps"
+        const val PROP_EXECUTOR: String = "executor"
         const val DEFAULT_LIQUID_BOOST: Float = 1.35f
         const val DEFAULT_LIQUID_BEND: Float = 0.05f
         const val DEFAULT_WARP_AMOUNT: Float = 0.04f
         const val DEFAULT_SCROLL_SPEED: Float = 1.0f
         const val DEFAULT_MAX_FPS: Int = 60
+        const val DEFAULT_EXECUTOR: String = HolmExecutor.LITE
     }
 }
 
@@ -208,6 +219,7 @@ fun HolmSurface(
     warpAmount: Float = HolmSurfaceAttr.DEFAULT_WARP_AMOUNT,
     scrollSpeed: Float = HolmSurfaceAttr.DEFAULT_SCROLL_SPEED,
     maxFps: Int = HolmSurfaceAttr.DEFAULT_MAX_FPS,
+    executor: String = HolmSurfaceAttr.DEFAULT_EXECUTOR,
     onReady: ((ReadyParams) -> Unit)? = null,
     onError: ((ErrorParams) -> Unit)? = null,
     onPerf: ((PerfParams) -> Unit)? = null,
@@ -224,6 +236,7 @@ fun HolmSurface(
                 warpAmount(warpAmount)
                 scrollSpeed(scrollSpeed)
                 maxFps(maxFps)
+                executor(executor)
             }
             val readyHandler = onReady
             val errorHandler = onError

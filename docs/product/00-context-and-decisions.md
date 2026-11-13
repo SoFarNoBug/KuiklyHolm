@@ -148,8 +148,8 @@ Kuikly 上可调用代表特效；Android+iOS（目标四端）可验收；包�
 
 | ID | 问题 | 关闭 |
 | --- | --- | --- |
-| O0 | Stage 0 选 Lite 还是 Standard | **已关闭 → Lite(A)**（2026-11-12；见 `phases/Stage0.md`、ADR 0002） |
-| O1 | Standard 的 Runtime：wgpu vs 其它 | 选 B 后 |
+| O0 | Stage 0 选 Lite 还是 Standard | **已关闭 → Lite(A)**（2026-11-12；见 `phases/Stage0.md`、ADR 0002）；DualTrack ADR 0004 **Keep Lite，未改选** |
+| O1 | Standard 的 Runtime：wgpu vs 其它 | **尖刺默认 wgpu**（DualTrack B / ADR 0004）；正式全量选型仍须通面后另决 |
 | O2 | Backdrop：07 推荐默认是否采纳 | M1 前书面 |
 | O3 | 3D / Filament | Full 前 |
 | O4 | 与 GearUI 边界 | 定仓后 |

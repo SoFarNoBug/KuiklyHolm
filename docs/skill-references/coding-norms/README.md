@@ -41,12 +41,16 @@
 | L1 | [`base/lang_cpp.md`](base/lang_cpp.md) | `lang_cpp` |
 | L1 | [`base/lang_swift.md`](base/lang_swift.md) | `lang_swift` |
 | L1 | [`base/lang_objc.md`](base/lang_objc.md) | `lang_objc` |
+| L1 | [`base/lang_rust.md`](base/lang_rust.md) | `lang_rust` |
 | L2 | [`base/platform_android.md`](base/platform_android.md) | `platform_android` |
 | L2 | [`base/platform_ohos.md`](base/platform_ohos.md) | `platform_ohos` |
 | L2 | [`base/platform_ios.md`](base/platform_ios.md) | `platform_ios` |
 | L2 | [`base/platform_kuikly_compose.md`](base/platform_kuikly_compose.md) | `platform_kuikly_compose` |
+| L2 | [`base/platform_wgpu.md`](base/platform_wgpu.md) | `platform_wgpu` |
 
 未用到的语言/平台**不建空壳**。各仓在自己的 `project.yaml` → `norms[]` 写明 `layer:` 与 `ref`。
+
+> **Rust / wgpu**：货架已收 `lang_rust` + `platform_wgpu`（官方背书见各文件文首「来源」）。本仓码农 skill **尚未默认挂载**；改 `holm-runtime` 时在对应 `project.yaml` → `norms[]` 按改动面启用，并升该 skill 代数。
 
 ## 消费方示例（kuikly-android-coding · L3 不共享）
 

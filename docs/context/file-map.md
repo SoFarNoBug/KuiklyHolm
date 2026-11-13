@@ -4,7 +4,9 @@
 
 | 路径 | 说明 |
 | --- | --- |
-| `KuiklyHolmCore/` | 库：`HolmSurface` + `HolmSceneShaders` + frost/glow/liquid_approx 源码 + Android/JS `KRHolmSurfaceView` |
+| `KuiklyHolmCore/` | 库：`HolmSurface`（含 `executor`）+ 五席 Shader + Android/JS `KRHolmSurfaceView` + `HolmRuntimeNative` 探测 |
+| `holm-runtime/` | DualTrack B：Rust+wgpu M0 crate；`build-wasm.ps1` → `h5App/.../resources/holm-runtime/`（未挂 settings） |
+| `iosApp/.../KRHolmSurface.*` | Track A：iOS GLES2 Lite 薄壳（frost/liquid_approx） |
 | `KuiklyHolmCore/.../HolmGlPumpSource.kt` | H5 纯 JS WebGL 泵（Blob Worker / 主线程回退） |
 | `shaders/frost.*.glsl` / `glow.frag.glsl` / `liquid_approx.frag.glsl` | 同源 GLSL ES（与 `*ShaderSource` 对齐） |
 | `holmDemo/` | Demo：`home` + `holm_spike` |

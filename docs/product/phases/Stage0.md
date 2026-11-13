@@ -65,3 +65,12 @@
 - [x] 第 4 scene=`gradient_bg`：斜向多色条带平移；Attr `scrollSpeed`；Demo 步进（仍策略 A）
 - [x] 第 5 scene=`fullscreen_warp`：全屏场扭曲（无玻璃）；Attr `warpAmount`；Demo 步进（仍策略 A）
 - [x] **五席锁定**（12 个月）：见 ADR 0003；换席先改文档
+
+## DualTrack 实验（关单后 · 不改 O0）
+
+> 详见 [`DualTrack-Lite-vs-Standard.md`](./DualTrack-Lite-vs-Standard.md)。  
+> **结论栏仍为 Lite(A)**；ADR 0004 = **Keep Lite**（O0 未改选）。
+
+- [x] Track A：iOS `KRHolmSurface` + `frost`/`liquid_approx`（代码+runbook；Mac 目视 PARTIAL）
+- [x] Track B：`holm-runtime` wgpu 骨架 + 旁路；本机无 rustc → **BLOCKED**
+- [x] 对比表 + [ADR 0004](../../adr/0004-lite-vs-standard-dualtrack.md) Keep Lite

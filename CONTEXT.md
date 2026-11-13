@@ -16,6 +16,7 @@
 | 仓库形态 ADR | [`docs/adr/0001-repo-shape-fat-core-shell.md`](docs/adr/0001-repo-shape-fat-core-shell.md) |
 | Stage 0 ADR | [`docs/adr/0002-stage0-lite-android-h5.md`](docs/adr/0002-stage0-lite-android-h5.md) |
 | Lite 五席 ADR | [`docs/adr/0003-lite-official-five-scenes.md`](docs/adr/0003-lite-official-five-scenes.md) |
+| DualTrack 收口 | [`docs/adr/0004-lite-vs-standard-dualtrack.md`](docs/adr/0004-lite-vs-standard-dualtrack.md) |
 | AI 工作流 | [`.cursor/agents-guide.md`](.cursor/agents-guide.md) |
 
 ## 工程壳
@@ -44,5 +45,7 @@
 ## 当前状态
 
 - 已落地：协作壳 + 产品文档 + **Stage 0 Lite 官方五席**（`holm_spike`）
+- **双轨对比已收口**：ADR 0004 **Keep Lite**；O0 仍 **Lite(A)**（未改选）；Track B wgpu **BLOCKED**（无 rustc）
+- 旁路：`executor` + Demo `holm_runtime_m0`（默认仍 Lite）
 - 编译门禁：`:androidApp:compileDebugKotlin`；JS：Core / holmDemo / h5App `compileKotlinJs`
-- 下一步：iOS 补跑；策略 B / Runtime 后置；质量档与黄金图非本档必做
+- 下一步：Mac 验 iOS Lite；业务特效迭代；真模型待 Runtime 通面后再议

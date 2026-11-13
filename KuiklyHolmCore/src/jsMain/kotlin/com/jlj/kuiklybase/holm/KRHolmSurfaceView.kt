@@ -12,7 +12,7 @@ import org.w3c.dom.events.Event
 /**
  * @CreateDate: 2026/11/12
  * @Author: jlj
- * @Description: H5 KRHolmSurface — OffscreenCanvas Worker 纯 JS 泵帧（回退主线程泵）；Kotlin 只转发 prop。
+ * @Description: H5 KRHolmSurface — Lite WebGL 泵 / Runtime wgpu Session 泵帧；Kotlin 转发 prop。
  */
 class KRHolmSurfaceView : IKuiklyRenderViewExport {
 
@@ -24,11 +24,25 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
     private var _warpAmount: Float = HolmSurfaceAttr.DEFAULT_WARP_AMOUNT
     private var _scrollSpeed: Float = HolmSurfaceAttr.DEFAULT_SCROLL_SPEED
     private var _maxFps: Int = HolmSurfaceAttr.DEFAULT_MAX_FPS
+    private var _executor: String = HolmSurfaceAttr.DEFAULT_EXECUTOR
+    private var _runtimeBlockedNotified: Boolean = false
+    private var _runtimeSessionStarted: Boolean = false
+    private var _runtimeLoadWaiting: Boolean = false
+    private var _runtimeSession: dynamic = null
+    private var _runtimeRafId: Int = 0
+    private var _runtimeTimerId: Int = 0
+    private var _runtimeLastTs: Double = 0.0
+    private var _runtimeAccMs: Double = 0.0
+    private var _runtimePerfWindowMs: Double = 0.0
+    private var _runtimePerfFrames: Int = 0
+    private var _runtimeUsesWorker: Boolean = false
+    private var _pendingErrorCode: String? = null
+    private var _pendingErrorMessage: String? = null
     private var _onReady: KuiklyRenderCallback? = null
     private var _onError: KuiklyRenderCallback? = null
     private var _onPerf: KuiklyRenderCallback? = null
     private var _readyFired: Boolean = false
-    private var _backend: String = "webgl"
+    private var _backend: String = HolmExecutor.BACKEND_WEBGL
     private var _started: Boolean = false
     private var _controlTransferred: Boolean = false
     private var _lastW: Int = 0
@@ -81,6 +95,22 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
             HolmSurfaceAttr.PROP_MAX_FPS -> {
                 _maxFps = propValue.toHolmInt(HolmSurfaceAttr.DEFAULT_MAX_FPS).coerceAtLeast(0)
                 postSet()
+                // 主线程 Runtime：跨 60 切换 rAF/timer 须立刻重调度
+                if (HolmExecutor.isRuntime(_executor) && !_runtimeUsesWorker && _runtimeSession != null) {
+                    startRuntimeLoop()
+                }
+                true
+            }
+            HolmSurfaceAttr.PROP_EXECUTOR -> {
+                val next = HolmExecutor.normalize(propValue.toString())
+                if (next != _executor) {
+                    _executor = next
+                    _readyFired = false
+                    _runtimeBlockedNotified = false
+                    _runtimeSessionStarted = false
+                    _runtimeLoadWaiting = false
+                    applyExecutorMode()
+                }
                 true
             }
             HolmSurfaceEvent.ON_READY -> {
@@ -90,6 +120,8 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
             }
             HolmSurfaceEvent.ON_ERROR -> {
                 _onError = propValue.unsafeCast<KuiklyRenderCallback>()
+                // Attr 可能先于 Event 触发 BLOCKED；与 onReady 对称重放
+                replayPendingError()
                 true
             }
             HolmSurfaceEvent.ON_PERF -> {
@@ -101,11 +133,15 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
     }
 
     override fun onAddToParent(parent: Element) {
-        if (!_started) {
+        if (HolmExecutor.isRuntime(_executor)) {
+            applyExecutorMode()
+        } else if (!_started) {
             startPump()
         }
         attachObservers()
-        postPlaying(effectivePlaying())
+        if (!HolmExecutor.isRuntime(_executor)) {
+            postPlaying(effectivePlaying())
+        }
     }
 
     override fun onRemoveFromParent(parent: Element) {
@@ -268,6 +304,21 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
     }
 
     private fun postSet() {
+        if (HolmExecutor.isRuntime(_executor)) {
+            if (_runtimeUsesWorker) {
+                if (!_started) return
+                val msg = js("{}")
+                msg.type = "set"
+                msg.liquidBoost = _liquidBoost.toDouble()
+                msg.liquidBend = _liquidBend.toDouble()
+                msg.maxFps = _maxFps
+                dispatch(msg)
+                return
+            }
+            val session = _runtimeSession ?: return
+            HolmRuntimeNative.sessionSetLiquid(session, _liquidBoost, _liquidBend)
+            return
+        }
         if (!_started) return
         val msg = js("{}")
         msg.type = "set"
@@ -280,6 +331,19 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
     }
 
     private fun postScene() {
+        if (HolmExecutor.isRuntime(_executor)) {
+            if (_runtimeUsesWorker) {
+                if (!_started) return
+                val msg = js("{}")
+                msg.type = "scene"
+                msg.scene = _scene
+                dispatch(msg)
+                return
+            }
+            val session = _runtimeSession ?: return
+            HolmRuntimeNative.sessionSetScene(session, _scene)
+            return
+        }
         if (!_started) return
         val msg = js("{}")
         msg.type = "scene"
@@ -290,10 +354,27 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
     }
 
     private fun postResize(w: Int, h: Int) {
-        if (!_started) return
         if (w == _lastW && h == _lastH) return
         _lastW = w
         _lastH = h
+        if (HolmExecutor.isRuntime(_executor)) {
+            if (_runtimeUsesWorker) {
+                if (!_started) return
+                val msg = js("{}")
+                msg.type = "resize"
+                msg.w = w
+                msg.h = h
+                dispatch(msg)
+                return
+            }
+            val session = _runtimeSession ?: return
+            // 与 Lite 一致：CSS 像素缓冲，不乘 DPR
+            _canvas.width = w.coerceAtLeast(1)
+            _canvas.height = h.coerceAtLeast(1)
+            HolmRuntimeNative.sessionResize(session, w.coerceAtLeast(1), h.coerceAtLeast(1))
+            return
+        }
+        if (!_started) return
         val msg = js("{}")
         msg.type = "resize"
         msg.w = w
@@ -302,6 +383,24 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
     }
 
     private fun postPlaying(playing: Boolean) {
+        if (HolmExecutor.isRuntime(_executor)) {
+            if (_runtimeUsesWorker) {
+                if (!_started) return
+                val msg = js("{}")
+                msg.type = "playing"
+                msg.playing = playing
+                dispatch(msg)
+                return
+            }
+            val session = _runtimeSession ?: return
+            HolmRuntimeNative.sessionSetPlaying(session, playing)
+            if (playing) {
+                if (_runtimeRafId == 0) startRuntimeLoop()
+            } else {
+                stopRuntimeLoop()
+            }
+            return
+        }
         if (!_started) return
         val msg = js("{}")
         msg.type = "playing"
@@ -401,7 +500,201 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
         }
     }
 
+    private fun destroyRuntimeSession() {
+        stopRuntimeLoop()
+        val session = _runtimeSession
+        _runtimeSession = null
+        _runtimeSessionStarted = false
+        _runtimeUsesWorker = false
+        if (session != null) {
+            HolmRuntimeNative.sessionDestroy(session)
+        }
+    }
+
+    private fun stopRuntimeLoop() {
+        if (_runtimeRafId != 0) {
+            js("cancelAnimationFrame").unsafeCast<(Int) -> Unit>()(_runtimeRafId)
+            _runtimeRafId = 0
+        }
+        if (_runtimeTimerId != 0) {
+            js("clearTimeout").unsafeCast<(Int) -> Unit>()(_runtimeTimerId)
+            _runtimeTimerId = 0
+        }
+        _runtimeLastTs = 0.0
+        _runtimeAccMs = 0.0
+        _runtimePerfWindowMs = 0.0
+        _runtimePerfFrames = 0
+    }
+
+    private fun startRuntimeLoop() {
+        if (_runtimeUsesWorker) return
+        stopRuntimeLoop()
+        if (!effectivePlaying()) return
+        lateinit var onFrame: (Double) -> Unit
+        lateinit var scheduleNext: (Double) -> Unit
+        onFrame = frame@{ now ->
+            _runtimeRafId = 0
+            _runtimeTimerId = 0
+            if (!HolmExecutor.isRuntime(_executor) || _runtimeSession == null || _runtimeUsesWorker) {
+                return@frame
+            }
+            if (!effectivePlaying()) {
+                return@frame
+            }
+            if (_runtimeLastTs == 0.0) {
+                _runtimeLastTs = now
+            }
+            val dtMs = (now - _runtimeLastTs).coerceIn(0.0, 50.0)
+            _runtimeLastTs = now
+            val minFrameMs = if (_maxFps > 0) 1000.0 / _maxFps.toDouble() else 0.0
+            _runtimeAccMs += dtMs
+            if (minFrameMs <= 0.0 || _runtimeAccMs >= minFrameMs) {
+                val dtSecs = (_runtimeAccMs / 1000.0).toFloat()
+                _runtimeAccMs = 0.0
+                val ok = HolmRuntimeNative.sessionTick(_runtimeSession, dtSecs)
+                if (!ok) {
+                    _backend = HolmExecutor.BACKEND_WGPU_BLOCKED
+                    if (!_runtimeBlockedNotified) {
+                        _runtimeBlockedNotified = true
+                        fireError(HolmExecutor.ERROR_BLOCKED, "holm-runtime tick failed")
+                    }
+                    stopRuntimeLoop()
+                    return@frame
+                }
+                // 与 Lite 对齐：有 onPerf 时约 1s 汇总一次，禁止每帧打穿 Compose
+                if (_onPerf != null) {
+                    if (_runtimePerfWindowMs == 0.0) {
+                        _runtimePerfWindowMs = now
+                        _runtimePerfFrames = 0
+                    } else {
+                        _runtimePerfFrames += 1
+                        val elapsed = now - _runtimePerfWindowMs
+                        if (elapsed >= 1000.0) {
+                            val fps = (_runtimePerfFrames * 1000.0 / elapsed).toFloat()
+                            val frameMs = if (fps > 0.01f) 1000f / fps else 0f
+                            firePerf(fps, frameMs)
+                            _runtimePerfWindowMs = now
+                            _runtimePerfFrames = 0
+                        }
+                    }
+                }
+            }
+            scheduleNext(now)
+        }
+        scheduleNext = sched@{ now ->
+            if (!effectivePlaying() || _runtimeSession == null || _runtimeUsesWorker) return@sched
+            // 0=不限 / >60：timer；1..60：rAF（对齐 Lite 低档）
+            if (_maxFps <= 0 || _maxFps > 60) {
+                val delay = when {
+                    _maxFps <= 0 -> 0.0
+                    else -> {
+                        val interval = 1000.0 / _maxFps.toDouble()
+                        if (_runtimeAccMs >= interval) 0.0 else (interval - _runtimeAccMs).coerceIn(0.0, interval)
+                    }
+                }
+                _runtimeTimerId = js(
+                    """
+                    (function(cb, delay) {
+                      return setTimeout(function() { cb(performance.now()); }, delay);
+                    })
+                    """,
+                ).unsafeCast<((Double) -> Unit, Double) -> Int>()(onFrame, delay)
+            } else {
+                _runtimeRafId = js("requestAnimationFrame").unsafeCast<((Double) -> Unit) -> Int>()(onFrame)
+            }
+        }
+        scheduleNext(js("performance.now()").unsafeCast<Double>())
+    }
+
+    /** Runtime Worker 路径：OffscreenCanvas + wasm Session，主线程只转发。 */
+    private fun startRuntimeWorkerPath(w: Int, h: Int): Boolean {
+        val script = HolmRuntimePumpSource.SCRIPT
+        val glueUrl = js("new URL('holm-runtime/holm_runtime.js', location.href).href")
+            .unsafeCast<String>()
+        val wasmUrl = js("new URL('holm-runtime/holm_runtime_bg.wasm', location.href).href")
+            .unsafeCast<String>()
+        val init = js("{}")
+        init.type = "init"
+        init.glueUrl = glueUrl
+        init.wasmUrl = wasmUrl
+        init.scene = _scene
+        init.liquidBoost = _liquidBoost.toDouble()
+        init.liquidBend = _liquidBend.toDouble()
+        init.maxFps = _maxFps
+        init.playing = effectivePlaying()
+        init.w = w
+        init.h = h
+        val pumpId = registerPumpView(this)
+        _pumpId = pumpId
+        val result = js(
+            """
+            (function(script, canvas, init, pumpId) {
+              var blob = new Blob([script], { type: 'application/javascript' });
+              var url = URL.createObjectURL(blob);
+              var worker = new Worker(url);
+              worker.onmessage = function(e) {
+                if (typeof self.__holmPumpDispatch === 'function') {
+                  self.__holmPumpDispatch(pumpId, e.data);
+                }
+              };
+              worker.onerror = function(e) {
+                if (typeof self.__holmPumpDispatch === 'function') {
+                  self.__holmPumpDispatch(pumpId, {
+                    type: 'error',
+                    code: 'WORKER_ERROR',
+                    message: (e && e.message) ? e.message : 'worker error'
+                  });
+                }
+              };
+              var transferred = false;
+              try {
+                var offscreen = canvas.transferControlToOffscreen();
+                transferred = true;
+                init.canvas = offscreen;
+                worker.postMessage(init, [offscreen]);
+                return { ok: true, transferred: true, worker: worker, url: url };
+              } catch (err) {
+                if (typeof self.__holmPumpDispatch === 'function') {
+                  self.__holmPumpDispatch(pumpId, {
+                    type: 'error',
+                    code: 'WORKER_INIT',
+                    message: String(err && err.message ? err.message : err)
+                  });
+                }
+                try { worker.terminate(); } catch (_) {}
+                try { URL.revokeObjectURL(url); } catch (_) {}
+                return { ok: false, transferred: transferred, worker: null, url: null };
+              }
+            })
+            """,
+        ).unsafeCast<(String, HTMLCanvasElement, dynamic, Int) -> dynamic>()(
+            script,
+            _canvas,
+            init,
+            pumpId,
+        )
+        val ok = result.ok == true
+        if (ok) {
+            _worker = result.worker
+            _workerUrl = result.url as? String
+            _controlTransferred = true
+            _runtimeUsesWorker = true
+            _backend = HolmExecutor.BACKEND_WGPU_M0
+            return true
+        }
+        unregisterPumpView(_pumpId)
+        _pumpId = 0
+        _worker = null
+        _workerUrl = null
+        _runtimeUsesWorker = false
+        if (result.transferred == true) {
+            replaceCanvasInPlace()
+        }
+        return false
+    }
+
     private fun destroyPump() {
+        destroyRuntimeSession()
         unregisterPumpView(_pumpId)
         _pumpId = 0
         if (_worker != null) {
@@ -472,18 +765,129 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
         return w to h
     }
 
+    private fun applyExecutorMode() {
+        if (HolmExecutor.isRuntime(_executor)) {
+            if (_started) {
+                destroyPump()
+            }
+            runCatching {
+                _canvas.style.setProperty("background", "#1E2A4A")
+            }
+            if (!HolmRuntimeNative.isAvailable()) {
+                if (HolmRuntimeNative.isLoadPending()) {
+                    if (!_runtimeLoadWaiting) {
+                        _runtimeLoadWaiting = true
+                        // wasm 仍在 init：短轮询，避免首屏永久 BLOCKED
+                        js(
+                            """
+                            (function(retry) {
+                              var n = 0;
+                              var t = setInterval(function() {
+                                n++;
+                                if (window.__holmRuntime && window.__holmRuntime.ready === true) {
+                                  clearInterval(t); retry();
+                                } else if (window.__holmRuntime && window.__holmRuntime.error) {
+                                  clearInterval(t); retry();
+                                } else if (n >= 40) {
+                                  clearInterval(t); retry();
+                                }
+                              }, 50);
+                            })
+                            """,
+                        ).unsafeCast<(() -> Unit) -> Unit>()({
+                            _runtimeLoadWaiting = false
+                            applyExecutorMode()
+                        })
+                    }
+                    return
+                }
+                _backend = HolmExecutor.BACKEND_WGPU_BLOCKED
+                if (!_runtimeBlockedNotified) {
+                    _runtimeBlockedNotified = true
+                    fireError(HolmExecutor.ERROR_BLOCKED, HolmRuntimeNative.blockedMessage())
+                }
+                if (!_readyFired) {
+                    _readyFired = true
+                    fireReady()
+                }
+                return
+            }
+            if (_runtimeSessionStarted) return
+            _runtimeSessionStarted = true
+            val size = readCssSize()
+            _lastW = size.first
+            _lastH = size.second
+            // 优先 Worker+Offscreen（对齐 Lite 主线程卸载）；失败再主线程 Session
+            if (canUseWorkerPath() && startRuntimeWorkerPath(size.first, size.second)) {
+                _started = true
+                runCatching { _canvas.style.removeProperty("background") }
+                clearPendingError()
+                // ready 由 Worker 异步上报；超时仍由 onPumpMessage 处理
+                return
+            }
+            HolmRuntimeNative.createSession(
+                canvas = _canvas,
+                onSuccess = { session, backend ->
+                    if (!HolmExecutor.isRuntime(_executor)) {
+                        HolmRuntimeNative.sessionDestroy(session)
+                        return@createSession
+                    }
+                    _runtimeSession = session
+                    _runtimeUsesWorker = false
+                    _backend = if (backend.isNotBlank()) backend else HolmExecutor.BACKEND_WGPU_M0
+                    runCatching { _canvas.style.removeProperty("background") }
+                    HolmRuntimeNative.sessionSetScene(session, _scene)
+                    HolmRuntimeNative.sessionSetLiquid(session, _liquidBoost, _liquidBend)
+                    HolmRuntimeNative.sessionSetPlaying(session, effectivePlaying())
+                    clearPendingError()
+                    _readyFired = true
+                    fireReady()
+                    startRuntimeLoop()
+                },
+                onError = { message ->
+                    if (!HolmExecutor.isRuntime(_executor)) return@createSession
+                    _runtimeSessionStarted = false
+                    _backend = HolmExecutor.BACKEND_WGPU_BLOCKED
+                    if (!_runtimeBlockedNotified) {
+                        _runtimeBlockedNotified = true
+                        fireError(HolmExecutor.ERROR_BLOCKED, message)
+                    }
+                    _readyFired = true
+                    fireReady()
+                },
+            )
+        } else {
+            runCatching {
+                _canvas.style.removeProperty("background")
+            }
+            clearPendingError()
+            destroyRuntimeSession()
+            _runtimeLoadWaiting = false
+            if (!_started) {
+                startPump()
+            } else {
+                postPlaying(effectivePlaying())
+            }
+        }
+    }
+
     private fun fireReady() {
+        // Runtime 路径以 present 结果写入的 `_backend` 为准（失败不得假报 wgpu-m0）
         _onReady?.invoke(
             mapOf(
                 "backend" to _backend,
                 "quality" to "auto",
                 "scene" to _scene,
+                "executor" to _executor,
             ),
         )
     }
 
     private fun fireError(code: String, message: String) {
-        _onError?.invoke(
+        _pendingErrorCode = code
+        _pendingErrorMessage = message
+        val callback = _onError ?: return
+        callback.invoke(
             mapOf(
                 "code" to code,
                 "message" to message,
@@ -491,8 +895,27 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
         )
     }
 
+    private fun replayPendingError() {
+        val code = _pendingErrorCode ?: return
+        val message = _pendingErrorMessage ?: return
+        val callback = _onError ?: return
+        callback.invoke(
+            mapOf(
+                "code" to code,
+                "message" to message,
+            ),
+        )
+    }
+
+    private fun clearPendingError() {
+        _pendingErrorCode = null
+        _pendingErrorMessage = null
+        _runtimeBlockedNotified = false
+    }
+
     private fun firePerf(fps: Float, frameMs: Float) {
-        _onPerf?.invoke(
+        val callback = _onPerf ?: return
+        callback.invoke(
             mapOf(
                 "fps" to fps,
                 "frameMs" to frameMs,

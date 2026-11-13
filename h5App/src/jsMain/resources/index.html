@@ -55,6 +55,33 @@
 <body>
 <div id="root"></div>
 <script src="http://127.0.0.1:8083/nativevue2.js" type="text/javascript"></script>
+<!-- DualTrack B：holm-runtime wasm（no-modules）；失败时 __holmRuntime.ready=false，Kotlin 侧 BLOCKED -->
+<script src="holm-runtime/holm_runtime.js" type="text/javascript"></script>
+<script type="text/javascript">
+  (function () {
+    window.__holmRuntime = { ready: false };
+    if (typeof wasm_bindgen !== 'function') {
+      window.__holmRuntime.error = 'wasm_bindgen missing (holm_runtime.js not loaded)';
+      return;
+    }
+    // no-modules：init Promise resolve 的是 raw wasm exports；胶水 API 在 wasm_bindgen.* 上
+    wasm_bindgen('holm-runtime/holm_runtime_bg.wasm')
+      .then(function () {
+        window.__holmRuntime = {
+          ready: true,
+          abiVersion: function () { return wasm_bindgen.holm_runtime_abi_version(); },
+          hasWgpu: function () { return wasm_bindgen.holm_runtime_has_wgpu(); },
+          createSession: function (canvas) { return wasm_bindgen.HolmRuntimeSession.create(canvas); },
+        };
+      })
+      .catch(function (e) {
+        window.__holmRuntime = {
+          ready: false,
+          error: (e && e.message) ? e.message : String(e),
+        };
+      });
+  })();
+</script>
 <!-- libpag optional; CDN hangs block h5App and white-screen the page. Re-add when PAG is needed. -->
 <script src="h5App.js" type="text/javascript"></script>
 </body>

@@ -31,6 +31,10 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
     private var _warpAmount: Float = HolmSurfaceAttr.DEFAULT_WARP_AMOUNT
     private var _scrollSpeed: Float = HolmSurfaceAttr.DEFAULT_SCROLL_SPEED
     private var _maxFps: Int = HolmSurfaceAttr.DEFAULT_MAX_FPS
+    private var _executor: String = HolmSurfaceAttr.DEFAULT_EXECUTOR
+    private var _runtimeBlockedNotified: Boolean = false
+    private var _pendingErrorCode: String? = null
+    private var _pendingErrorMessage: String? = null
     private var _onReady: KuiklyRenderCallback? = null
     private var _onError: KuiklyRenderCallback? = null
     private var _onPerf: KuiklyRenderCallback? = null
@@ -94,11 +98,7 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
             }
             HolmSurfaceAttr.PROP_PLAYING -> {
                 _playing = propValue.toBool()
-                _glView.renderMode = if (_playing) {
-                    GLSurfaceView.RENDERMODE_CONTINUOUSLY
-                } else {
-                    GLSurfaceView.RENDERMODE_WHEN_DIRTY
-                }
+                applyPlayingRenderMode()
                 true
             }
             HolmSurfaceAttr.PROP_LIQUID_BOOST -> {
@@ -150,6 +150,16 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
                 }
                 true
             }
+            HolmSurfaceAttr.PROP_EXECUTOR -> {
+                val next = HolmExecutor.normalize(propValue.toString())
+                if (next != _executor) {
+                    _executor = next
+                    _readyFired = false
+                    _runtimeBlockedNotified = false
+                    applyExecutorMode()
+                }
+                true
+            }
             HolmSurfaceEvent.ON_READY -> {
                 _onReady = propValue as? KuiklyRenderCallback
                 if (_readyFired) {
@@ -159,6 +169,8 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
             }
             HolmSurfaceEvent.ON_ERROR -> {
                 _onError = propValue as? KuiklyRenderCallback
+                // Attr 可能先于 Event 触发 BLOCKED；与 onReady 对称重放
+                replayPendingError()
                 true
             }
             HolmSurfaceEvent.ON_PERF -> {
@@ -206,19 +218,90 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
         }
     }
 
+    private fun applyPlayingRenderMode() {
+        if (HolmExecutor.isRuntime(_executor)) {
+            // runtime 旁路不走 Lite GLES 连续泵，避免阻塞态仍 CONTINUOUSLY
+            _glView.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
+            return
+        }
+        _glView.renderMode = if (_playing) {
+            GLSurfaceView.RENDERMODE_CONTINUOUSLY
+        } else {
+            GLSurfaceView.RENDERMODE_WHEN_DIRTY
+        }
+    }
+
+    private fun applyExecutorMode() {
+        if (HolmExecutor.isRuntime(_executor)) {
+            val available = HolmRuntimeNative.isAvailable()
+            _glView.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
+            _glView.visibility = if (available) VISIBLE else INVISIBLE
+            if (!available) {
+                setBackgroundColor(0xFF1E2A4A.toInt())
+                if (!_runtimeBlockedNotified) {
+                    _runtimeBlockedNotified = true
+                    fireError(HolmExecutor.ERROR_BLOCKED, HolmRuntimeNative.blockedMessage())
+                }
+                if (!_readyFired) {
+                    _readyFired = true
+                    fireReady()
+                }
+            } else {
+                background = null
+                _glView.visibility = VISIBLE
+                clearPendingError()
+                if (!_readyFired) {
+                    _readyFired = true
+                    fireReady()
+                }
+            }
+        } else {
+            background = null
+            _glView.visibility = VISIBLE
+            clearPendingError()
+            applyPlayingRenderMode()
+        }
+    }
+
     private fun fireReady() {
+        val backend = when {
+            HolmExecutor.isRuntime(_executor) && HolmRuntimeNative.isAvailable() ->
+                HolmExecutor.BACKEND_WGPU_M0
+            HolmExecutor.isRuntime(_executor) -> HolmExecutor.BACKEND_WGPU_BLOCKED
+            else -> HolmExecutor.BACKEND_GLES2
+        }
         val payload = JSONObject()
-            .put("backend", "gles2")
+            .put("backend", backend)
             .put("quality", "auto")
             .put("scene", _scene)
+            .put("executor", _executor)
         _onReady?.invoke(payload)
     }
 
     private fun fireError(code: String, message: String) {
+        _pendingErrorCode = code
+        _pendingErrorMessage = message
+        val callback = _onError ?: return
         val payload = JSONObject()
             .put("code", code)
             .put("message", message)
-        _onError?.invoke(payload)
+        callback.invoke(payload)
+    }
+
+    private fun replayPendingError() {
+        val code = _pendingErrorCode ?: return
+        val message = _pendingErrorMessage ?: return
+        val callback = _onError ?: return
+        val payload = JSONObject()
+            .put("code", code)
+            .put("message", message)
+        callback.invoke(payload)
+    }
+
+    private fun clearPendingError() {
+        _pendingErrorCode = null
+        _pendingErrorMessage = null
+        _runtimeBlockedNotified = false
     }
 
     private fun firePerf(fps: Float, frameMs: Float) {

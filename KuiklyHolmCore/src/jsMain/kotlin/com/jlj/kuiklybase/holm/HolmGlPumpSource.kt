@@ -48,6 +48,7 @@ object HolmGlPumpSource {
     var dirtyWarpAmount = true;
     var dirtyScrollSpeed = true;
     var rafId = 0;
+    var timerId = 0;
     var animTime = 0;
     var lastNow = 0;
     var fpsWindowMs = 0;
@@ -61,6 +62,30 @@ object HolmGlPumpSource {
       maxFps = n;
       intervalMs = maxFps <= 0 ? 0 : 1000 / maxFps;
       nextDue = 0;
+    }
+
+    function useTimerPump() {
+      return maxFps > 60;
+    }
+
+    function scheduleNext(now) {
+      if (!playing) return;
+      if (useTimerPump()) {
+        var t = typeof now === "number" ? now : performance.now();
+        var delay = 0;
+        if (maxFps > 0) {
+          if (!nextDue) nextDue = t + intervalMs;
+          delay = nextDue - t;
+          if (delay < 0) delay = 0;
+          if (delay > intervalMs) delay = intervalMs;
+        }
+        timerId = setTimeout(function () {
+          timerId = 0;
+          draw(performance.now());
+        }, delay);
+      } else {
+        rafId = requestAnimationFrame(draw);
+      }
     }
 
     function emitError(code, message) {
@@ -158,6 +183,7 @@ object HolmGlPumpSource {
 
     function draw(now) {
       rafId = 0;
+      timerId = 0;
       if (!gl || !program || !playing) return;
       var shouldSubmit = true;
       if (maxFps > 0) {
@@ -202,19 +228,23 @@ object HolmGlPumpSource {
         tickPerf(now);
       }
       if (playing) {
-        rafId = requestAnimationFrame(draw);
+        scheduleNext(now);
       }
     }
 
     function start() {
-      if (rafId || !playing || !gl || !program) return;
-      rafId = requestAnimationFrame(draw);
+      if (rafId || timerId || !playing || !gl || !program) return;
+      scheduleNext(performance.now());
     }
 
     function stop() {
       if (rafId) {
         cancelAnimationFrame(rafId);
         rafId = 0;
+      }
+      if (timerId) {
+        clearTimeout(timerId);
+        timerId = 0;
       }
     }
 
@@ -274,7 +304,13 @@ object HolmGlPumpSource {
         if (typeof msg.maxFps === "number") {
           var next = msg.maxFps | 0;
           if (next < 0) next = 0;
-          if (next !== maxFps) applyMaxFps(next);
+          if (next !== maxFps) {
+            applyMaxFps(next);
+            if (playing) {
+              stop();
+              start();
+            }
+          }
         }
       },
       resize: function (msg) {
