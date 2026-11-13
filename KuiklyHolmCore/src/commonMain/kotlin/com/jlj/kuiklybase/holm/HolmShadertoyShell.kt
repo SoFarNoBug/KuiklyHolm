@@ -13,8 +13,13 @@ object HolmShadertoyShell {
     fun wrapFragment(body: String): String {
         val trimmed = body.trim()
         require(trimmed.isNotEmpty()) { "Shadertoy body must be non-blank" }
+        // 真机 GLES2：raymarch/SDF 用 mediump 易花屏噪点；与 liquid 等官方席对齐优先 highp
         return """
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
 precision mediump float;
+#endif
 varying vec2 v_uv;
 uniform float u_time;
 uniform vec2 u_resolution;

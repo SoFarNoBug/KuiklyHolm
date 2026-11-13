@@ -11,3 +11,4 @@
 | [0003](./0003-lite-official-five-scenes.md) | Lite 官方五席锁定 + Attr 可读改名 |
 | [0004](./0004-lite-vs-standard-dualtrack.md) | DualTrack 收口 · Keep Lite（O0 不改） |
 | [0005](./0005-business-fragment-shadertoy-shell.md) | 业务片元 Attr + Shadertoy 薄壳 |
+| [0006](./0006-android-runtime-surface-session.md) | Android Runtime · SurfaceView + Kotlin 外泵 |

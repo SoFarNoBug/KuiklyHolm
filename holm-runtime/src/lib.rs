@@ -1,23 +1,29 @@
-//! Holm Runtime — DualTrack B · wgpu session（H5 wasm）+ native C ABI stubs.
-//! H5：`HolmRuntimeSession` 泵帧；席位 frost/glow/liquid_approx（观感近似）+ clear_tri。
+//! Holm Runtime — DualTrack B · wgpu Session（H5 wasm + Android JNI）。
 
 #![allow(dead_code)]
 
-#[cfg(all(target_arch = "wasm32", feature = "wgpu_backend"))]
+#[cfg(feature = "wgpu_backend")]
 mod shaders;
+
+#[cfg(feature = "wgpu_backend")]
+mod session_core;
+
 #[cfg(all(target_arch = "wasm32", feature = "wgpu_backend"))]
 mod session;
 
 #[cfg(all(target_arch = "wasm32", feature = "wgpu_backend"))]
 pub use session::HolmRuntimeSession;
 
+#[cfg(all(target_os = "android", feature = "wgpu_backend"))]
+mod android_jni;
+
 pub const BACKEND_ID: &str = "wgpu-m0";
 
-fn abi_version_inner() -> u32 {
+pub(crate) fn abi_version_inner() -> u32 {
     1
 }
 
-fn has_wgpu_inner() -> u32 {
+pub(crate) fn has_wgpu_inner() -> u32 {
     #[cfg(feature = "wgpu_backend")]
     {
         1
@@ -40,6 +46,7 @@ pub extern "C" fn holm_runtime_has_wgpu() -> u32 {
     has_wgpu_inner()
 }
 
+/// 遗留 stub：通面请走 Android JNI Session / H5 HolmRuntimeSession。
 #[cfg(not(target_arch = "wasm32"))]
 #[no_mangle]
 pub extern "C" fn holm_runtime_m0_clear(_width: u32, _height: u32) -> i32 {

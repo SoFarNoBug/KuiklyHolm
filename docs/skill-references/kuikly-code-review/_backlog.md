@@ -12,6 +12,8 @@
 - [ ] 原生桥 `onError`/`onReady`：若 Attr 侧可能在回调注册前 fire，须像 onReady 一样支持「已发生则重放」，避免 Compose Attr→Event 顺序丢错 ｜2026-11-12｜自评：未达标（dualtrack P1-concurrency）
 - [ ] Kuikly expand View 模式/`executor` 切换须对称 teardown（含 Worker/Offscreen），禁止只清半套 Session 标志 ｜2026-11-13｜自评：已达标（dualtrack-r4 已关对应 P0；待批晋升）
 - [ ] Offscreen Worker 异步 init 失败须与主线程失败同契约（BLOCKED + ready + 可回退/看门狗）｜2026-11-13｜自评：已达标（dualtrack-r4 已关对应 P0；待批晋升）
+- [ ] DualTrack/expand View：`executor` 热切后须按当前轨重发 `onReady`（含 backend），不得依赖「Surface 已创建则不再 onSurfaceCreated」｜2026-11-14｜自评：未达标（android-runtime-dualtrack P1-doc-drift）
+- [ ] 持 native Surface 的急拆：await 超时也必须停泵并丢弃句柄，禁止超时后继续 tick｜2026-11-14｜自评：未达标（android-runtime-dualtrack P1-concurrency）
 
 ## 已晋升
 

@@ -1,5 +1,52 @@
 # dualtrack-lite-vs-standard · changelog
 
+## 2026-11-14（审查 android-runtime-dualtrack 整改）
+
+- [MODIFY] `KRHolmSurfaceView`：切 Lite 主动 `fireReady(gles2)`（防 backend 粘 wgpu）；`_runtimeSurfaceValid`→`AtomicBoolean`；急拆超时再投幂等 destroy；卸岛 `quitSafely` + 再挂重建线程；非 WGSL custom → `onError SHADER_CUSTOM`
+- [MODIFY] Demo `HolmRuntimeM0Pager`：切 executor 清 `backendId`/`backendText`
+- 已知遗留：`HolmRuntimeNative._presentable` 仍进程级｜不修理由：Demo 单岛；多岛另单
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：关审查 P1/P2 可改项｜待批 0
+- 真机验证表：`docs/reviews/device-check-list/android-runtime-dualtrack.md`（审核员已出；本单装包供勾）
+- 自测：`:androidApp:installDebug` → `holm_runtime_m0` 切轨看 backend；进出页 3 次
+
+## 2026-11-14（Lite LITE_BODY 去 pow 对齐 Runtime）
+
+- [MODIFY] Demo `NeonTunnelShaders.LITE_BODY`：去掉片元 `pow(col, vec3(0.4545))`，与 `RUNTIME_FS` 一致，缓解 Lite custom 发白
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：补齐上一单 Lite 遗留双伽马｜待批 0
+- 本单无真机验证
+- 自测：`:androidApp:installDebug` → `holm_runtime_m0` Lite custom，对比 Runtime 发白是否缓解
+
+## 2026-11-14（真机画质：Lite highp + Runtime 非 sRGB）
+
+- [MODIFY] `HolmShadertoyShell`：优先 `highp`（修 Lite custom 隧道花屏噪点）
+- [MODIFY] `session_core`：Surface format **优先非 sRGB**（修 Android Runtime 全席发白发雾）
+- [MODIFY] Demo `NeonTunnelShaders.RUNTIME_FS`：去掉片元内 `pow(0.4545)` 双伽马
+- [MODIFY] `misuse` 错误 18/19；`kuikly-dev-android/runbook` Runtime / 镜像 / 画质坑
+- 治理收尾：门禁 跳过｜三问 是/是/否｜小结级：misuse 18/19｜待批 0
+- 真机验证表：`docs/reviews/device-check-list/android-runtime-dualtrack.md`（审核员产出；码农只登记）
+- 自测：rebuild `.so` + `:androidApp:installDebug` → `holm_runtime_m0`
+
+## 2026-11-13（升 AGP 8.13.2 + compileSdk 37）
+
+- [MODIFY] 根 `build.gradle.kts`：AGP `8.3.2`→`8.13.2`；去掉强制 R8 覆盖（交还 AGP 自带）
+- [MODIFY] Gradle Wrapper `8.5`→`8.13`；各模块 `compileSdk=37`；`android.suppressUnsupportedCompileSdk=37`
+- [MODIFY] 本机 `sdk.dir`→`D:\Android_SDK`（`platforms/android-37` 联到 `android-37.0`）
+- [MODIFY] Wrapper / Maven **仅**腾讯云：`gradle` + `maven-public` + `gradle-plugins`（去掉 google/central 直连）
+- [MODIFY] `compileSdk { release(37){ minorApiLevel=0 } }` + `buildToolsVersion=36.0.0`；`android.builder.sdkDownload=false`
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：工具链对齐本机仅有 SDK 37｜待批 0
+- 本单无真机验证
+- 自测：`:androidApp:compileDebugKotlin` **BUILD SUCCESSFUL**（Gradle 8.13 + AGP 8.13.2）
+
+## 2026-11-13（Android Runtime DualTrack：SurfaceView + 外泵 + arm64 .so）
+
+- [MODIFY] `holm-runtime`：共享 `session_core`；`android_jni` 从 `Surface`→`ANativeWindow` 建 Session；`build-android.ps1` → `androidApp/.../jniLibs/arm64-v8a`
+- [MODIFY] `HolmRuntimeNative`（既有）+ `KRHolmSurfaceView`：Runtime 换 `SurfaceView`；`HandlerThread`+`Choreographer` 外泵 `tick`；急拆；Lite 还原 GLES
+- [MODIFY] Demo `holm_runtime_m0`：去掉「Android Runtime 下一单」文案
+- [MODIFY] CONTEXT / glossary / ADR 0006 / `holm-runtime/README`
+- 已知遗留：真机 frost/glow/liquid/custom + logcat `[holm-perf]` 未跑｜不修理由：本单编译门禁；真机表交审核员
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan 接线 Android Runtime｜待批 0
+- 真机验证表：`docs/reviews/device-check-list/android-runtime-dualtrack.md`（审核员产出；码农只登记）
+
 ## 2026-11-13（审查 r3 整改：executor 对称拆泵 / Worker 失败回退 / 竞态）
 
 - [MODIFY] H5：`runtime→lite` 走 `destroyPump()` 再 `startPump()`（修 P0 Worker 残留）

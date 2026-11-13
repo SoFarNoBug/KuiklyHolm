@@ -73,7 +73,12 @@ kotlin {
 
 android {
     namespace = "com.jlj.kuiklybase.holm"
-    compileSdk = 34
+    compileSdk {
+        version = release(37) {
+            minorApiLevel = 0
+        }
+    }
+    buildToolsVersion = "36.0.0"
     defaultConfig {
         minSdk = 21
     }

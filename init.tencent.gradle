@@ -1,0 +1,35 @@
+// 可选：gradle --init-script init.tencent.gradle
+settingsEvaluated { settings ->
+    settings.pluginManagement.repositories.clear()
+    settings.pluginManagement.repositories.maven {
+        url = uri("https://mirrors.cloud.tencent.com/nexus/repository/maven-public/")
+    }
+    settings.pluginManagement.repositories.maven {
+        url = uri("https://mirrors.cloud.tencent.com/nexus/repository/gradle-plugins/")
+    }
+    settings.pluginManagement.repositories.maven {
+        url = uri("https://mirrors.tencent.com/nexus/repository/maven-tencent/")
+    }
+    settings.pluginManagement.repositories.mavenLocal()
+}
+
+allprojects {
+    buildscript {
+        repositories.clear()
+        repositories.maven {
+            url = uri("https://mirrors.cloud.tencent.com/nexus/repository/maven-public/")
+        }
+        repositories.maven {
+            url = uri("https://mirrors.tencent.com/nexus/repository/maven-tencent/")
+        }
+        repositories.mavenLocal()
+    }
+    repositories.clear()
+    repositories.maven {
+        url = uri("https://mirrors.cloud.tencent.com/nexus/repository/maven-public/")
+    }
+    repositories.maven {
+        url = uri("https://mirrors.tencent.com/nexus/repository/maven-tencent/")
+    }
+    repositories.mavenLocal()
+}

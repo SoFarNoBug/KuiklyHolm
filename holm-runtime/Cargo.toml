@@ -2,7 +2,7 @@
 name = "holm_runtime"
 version = "0.0.1"
 edition = "2021"
-description = "Holm Standard M0 spike · Rust + wgpu clear/triangle + Lite3 approx (DualTrack B)"
+description = "Holm Standard M0 spike · Rust + wgpu Session (H5 wasm + Android native)"
 license = "MIT"
 publish = false
 
@@ -12,15 +12,23 @@ name = "holm_runtime"
 
 [features]
 default = ["wgpu_backend"]
-wgpu_backend = ["dep:wgpu", "dep:bytemuck"]
+wgpu_backend = []
 
 [dependencies]
-wgpu = { version = "23", default-features = false, features = ["wgsl", "webgpu", "webgl"], optional = true }
-bytemuck = { version = "1", features = ["derive"], optional = true }
+bytemuck = { version = "1", features = ["derive"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+wgpu = { version = "23", default-features = false, features = ["wgsl", "webgpu", "webgl"] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
 console_error_panic_hook = "0.1"
 web-sys = { version = "0.3", features = ["HtmlCanvasElement", "OffscreenCanvas", "Window", "Document", "console"] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+# wgpu 23：Android 经 target cfg 拉 vulkan；勿写不存在的 feature `gles`
+wgpu = { version = "23", default-features = false, features = ["wgsl"] }
+jni = "0.21"
+ndk-sys = "0.6"
+raw-window-handle = "0.6"
+pollster = "0.4"

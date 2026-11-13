@@ -204,3 +204,31 @@ fun onPageSelected(position: Int) {
 **为什么错**：Kuikly Compose 只认 `com.tencent.kuikly.compose.*`（runtime 除外），错误包名导致编译失败或链到错误实现。
 
 **正确写法**：仅 `androidx.compose.runtime.*` 用官方包；其余走 Kuikly 包名。
+
+---
+
+### 错误 18：Shadertoy 壳写死 `precision mediump`（真机 raymarch 花屏）
+
+**错误写法**：`HolmShadertoyShell.wrapFragment` 固定 `precision mediump float;`，业务正文含 raymarch / SDF。
+
+**为什么错**：真机 GLES2（Adreno 等）上 mediump 步进距离不稳 → 彩色噪点 / 花屏；隧道形状可辨但满屏噪点。佐证：`holm_runtime_m0` Lite+custom（SM-S9110）。
+
+**正确写法**：与官方 liquid 席对齐，优先 highp：
+
+```glsl
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+```
+
+---
+
+### 错误 19：Runtime Session 优先 sRGB + 片元再伽马 → 发白发雾
+
+**错误写法**：`surface.get_capabilities` 后 `.find(|f| f.is_srgb())`；WGSL 再 `pow(col, 0.4545)` 或按「已出屏」色写 frost/glow。
+
+**为什么错**：Android Vulkan 常给 sRGB；硬件再做一次 OETF ⇒ 全席发白、像蒙雾。佐证：同机 Runtime frost/glow/liquid/custom。
+
+**正确写法**：优先**非** sRGB（`Rgba8Unorm` / `Bgra8Unorm`），无则再回落；片元与 frost/glow 一致、勿重复伽马。

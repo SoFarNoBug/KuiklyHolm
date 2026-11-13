@@ -125,7 +125,15 @@ private fun HolmRuntimeM0Screen() {
             )
         }
         Spacer(modifier = Modifier.height(12.dp))
-        RuntimeExecutorRow(executor = executor, onSelect = { executor = it })
+        RuntimeExecutorRow(
+            executor = executor,
+            onSelect = { next ->
+                executor = next
+                // 等 onReady 前勿粘旧 backend（审查 P1-doc-drift）
+                backendId = ""
+                backendText = "waiting onReady…"
+            },
+        )
         Spacer(modifier = Modifier.height(8.dp))
         RuntimeSceneRow(
             scene = scene,
@@ -264,7 +272,7 @@ private fun HolmRuntimeM0Screen() {
             text = if (collecting) {
                 "采集中…控制台 [holm-perf]，约 10s 自动停。"
             } else {
-                "开始采集 → 控制台静默打 [holm-perf] JSONL（约 10s）。Android Runtime 下一单。"
+                "开始采集 → 控制台/[logcat] 静默打 [holm-perf] JSONL（约 10s）。"
             },
             fontSize = 12.sp,
             lineHeight = 14.sp,

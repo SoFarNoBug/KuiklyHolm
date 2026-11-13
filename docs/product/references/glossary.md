@@ -39,5 +39,8 @@
 | **Shadertoy 薄壳** | Lite：业务只传 `mainImage` 正文；库补 `u_time` / `u_resolution` / 入口 |
 | **vertexShader** | 可选顶点 Attr；空=内置全屏 vert；Runtime 忽略 |
 | **setCustomFs** | Runtime：热换 WGSL 片元并重建 pipeline |
+| **Android Runtime Session** | arm64 `.so` + `SurfaceView`；Kotlin 渲染线程外泵 `tick`；急拆（ADR 0006） |
+| **急拆** | `surfaceDestroyed` / 切 Lite / 卸岛时立刻 `destroy` Session，禁止残留 native 持 Surface |
+| **[holm-perf]** | Demo 控制台/logcat JSONL 采集前缀（H5 `println` / Android logcat） |
 
 更多决策见 `../00-context-and-decisions.md`。

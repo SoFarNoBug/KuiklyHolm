@@ -77,7 +77,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     float vignette = 1.0 - length(uv) * 0.5;
     col *= vignette;
     col = col / (1.0 + col);
-    col = pow(col, vec3(0.4545));
+    // 不在此做 pow(0.4545)：对齐 RUNTIME_FS；GLES/默认 sRGB 再伽马易发白
     fragColor = vec4(col, 1.0);
 }
 """.trimIndent()
@@ -154,7 +154,7 @@ fn fs_main(in: VsOut) -> @location(0) vec4f {
     let vignette = 1.0 - length(uv) * 0.5;
     col = col * vignette;
     col = col / (1.0 + col);
-    col = pow(col, vec3f(0.4545));
+    // 不在此做 pow(0.4545)：Session 优先非 sRGB Surface；再伽马会与 frost/glow 不一致且易发白
     return vec4f(col, 1.0);
 }
 """.trimIndent()
