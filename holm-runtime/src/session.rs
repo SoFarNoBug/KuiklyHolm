@@ -34,6 +34,7 @@ enum SceneKind {
     Glow,
     LiquidApprox,
     ClearTri,
+    Custom,
 }
 
 impl SceneKind {
@@ -42,6 +43,7 @@ impl SceneKind {
             "glow" => Self::Glow,
             "liquid_approx" => Self::LiquidApprox,
             "clear_tri" => Self::ClearTri,
+            "custom" => Self::Custom,
             _ => Self::Frost, // 未知回退 frost（与 Lite 路由一致）
         }
     }
@@ -55,10 +57,12 @@ pub struct HolmRuntimeSession {
     config: wgpu::SurfaceConfiguration,
     uniform_buf: wgpu::Buffer,
     bind_group: wgpu::BindGroup,
+    pipe_layout: wgpu::PipelineLayout,
     pipe_frost: wgpu::RenderPipeline,
     pipe_glow: wgpu::RenderPipeline,
     pipe_liquid: wgpu::RenderPipeline,
     pipe_clear: wgpu::RenderPipeline,
+    pipe_custom: Option<wgpu::RenderPipeline>,
     scene: SceneKind,
     liquid_boost: f32,
     liquid_bend: f32,
@@ -218,42 +222,19 @@ impl HolmRuntimeSession {
             push_constant_ranges: &[],
         });
 
-        let mk_pipe = |label: &str, fs: &str| -> Result<wgpu::RenderPipeline, JsValue> {
-            let src = shaders::module_source(fs);
-            let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some(label),
-                source: wgpu::ShaderSource::Wgsl(src.into()),
-            });
-            Ok(device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some(label),
-                layout: Some(&pipe_layout),
-                vertex: wgpu::VertexState {
-                    module: &module,
-                    entry_point: Some("vs_main"),
-                    compilation_options: Default::default(),
-                    buffers: &[],
-                },
-                fragment: Some(wgpu::FragmentState {
-                    module: &module,
-                    entry_point: Some("fs_main"),
-                    compilation_options: Default::default(),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format,
-                        blend: Some(wgpu::BlendState::REPLACE),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                }),
-                primitive: wgpu::PrimitiveState::default(),
-                depth_stencil: None,
-                multisample: wgpu::MultisampleState::default(),
-                multiview: None,
-                cache: None,
-            }))
-        };
-        let pipe_frost = mk_pipe("holm-frost", shaders::FROST_FS)?;
-        let pipe_glow = mk_pipe("holm-glow", shaders::GLOW_FS)?;
-        let pipe_liquid = mk_pipe("holm-liquid", shaders::LIQUID_FS)?;
-        let pipe_clear = mk_pipe("holm-clear-tri", shaders::CLEAR_TRI_FS)?;
+        let pipe_frost =
+            Self::build_pipe(&device, &pipe_layout, format, "holm-frost", shaders::FROST_FS)?;
+        let pipe_glow =
+            Self::build_pipe(&device, &pipe_layout, format, "holm-glow", shaders::GLOW_FS)?;
+        let pipe_liquid =
+            Self::build_pipe(&device, &pipe_layout, format, "holm-liquid", shaders::LIQUID_FS)?;
+        let pipe_clear = Self::build_pipe(
+            &device,
+            &pipe_layout,
+            format,
+            "holm-clear-tri",
+            shaders::CLEAR_TRI_FS,
+        )?;
 
         Ok(Self {
             device,
@@ -262,10 +243,12 @@ impl HolmRuntimeSession {
             config,
             uniform_buf,
             bind_group,
+            pipe_layout,
             pipe_frost,
             pipe_glow,
             pipe_liquid,
             pipe_clear,
+            pipe_custom: None,
             scene: SceneKind::Frost,
             liquid_boost: 1.35,
             liquid_bend: 0.05,
@@ -275,6 +258,45 @@ impl HolmRuntimeSession {
         })
     }
 
+    fn build_pipe(
+        device: &wgpu::Device,
+        pipe_layout: &wgpu::PipelineLayout,
+        format: wgpu::TextureFormat,
+        label: &str,
+        fs: &str,
+    ) -> Result<wgpu::RenderPipeline, JsValue> {
+        let src = shaders::module_source(fs);
+        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some(label),
+            source: wgpu::ShaderSource::Wgsl(src.into()),
+        });
+        Ok(device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some(label),
+            layout: Some(pipe_layout),
+            vertex: wgpu::VertexState {
+                module: &module,
+                entry_point: Some("vs_main"),
+                compilation_options: Default::default(),
+                buffers: &[],
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &module,
+                entry_point: Some("fs_main"),
+                compilation_options: Default::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format,
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            primitive: wgpu::PrimitiveState::default(),
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        }))
+    }
+
     #[wasm_bindgen(js_name = backendId)]
     pub fn backend_id(&self) -> String {
         self.backend_id.to_string()
@@ -282,7 +304,38 @@ impl HolmRuntimeSession {
 
     #[wasm_bindgen(js_name = setScene)]
     pub fn set_scene(&mut self, scene: &str) {
+        // 有自定义管线时 setScene 不拆 custom；清自定义请 setCustomFs("")
+        if self.pipe_custom.is_some() && self.scene == SceneKind::Custom {
+            return;
+        }
         self.scene = SceneKind::from_name(scene);
+        if self.scene == SceneKind::Custom && self.pipe_custom.is_none() {
+            self.scene = SceneKind::Frost;
+        }
+    }
+
+    /// 业务 WGSL 片元正文（须含 `@fragment fn fs_main`）；空串清除并回 frost。
+    #[wasm_bindgen(js_name = setCustomFs)]
+    pub fn set_custom_fs(&mut self, fs: &str) -> Result<(), JsValue> {
+        let trimmed = fs.trim();
+        if trimmed.is_empty() {
+            self.pipe_custom = None;
+            if self.scene == SceneKind::Custom {
+                self.scene = SceneKind::Frost;
+            }
+            return Ok(());
+        }
+        let pipe = Self::build_pipe(
+            &self.device,
+            &self.pipe_layout,
+            self.config.format,
+            "holm-custom",
+            trimmed,
+        )
+        .map_err(|e| JsValue::from_str(&format!("setCustomFs: {e:?}")))?;
+        self.pipe_custom = Some(pipe);
+        self.scene = SceneKind::Custom;
+        Ok(())
     }
 
     #[wasm_bindgen(js_name = setLiquid)]
@@ -337,6 +390,10 @@ impl HolmRuntimeSession {
             SceneKind::Glow => &self.pipe_glow,
             SceneKind::LiquidApprox => &self.pipe_liquid,
             SceneKind::ClearTri => &self.pipe_clear,
+            SceneKind::Custom => self
+                .pipe_custom
+                .as_ref()
+                .unwrap_or(&self.pipe_clear),
         };
 
         let mut encoder = self

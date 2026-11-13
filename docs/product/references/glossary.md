@@ -35,5 +35,9 @@
 | **warpAmount** | Lite Attr（仅 `fullscreen_warp`）；场扭曲幅度；不与 liquid 旋钮共用 |
 | **scrollSpeed** | Lite Attr（仅 `gradient_bg`）；条带平移速率 |
 | **官方五席** | 12 个月锁定：`frost` / `glow` / `liquid_approx` / `gradient_bg` / `fullscreen_warp`（ADR 0003） |
+| **业务片元 / fragmentShader** | 可选 Attr；非空覆盖岛上色；**不是**第六官方席（ADR 0005） |
+| **Shadertoy 薄壳** | Lite：业务只传 `mainImage` 正文；库补 `u_time` / `u_resolution` / 入口 |
+| **vertexShader** | 可选顶点 Attr；空=内置全屏 vert；Runtime 忽略 |
+| **setCustomFs** | Runtime：热换 WGSL 片元并重建 pipeline |
 
 更多决策见 `../00-context-and-decisions.md`。

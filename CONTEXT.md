@@ -39,13 +39,15 @@
 - **霜化尖刺**：同源 GLSL ES；策略 A 程序化输入；Android GLES2 + H5 WebGL1
 - **官方五席**：`frost` / `glow` / `liquid_approx` / `gradient_bg` / `fullscreen_warp`（ADR 0003）
 - **liquidBoost / liquidBend / warpAmount / scrollSpeed**：按 scene 解耦的 Lite Attr（废弃 `ior`/`warp`）
+- **业务片元 / fragmentShader**、**Shadertoy 薄壳**：ADR 0005；非官方第六席
 
 更全见 [`docs/product/references/glossary.md`](docs/product/references/glossary.md)。
 
 ## 当前状态
 
 - 已落地：协作壳 + 产品文档 + **Stage 0 Lite 官方五席**（`holm_spike`）
-- **双轨对比已收口**：ADR 0004 **Keep Lite**；O0 仍 **Lite(A)**（未改选）；Track B wgpu **BLOCKED**（无 rustc）
-- 旁路：`executor` + Demo `holm_runtime_m0`（默认仍 Lite）
+- **双轨对比已收口**：ADR 0004 **Keep Lite**；O0 仍 **Lite(A)**（未改选）
+- 旁路：`executor` + Demo `holm_runtime_m0`（custom 业务片元 + Lite/Runtime 切轨 + JSONL 采集）
+- 业务自定义片元：Lite Shadertoy 壳 + Runtime `setCustomFs`（H5）；**Android Runtime 打通 = 下一单**
 - 编译门禁：`:androidApp:compileDebugKotlin`；JS：Core / holmDemo / h5App `compileKotlinJs`
-- 下一步：Mac 验 iOS Lite；业务特效迭代；真模型待 Runtime 通面后再议
+- 下一步：Android Runtime；Mac 验 iOS Lite；业务特效迭代

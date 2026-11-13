@@ -32,6 +32,8 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
     private var _scrollSpeed: Float = HolmSurfaceAttr.DEFAULT_SCROLL_SPEED
     private var _maxFps: Int = HolmSurfaceAttr.DEFAULT_MAX_FPS
     private var _executor: String = HolmSurfaceAttr.DEFAULT_EXECUTOR
+    private var _fragmentShader: String = ""
+    private var _vertexShader: String = ""
     private var _runtimeBlockedNotified: Boolean = false
     private var _pendingErrorCode: String? = null
     private var _pendingErrorMessage: String? = null
@@ -91,7 +93,27 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
                 if (next != _scene) {
                     _scene = next
                     _glView.queueEvent {
-                        _renderer.setScene(next)
+                        _renderer.setScene(next, _fragmentShader, _vertexShader)
+                    }
+                }
+                true
+            }
+            HolmSurfaceAttr.PROP_FRAGMENT_SHADER -> {
+                val next = propValue.toString()
+                if (next != _fragmentShader) {
+                    _fragmentShader = next
+                    _glView.queueEvent {
+                        _renderer.setShaders(_scene, _fragmentShader, _vertexShader)
+                    }
+                }
+                true
+            }
+            HolmSurfaceAttr.PROP_VERTEX_SHADER -> {
+                val next = propValue.toString()
+                if (next != _vertexShader) {
+                    _vertexShader = next
+                    _glView.queueEvent {
+                        _renderer.setShaders(_scene, _fragmentShader, _vertexShader)
                     }
                 }
                 true
@@ -324,6 +346,7 @@ private class HolmGlesRenderer : GLSurfaceView.Renderer {
 
     private var _program: Int = 0
     private var _timeLoc: Int = -1
+    private var _resolutionLoc: Int = -1
     private var _liquidBoostLoc: Int = -1
     private var _liquidBendLoc: Int = -1
     private var _warpAmountLoc: Int = -1
@@ -334,17 +357,34 @@ private class HolmGlesRenderer : GLSurfaceView.Renderer {
     private var _quad: FloatBuffer? = null
     private var _ready: Boolean = false
     private var _scene: String = HolmSceneShaders.SCENE_FROST
+    private var _fragmentBody: String = ""
+    private var _vertexSrc: String = ""
     private var _liquidBoost: Float = HolmSurfaceAttr.DEFAULT_LIQUID_BOOST
     private var _liquidBend: Float = HolmSurfaceAttr.DEFAULT_LIQUID_BEND
     private var _warpAmount: Float = HolmSurfaceAttr.DEFAULT_WARP_AMOUNT
     private var _scrollSpeed: Float = HolmSurfaceAttr.DEFAULT_SCROLL_SPEED
     private var _surfaceReady: Boolean = false
+    private var _viewW: Int = 1
+    private var _viewH: Int = 1
+    private var _shaderFailed: Boolean = false
     private var _fpsWindowNs: Long = 0L
     private var _frameCount: Int = 0
 
-    fun setScene(scene: String) {
-        if (scene == _scene && _program != 0) return
+    fun setScene(scene: String, fragmentBody: String = _fragmentBody, vertexSrc: String = _vertexSrc) {
+        setShaders(scene, fragmentBody, vertexSrc)
+    }
+
+    fun setShaders(scene: String, fragmentBody: String, vertexSrc: String) {
+        val same =
+            scene == _scene &&
+                fragmentBody == _fragmentBody &&
+                vertexSrc == _vertexSrc &&
+                _program != 0 &&
+                !_shaderFailed
+        if (same) return
         _scene = scene
+        _fragmentBody = fragmentBody
+        _vertexSrc = vertexSrc
         if (_surfaceReady) {
             rebuildProgram()
         }
@@ -379,11 +419,18 @@ private class HolmGlesRenderer : GLSurfaceView.Renderer {
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
-        GLES20.glViewport(0, 0, width, height)
+        _viewW = width.coerceAtLeast(1)
+        _viewH = height.coerceAtLeast(1)
+        GLES20.glViewport(0, 0, _viewW, _viewH)
     }
 
     override fun onDrawFrame(gl: GL10?) {
-        if (_program == 0) return
+        if (_program == 0) {
+            // 失败且无成功程序：深蓝底（Demo 红字叠在岛上）
+            GLES20.glClearColor(0.02f, 0.05f, 0.28f, 1f)
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+            return
+        }
         val nowNs = System.nanoTime()
         if (_lastFrameNs == 0L) {
             _lastFrameNs = nowNs
@@ -397,6 +444,9 @@ private class HolmGlesRenderer : GLSurfaceView.Renderer {
         GLES20.glUseProgram(_program)
         if (_timeLoc >= 0) {
             GLES20.glUniform1f(_timeLoc, _animTimeSec)
+        }
+        if (_resolutionLoc >= 0) {
+            GLES20.glUniform2f(_resolutionLoc, _viewW.toFloat(), _viewH.toFloat())
         }
         if (_liquidBoostLoc >= 0) {
             GLES20.glUniform1f(_liquidBoostLoc, _liquidBoost)
@@ -460,10 +510,19 @@ private class HolmGlesRenderer : GLSurfaceView.Renderer {
     }
 
     private fun rebuildProgram() {
-        val vert = compile(GLES20.GL_VERTEX_SHADER, HolmSceneShaders.gles2Vertex())
-        val frag = compile(GLES20.GL_FRAGMENT_SHADER, HolmSceneShaders.gles2Fragment(_scene))
+        val vertSrc = HolmShaderResolve.vertex(_vertexSrc)
+        val fragSrc = try {
+            HolmShaderResolve.fragment(_scene, _fragmentBody)
+        } catch (t: Throwable) {
+            _shaderFailed = true
+            onError?.invoke("SHADER_WRAP", t.message ?: "wrap failed")
+            return
+        }
+        val vert = compile(GLES20.GL_VERTEX_SHADER, vertSrc)
+        val frag = compile(GLES20.GL_FRAGMENT_SHADER, fragSrc)
         if (vert == 0 || frag == 0) {
-            onError?.invoke("SHADER_COMPILE", "Holm GLES compile failed scene=$_scene")
+            _shaderFailed = true
+            // 保留上一成功 program；首次失败则 _program 仍为 0 → 深蓝底
             return
         }
         val program = GLES20.glCreateProgram()
@@ -473,6 +532,7 @@ private class HolmGlesRenderer : GLSurfaceView.Renderer {
         val link = IntArray(1)
         GLES20.glGetProgramiv(program, GLES20.GL_LINK_STATUS, link, 0)
         if (link[0] == 0) {
+            _shaderFailed = true
             onError?.invoke("SHADER_LINK", GLES20.glGetProgramInfoLog(program) ?: "link failed")
             GLES20.glDeleteProgram(program)
             return
@@ -481,8 +541,10 @@ private class HolmGlesRenderer : GLSurfaceView.Renderer {
             GLES20.glDeleteProgram(_program)
         }
         _program = program
+        _shaderFailed = false
         _posLoc = GLES20.glGetAttribLocation(_program, "a_position")
         _timeLoc = GLES20.glGetUniformLocation(_program, "u_time")
+        _resolutionLoc = GLES20.glGetUniformLocation(_program, "u_resolution")
         _liquidBoostLoc = GLES20.glGetUniformLocation(_program, "u_liquidBoost")
         _liquidBendLoc = GLES20.glGetUniformLocation(_program, "u_liquidBend")
         _warpAmountLoc = GLES20.glGetUniformLocation(_program, "u_warpAmount")

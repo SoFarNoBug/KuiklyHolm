@@ -78,7 +78,7 @@ private fun HomeScreen() {
         )
         Spacer(modifier = Modifier.height(16.dp))
         HomeButton(
-            label = "Runtime M0 旁路 (holm_runtime_m0)",
+            label = "自定义/双轨对比 (holm_runtime_m0)",
             onClick = { openPage(localPager, "holm_runtime_m0") },
         )
     }

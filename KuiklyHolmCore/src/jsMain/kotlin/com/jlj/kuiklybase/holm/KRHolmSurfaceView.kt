@@ -25,6 +25,8 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
     private var _scrollSpeed: Float = HolmSurfaceAttr.DEFAULT_SCROLL_SPEED
     private var _maxFps: Int = HolmSurfaceAttr.DEFAULT_MAX_FPS
     private var _executor: String = HolmSurfaceAttr.DEFAULT_EXECUTOR
+    private var _fragmentShader: String = ""
+    private var _vertexShader: String = ""
     private var _runtimeBlockedNotified: Boolean = false
     private var _runtimeSessionStarted: Boolean = false
     private var _runtimeLoadWaiting: Boolean = false
@@ -67,6 +69,27 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                 if (next != _scene) {
                     _scene = next
                     postScene()
+                }
+                true
+            }
+            HolmSurfaceAttr.PROP_FRAGMENT_SHADER -> {
+                val next = propValue.toString()
+                if (next != _fragmentShader) {
+                    _fragmentShader = next
+                    // 切轨过渡：错方言先只存值，等 executor 落地再喂泵
+                    if (fragmentMatchesCurrentExecutor(_fragmentShader)) {
+                        postScene()
+                    }
+                }
+                true
+            }
+            HolmSurfaceAttr.PROP_VERTEX_SHADER -> {
+                val next = propValue.toString()
+                if (next != _vertexShader) {
+                    _vertexShader = next
+                    if (!HolmExecutor.isRuntime(_executor)) {
+                        postScene()
+                    }
                 }
                 true
             }
@@ -296,8 +319,8 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
         // postMessage structured-clone 需要 JS 原始 number/boolean，不能塞 Kotlin 装箱 Float
         val o = js("{}")
         o.type = "init"
-        o.vert = HolmSceneShaders.gles2Vertex()
-        o.frag = HolmSceneShaders.gles2Fragment(_scene)
+        o.vert = HolmShaderResolve.vertex(_vertexShader)
+        o.frag = resolveLiteFragmentOrEmpty()
         o.scene = _scene
         o.liquidBoost = _liquidBoost.toDouble()
         o.liquidBend = _liquidBend.toDouble()
@@ -307,6 +330,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
         o.playing = effectivePlaying()
         o.w = w
         o.h = h
+        o.customFs = _fragmentShader
         return o
     }
 
@@ -344,20 +368,54 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                 val msg = js("{}")
                 msg.type = "scene"
                 msg.scene = _scene
+                msg.customFs = _fragmentShader
                 dispatch(msg)
                 return
             }
             val session = _runtimeSession ?: return
-            HolmRuntimeNative.sessionSetScene(session, _scene)
+            applyRuntimeShaders(session)
             return
         }
         if (!_started) return
         val msg = js("{}")
         msg.type = "scene"
         msg.scene = _scene
-        msg.vert = HolmSceneShaders.gles2Vertex()
-        msg.frag = HolmSceneShaders.gles2Fragment(_scene)
+        msg.vert = HolmShaderResolve.vertex(_vertexShader)
+        msg.frag = resolveLiteFragmentOrEmpty()
         dispatch(msg)
+    }
+
+    /** wrap 失败不静默回 frost：返回空串，泵侧 rebuild 失败并保留上次程序。 */
+    private fun resolveLiteFragmentOrEmpty(): String {
+        return try {
+            HolmShaderResolve.fragment(_scene, _fragmentShader)
+        } catch (t: Throwable) {
+            fireError("SHADER_WRAP", t.message ?: "wrap failed")
+            ""
+        }
+    }
+
+    private fun fragmentMatchesCurrentExecutor(src: String): Boolean {
+        if (src.isBlank()) return true
+        val wgsl = HolmShaderResolve.looksLikeWgslFragment(src)
+        return if (HolmExecutor.isRuntime(_executor)) wgsl else !wgsl
+    }
+
+    private fun applyRuntimeShaders(session: dynamic) {
+        val custom = _fragmentShader.trim()
+        if (custom.isNotEmpty()) {
+            if (!HolmShaderResolve.looksLikeWgslFragment(custom)) {
+                // 仍持 GLSL 正文时跳过，等 Attr 换成 WGSL
+                return
+            }
+            val ok = HolmRuntimeNative.sessionSetCustomFs(session, custom)
+            if (!ok) {
+                fireError("SHADER_CUSTOM", "Runtime setCustomFs failed")
+            }
+        } else {
+            HolmRuntimeNative.sessionSetCustomFs(session, "")
+            HolmRuntimeNative.sessionSetScene(session, _scene)
+        }
     }
 
     private fun postResize(w: Int, h: Int) {
@@ -698,6 +756,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
         init.reportPerf = _onPerf != null
         init.w = w
         init.h = h
+        init.customFs = _fragmentShader
         val pumpId = registerPumpView(this)
         _pumpId = pumpId
         val result = js(
@@ -941,7 +1000,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                 _runtimeUsesWorker = false
                 _backend = if (backend.isNotBlank()) backend else HolmExecutor.BACKEND_WGPU_M0
                 runCatching { _canvas.style.removeProperty("background") }
-                HolmRuntimeNative.sessionSetScene(session, _scene)
+                applyRuntimeShaders(session)
                 HolmRuntimeNative.sessionSetLiquid(session, _liquidBoost, _liquidBend)
                 HolmRuntimeNative.sessionSetPlaying(session, effectivePlaying())
                 clearPendingError()

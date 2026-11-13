@@ -1,13 +1,13 @@
 # holm-runtime · DualTrack B（Standard / Lite3 近似）
 
-> **状态（2026-11-13）**：H5 wasm **Session 泵帧** + 三席 `frost` / `glow` / `liquid_approx`（WGSL 观感近似）已通。Android `.so` 仍未接。  
+> **状态（2026-11-13）**：H5 wasm **Session 泵帧** + 三席 + **`setCustomFs` 业务 WGSL** 已通。Android `.so` 仍未接（下一单）。  
 > 尖刺默认：**Rust + wgpu**（禁止静默换非 wgpu 栈）。
 
 ## 范围
 
-- H5：`HolmRuntimeSession` + `onReady.backend=wgpu-m0`
-- 席位：前三席观感近似 Lite；`clear_tri` 作 debug fallback
-- **不做（本波）**：逐字 GLSL≡WGSL、真 Backdrop、gradient/warp、改 O0
+- H5：`HolmRuntimeSession` + `onReady.backend=wgpu-m0`（或 `wgpu-m0-gl`）
+- 席位：前三席观感近似 Lite；`clear_tri` 作 debug fallback；`setCustomFs` 热换自定义片元
+- **不做（本波）**：逐字 GLSL≡WGSL、真 Backdrop、gradient/warp、改 O0、Android `.so`
 
 ## H5 解锁
 

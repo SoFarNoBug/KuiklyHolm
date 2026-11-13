@@ -27,11 +27,13 @@ object HolmGlPumpSource {
     var program = null;
     var buffer = null;
     var timeLoc = null;
+    var resolutionLoc = null;
     var liquidBoostLoc = null;
     var liquidBendLoc = null;
     var warpAmountLoc = null;
     var scrollSpeedLoc = null;
     var posLoc = -1;
+    var shaderFailed = false;
     var vertSrc = "";
     var fragSrc = "";
     var scene = "frost";
@@ -55,6 +57,7 @@ object HolmGlPumpSource {
     var frameCount = 0;
     var viewW = 1;
     var viewH = 1;
+    var readyEmitted = false;
 
     function applyMaxFps(v) {
       var n = typeof v === "number" ? (v | 0) : 60;
@@ -90,6 +93,24 @@ object HolmGlPumpSource {
 
     function emitError(code, message) {
       send({ type: "error", code: code, message: message });
+    }
+
+    function emitReadyOnce() {
+      if (readyEmitted) return;
+      readyEmitted = true;
+      send({
+        type: "ready",
+        backend: backendLabel,
+        quality: "auto",
+        scene: scene
+      });
+    }
+
+    /** scene 热换成功：补 start；若 init 曾失败则补发 ready（审查 P0）。 */
+    function afterSuccessfulRebuild() {
+      shaderFailed = false;
+      if (playing) start();
+      emitReadyOnce();
     }
 
     function compile(type, source) {
@@ -133,7 +154,9 @@ object HolmGlPumpSource {
       }
       if (program) gl.deleteProgram(program);
       program = prog;
+      shaderFailed = false;
       timeLoc = gl.getUniformLocation(program, "u_time");
+      resolutionLoc = gl.getUniformLocation(program, "u_resolution");
       liquidBoostLoc = gl.getUniformLocation(program, "u_liquidBoost");
       liquidBendLoc = gl.getUniformLocation(program, "u_liquidBend");
       warpAmountLoc = gl.getUniformLocation(program, "u_warpAmount");
@@ -184,7 +207,15 @@ object HolmGlPumpSource {
     function draw(now) {
       rafId = 0;
       timerId = 0;
-      if (!gl || !program || !playing) return;
+      if (!gl || !playing) return;
+      if (!program) {
+        if (shaderFailed) {
+          gl.clearColor(0.02, 0.05, 0.28, 1);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+        }
+        if (playing) scheduleNext(now);
+        return;
+      }
       var shouldSubmit = true;
       if (maxFps > 0) {
         if (!nextDue) nextDue = now;
@@ -207,6 +238,9 @@ object HolmGlPumpSource {
         gl.useProgram(program);
         if (timeLoc) {
           gl.uniform1f(timeLoc, animTime);
+        }
+        if (resolutionLoc) {
+          gl.uniform2f(resolutionLoc, viewW, viewH);
         }
         if (dirtyLiquidBoost && liquidBoostLoc) {
           gl.uniform1f(liquidBoostLoc, liquidBoost);
@@ -271,18 +305,15 @@ object HolmGlPumpSource {
         }
         ensureBuffer();
         applySize(msg.w, msg.h);
-        if (!rebuild()) return;
+        if (!rebuild()) {
+          shaderFailed = true;
+          return;
+        }
         animTime = 0;
         lastNow = 0;
         fpsWindowMs = 0;
         frameCount = 0;
-        send({
-          type: "ready",
-          backend: backendLabel,
-          quality: "auto",
-          scene: scene
-        });
-        if (playing) start();
+        afterSuccessfulRebuild();
       },
       set: function (msg) {
         if (typeof msg.liquidBoost === "number" && msg.liquidBoost !== liquidBoost) {
@@ -317,10 +348,14 @@ object HolmGlPumpSource {
         applySize(msg.w, msg.h);
       },
       scene: function (msg) {
-        if (msg.frag) fragSrc = msg.frag;
-        if (msg.vert) vertSrc = msg.vert;
+        if (typeof msg.frag === "string") fragSrc = msg.frag;
+        if (typeof msg.vert === "string") vertSrc = msg.vert;
         if (msg.scene) scene = msg.scene;
-        rebuild();
+        if (!rebuild()) {
+          shaderFailed = true;
+          return;
+        }
+        afterSuccessfulRebuild();
       },
       playing: function (msg) {
         var next = msg.playing !== false;

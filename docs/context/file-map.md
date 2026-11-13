@@ -4,12 +4,14 @@
 
 | 路径 | 说明 |
 | --- | --- |
-| `KuiklyHolmCore/` | 库：`HolmSurface`（含 `executor`）+ 五席 Shader + Android/JS `KRHolmSurfaceView` + `HolmRuntimeNative` 探测 |
-| `holm-runtime/` | DualTrack B：Rust+wgpu M0 crate；`build-wasm.ps1` → `h5App/.../resources/holm-runtime/`（未挂 settings） |
+| `KuiklyHolmCore/` | 库：`HolmSurface`（`executor` / `fragmentShader`）+ 五席 + Shadertoy 壳 + Android/JS View + Runtime 桥 |
+| `holm-runtime/` | DualTrack B：Rust+wgpu；`setCustomFs`；`build-wasm.ps1` → `h5App/.../resources/holm-runtime/` |
 | `iosApp/.../KRHolmSurface.*` | Track A：iOS GLES2 Lite 薄壳（frost/liquid_approx） |
 | `KuiklyHolmCore/.../HolmGlPumpSource.kt` | H5 纯 JS WebGL 泵（Blob Worker / 主线程回退） |
 | `shaders/frost.*.glsl` / `glow.frag.glsl` / `liquid_approx.frag.glsl` | 同源 GLSL ES（与 `*ShaderSource` 对齐） |
-| `holmDemo/` | Demo：`home` + `holm_spike` |
+| `holmDemo/` | Demo：`home` + `holm_spike` + `holm_runtime_m0`（custom/双轨/采集） |
+| `docs/specs/business-custom-shader/` | 业务片元 changelog |
+| `docs/adr/0005-*.md` | 业务片元 + Shadertoy 薄壳 |
 | `androidApp/` / `h5App/` | 注册 `KRHolmSurface`；其它端壳仍在 |
 | `docs/specs/kuikly-dev-android/runbook.md` | Android 真机装包 / 排障 |
 | `docs/specs/kuikly-dev-h5/runbook.md` | H5 起服（可与 CONTRIBUTING 对照） |

@@ -106,6 +106,26 @@ object HolmRuntimeNative {
         ).unsafeCast<(dynamic, String) -> Unit>()(session, scene)
     }
 
+    /**
+     * 设置自定义 WGSL 片元（空串清除）。返回 false 表示调用抛错或 API 缺失。
+     */
+    fun sessionSetCustomFs(session: dynamic, wgslFs: String): Boolean {
+        if (session == null) return false
+        return try {
+            js(
+                """
+                (function(s, fs) {
+                  if (!s || typeof s.setCustomFs !== 'function') return false;
+                  s.setCustomFs(fs || "");
+                  return true;
+                })
+                """,
+            ).unsafeCast<(dynamic, String) -> Boolean>()(session, wgslFs)
+        } catch (t: Throwable) {
+            false
+        }
+    }
+
     fun sessionSetLiquid(session: dynamic, boost: Float, bend: Float) {
         if (session == null) return
         js(

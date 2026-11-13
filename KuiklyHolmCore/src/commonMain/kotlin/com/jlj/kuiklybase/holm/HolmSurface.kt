@@ -30,7 +30,7 @@ class HolmSurfaceView : DeclarativeBaseView<HolmSurfaceAttr, HolmSurfaceEvent>()
 /**
  * @CreateDate: 2026/11/12
  * @Author: jlj
- * @Description: HolmSurface Attr（scene / playing / liquidBoost / liquidBend / warpAmount / scrollSpeed / maxFps）。
+ * @Description: HolmSurface Attr（scene / playing / knobs / maxFps / executor / fragmentShader / vertexShader）。
  */
 class HolmSurfaceAttr : ComposeAttr() {
     fun scene(value: String): HolmSurfaceAttr {
@@ -88,6 +88,23 @@ class HolmSurfaceAttr : ComposeAttr() {
         return this
     }
 
+    /**
+     * 业务片元源码。Lite：Shadertoy **正文**（库补壳）；Runtime：WGSL 片元段（含 `@fragment fn fs_main`）。
+     * 空字符串=走官方 `scene`；非空覆盖上色，失败不静默回 frost。
+     */
+    fun fragmentShader(value: String): HolmSurfaceAttr {
+        PROP_FRAGMENT_SHADER with value
+        return this
+    }
+
+    /**
+     * 可选顶点源码；空=内置全屏 vert（Lite）。Runtime 忽略（固定全屏 VS）。
+     */
+    fun vertexShader(value: String): HolmSurfaceAttr {
+        PROP_VERTEX_SHADER with value
+        return this
+    }
+
     companion object {
         const val PROP_SCENE: String = "scene"
         const val PROP_PLAYING: String = "playing"
@@ -97,6 +114,8 @@ class HolmSurfaceAttr : ComposeAttr() {
         const val PROP_SCROLL_SPEED: String = "scrollSpeed"
         const val PROP_MAX_FPS: String = "maxFps"
         const val PROP_EXECUTOR: String = "executor"
+        const val PROP_FRAGMENT_SHADER: String = "fragmentShader"
+        const val PROP_VERTEX_SHADER: String = "vertexShader"
         const val DEFAULT_LIQUID_BOOST: Float = 1.35f
         const val DEFAULT_LIQUID_BEND: Float = 0.05f
         const val DEFAULT_WARP_AMOUNT: Float = 0.04f
@@ -220,6 +239,8 @@ fun HolmSurface(
     scrollSpeed: Float = HolmSurfaceAttr.DEFAULT_SCROLL_SPEED,
     maxFps: Int = HolmSurfaceAttr.DEFAULT_MAX_FPS,
     executor: String = HolmSurfaceAttr.DEFAULT_EXECUTOR,
+    fragmentShader: String = "",
+    vertexShader: String = "",
     onReady: ((ReadyParams) -> Unit)? = null,
     onError: ((ErrorParams) -> Unit)? = null,
     onPerf: ((PerfParams) -> Unit)? = null,
@@ -236,6 +257,9 @@ fun HolmSurface(
                 warpAmount(warpAmount)
                 scrollSpeed(scrollSpeed)
                 maxFps(maxFps)
+                // 先写源码再切 executor，避免热切时首包带错方言（审查 P1-concurrency）
+                fragmentShader(fragmentShader)
+                vertexShader(vertexShader)
                 executor(executor)
             }
             val readyHandler = onReady

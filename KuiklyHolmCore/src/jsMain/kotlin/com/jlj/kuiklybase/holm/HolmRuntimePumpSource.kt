@@ -16,6 +16,7 @@ object HolmRuntimePumpSource {
     var canvas = null;
     var session = null;
     var scene = "frost";
+    var customFs = "";
     var liquidBoost = 1.35;
     var liquidBend = 0.05;
     var maxFps = 60;
@@ -157,6 +158,7 @@ object HolmRuntimePumpSource {
       init: function (msg) {
         canvas = msg.canvas;
         scene = msg.scene || "frost";
+        customFs = typeof msg.customFs === "string" ? msg.customFs : "";
         liquidBoost = typeof msg.liquidBoost === "number" ? msg.liquidBoost : 1.35;
         liquidBend = typeof msg.liquidBend === "number" ? msg.liquidBend : 0.05;
         applyMaxFps(typeof msg.maxFps === "number" ? msg.maxFps : 60);
@@ -206,7 +208,15 @@ object HolmRuntimePumpSource {
             }
             if (!s) return;
             session = s;
-            if (typeof session.setScene === "function") session.setScene(scene);
+            try {
+              if (customFs && typeof session.setCustomFs === "function") {
+                session.setCustomFs(customFs);
+              } else if (typeof session.setScene === "function") {
+                session.setScene(scene);
+              }
+            } catch (e) {
+              emitError("SHADER_CUSTOM", (e && e.message) ? e.message : String(e));
+            }
             if (typeof session.setLiquid === "function") session.setLiquid(liquidBoost, liquidBend);
             if (typeof session.setPlaying === "function") session.setPlaying(!!playing);
             var backend = "wgpu-m0";
@@ -251,8 +261,17 @@ object HolmRuntimePumpSource {
       },
       scene: function (msg) {
         if (msg.scene) scene = msg.scene;
-        if (session && typeof session.setScene === "function") {
-          session.setScene(scene);
+        if (typeof msg.customFs === "string") customFs = msg.customFs;
+        if (!session) return;
+        try {
+          if (customFs && typeof session.setCustomFs === "function") {
+            session.setCustomFs(customFs);
+          } else {
+            if (typeof session.setCustomFs === "function") session.setCustomFs("");
+            if (typeof session.setScene === "function") session.setScene(scene);
+          }
+        } catch (e) {
+          emitError("SHADER_CUSTOM", (e && e.message) ? e.message : String(e));
         }
       },
       playing: function (msg) {
