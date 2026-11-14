@@ -924,6 +924,7 @@ dependencies = [
  "arrayvec",
  "ash",
  "bitflags 2.13.2",
+ "block",
  "bytemuck",
  "cfg_aliases",
  "core-graphics-types",

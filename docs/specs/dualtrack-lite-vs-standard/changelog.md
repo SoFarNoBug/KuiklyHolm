@@ -1,5 +1,29 @@
 # dualtrack-lite-vs-standard · changelog
 
+## 2026-11-14（关 iOS review P2 DisplayLink/resize）
+
+- [MODIFY] iOS `KRHolmSurface`：DisplayLink weak proxy；像素未变跳过 resize
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改关 P2｜待批 0
+- 自测：Runtime 通面；旋转不崩
+
+## 2026-11-14（修 iOS Runtime→Lite 崩溃）
+
+- [MODIFY] iOS：切轨先到 GLSL 时跳过 `set_custom_fs`；C ABI `catch_unwind`
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：热修切轨 abort｜待批 0
+- 自测：Duo 模拟器 Runtime↔Lite
+
+## 2026-11-14（iOS Runtime · ADR 0009）
+
+- [ADD] `holm-runtime`：`ios_c_api` C Session（`holm_runtime_session_*`）+ iOS `wgpu`/`metal` 依赖 + `include/holm_runtime.h`
+- [ADD] `build-ios.sh` → `dist/ios/HolmRuntime.xcframework`（device + sim；dist gitignore）
+- [MODIFY] `KRHolmSurface`：容器 + `KRHolmMetalHostView`（CAMetalLayer）；主线程 DisplayLink 外泵；`maxFps`；Lite=`LITE_PENDING`
+- [MODIFY] `iosApp.xcodeproj`：链 HolmRuntime.xcframework + Metal/QuartzCore
+- [MODIFY] iOS runbook / CONTEXT 状态 / holm-runtime README
+- 已知遗留：Lite GLES 片元后单｜不修理由：ADR 0009 顺序
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan 落地 iOS Runtime｜待批 0
+- 真机验证表：交审核员（模拟器/真机隧道 + Lite 负向）
+- 自测：`./holm-runtime/build-ios.sh` → `pod install` → Run → `holm_runtime_m0`
+
 ## 2026-11-14（审查 android-runtime-dualtrack 整改）
 
 - [MODIFY] `KRHolmSurfaceView`：切 Lite 主动 `fireReady(gles2)`（防 backend 粘 wgpu）；`_runtimeSurfaceValid`→`AtomicBoolean`；急拆超时再投幂等 destroy；卸岛 `quitSafely` + 再挂重建线程；非 WGSL custom → `onError SHADER_CUSTOM`

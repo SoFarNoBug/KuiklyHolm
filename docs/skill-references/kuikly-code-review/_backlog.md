@@ -15,6 +15,7 @@
 - [ ] DualTrack/expand View：`executor` 热切后须按当前轨重发 `onReady`（含 backend），不得依赖「Surface 已创建则不再 onSurfaceCreated」｜2026-11-14｜自评：未达标（android-runtime-dualtrack P1-doc-drift）
 - [ ] 持 native Surface 的急拆：await 超时也必须停泵并丢弃句柄，禁止超时后继续 tick｜2026-11-14｜自评：未达标（android-runtime-dualtrack P1-concurrency）
 - [ ] 删除/改写 holm-runtime 着色器源后，须同单或明确门禁更新入仓 `.so`/wasm，并对照产物字符串或行为验收；禁止只改 Rust 源却宣称仓库无官方席｜2026-11-14｜自评：未达标（delete-five-scenes P1-plan-soft-drift）
+- [ ] DualTrack/expand View：Compose 先写 fragmentShader 再写 executor 时，仍持 Runtime Session 必须拒绝非本轨方言；跨 FFI native 入口须 catch_unwind（或等价）防 panic abort｜2026-11-14｜自评：已达标（ios-runtime-adr0009 热修；待批晋升）
 
 ## 已晋升
 

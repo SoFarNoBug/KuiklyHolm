@@ -1,15 +1,15 @@
 # holm-runtime · DualTrack B（Standard / Lite3 近似）
 
-> **状态（2026-11-13）**：H5 wasm **Session 泵帧** + 三席 + **`setCustomFs` 业务 WGSL** 已通。  
-> Android：**arm64-v8a** `libholm_runtime.so` + JNI Session（Surface → ANativeWindow）；Kotlin 外泵。  
+> **状态（2026-11-14）**：H5 wasm + Android JNI Session 已通；iOS C Session + xcframework 见 ADR 0009。  
 > 尖刺默认：**Rust + wgpu**（禁止静默换非 wgpu 栈）。
 
 ## 范围
 
 - H5：`HolmRuntimeSession` + `onReady.backend=wgpu-m0`（或 `wgpu-m0-gl`）
 - Android：`HolmRuntimeNative` JNI + `KRHolmSurfaceView` `SurfaceView` 换栈（ADR 0006）
-- 席位：前三席观感近似 Lite；`clear_tri` 作 debug fallback；`setCustomFs` 热换自定义片元
-- **不做（本波）**：逐字 GLSL≡WGSL、真 Backdrop、gradient/warp、改 O0、x86_64 / 多 ABI、Rust 内泵、iOS Runtime
+- iOS：`holm_runtime_session_*` C ABI + `CAMetalLayer`；iosApp ObjC 主线程外泵（ADR 0009）
+- 席位：`clear_tri` fallback；`setCustomFs` 热换自定义片元（官方五席 WGSL 已删）
+- **不做（本波）**：逐字 GLSL≡WGSL、真 Backdrop、改 O0、Rust 内泵、Android 多 ABI、把 Android JNI 收拢到 C Session
 
 ## H5 解锁
 
@@ -33,6 +33,18 @@ cd holm-runtime
 
 改 Runtime Rust 后须先跑脚本；Gradle **不**自动编 Rust。缺 `.so` → Demo `onError(BLOCKED)`，不静默 GLES。
 
+## iOS 解锁
+
+```bash
+# 需要：rustup（aarch64-apple-ios + aarch64-apple-ios-sim）、Xcode
+cd holm-runtime
+./build-ios.sh
+# → dist/ios/HolmRuntime.xcframework + Headers/holm_runtime.h
+# iosApp 直链该 xcframework；改 Rust 后须重跑本脚本（Xcode 不自动编 Rust）
+```
+
+缺 xcframework → 工程链接失败；create/tick 失败 → Demo `onError(BLOCKED)`，禁止 GLES 冒充。
+
 ## 验收
 
 - [x] 工具链 + wasm-bindgen
@@ -40,5 +52,6 @@ cd holm-runtime
 - [x] H5 `setCustomFs` + ClearTri（官方五席 WGSL 已删）
 - [x] Android arm64 `.so` + JNI Session API
 - [ ] Android 真机隧道 custom + logcat `[holm-perf]`
+- [x] iOS device+sim xcframework + ObjC 外泵接线（ADR 0009；真机隧道观感待勾）
 - [ ] resize / destroy 专项压测
 - [x] H5 wasm 包体 ≈ 3.84 MiB（写入 DualTrack changelog）

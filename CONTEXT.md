@@ -38,6 +38,10 @@ _Avoid_：官方五席产品目录
 历史 frost/glow/liquid_approx/gradient_bg/fullscreen_warp；官方实现已从 Core/runtime/iOS/Demo 移除。
 _Avoid_：官方特效完成态 / scene=frost 出画
 
+**iOS Runtime Session**：
+iOS 上 wgpu Session 通面形态：容器岛内 `CAMetalLayer` 子 View + ObjC 主线程外泵 + C ABI（ADR 0009）；先于 Lite 片元路径。
+_Avoid_：用 GLES 冒充 Runtime；KN 拥有 DisplayLink；MTKView 抢 wgpu drawable
+
 ## SoT
 
 | 主题 | 路径 |
@@ -45,6 +49,7 @@ _Avoid_：官方特效完成态 / scene=frost 出画
 | 决策 / 身份 | [`docs/product/00-context-and-decisions.md`](docs/product/00-context-and-decisions.md) |
 | 身份 ADR | [`docs/adr/0007-holm-as-generic-render-substrate.md`](docs/adr/0007-holm-as-generic-render-substrate.md) |
 | 三包 + Provider | [`docs/adr/0008-holm-core-gl-wgpu-packages.md`](docs/adr/0008-holm-core-gl-wgpu-packages.md) |
+| iOS Runtime | [`docs/adr/0009-ios-runtime-cametallayer-objc-session.md`](docs/adr/0009-ios-runtime-cametallayer-objc-session.md) |
 | 架构 | [`docs/product/01-architecture.md`](docs/product/01-architecture.md) |
 | 术语 | [`docs/product/references/glossary.md`](docs/product/references/glossary.md) |
 | AI 工作流 | [`.cursor/agents-guide.md`](.cursor/agents-guide.md) |
@@ -62,4 +67,5 @@ _Avoid_：官方特效完成态 / scene=frost 出画
 
 - 身份：ADR 0007；目标拆包：ADR 0008（文档已定，Gradle 未拆）
 - Demo：Home 仅「示例1 / 双轨」；官方五席源码已删
-- 后单：真拆三依赖、Runtime 产物与源同步门禁、`holm_api` 规范对齐
+- iOS Runtime：ADR 0009 已落地（C Session + xcframework + KRHolmSurface Metal 外泵）；Lite 片元后单
+- 后单：补 iOS Lite `fragmentShader`；真拆三依赖、Runtime 产物与源同步门禁、`holm_api` 规范对齐

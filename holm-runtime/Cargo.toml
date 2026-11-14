@@ -2,7 +2,7 @@
 name = "holm_runtime"
 version = "0.0.1"
 edition = "2021"
-description = "Holm Standard M0 spike · Rust + wgpu Session (H5 wasm + Android native)"
+description = "Holm Standard M0 spike · Rust + wgpu Session (H5 wasm + Android + iOS)"
 license = "MIT"
 publish = false
 
@@ -31,4 +31,9 @@ wgpu = { version = "23", default-features = false, features = ["wgsl"] }
 jni = "0.21"
 ndk-sys = "0.6"
 raw-window-handle = "0.6"
+pollster = "0.4"
+
+[target.'cfg(target_os = "ios")'.dependencies]
+# ADR 0009：Metal + C Session；勿静默换非 wgpu
+wgpu = { version = "23", default-features = false, features = ["wgsl", "metal"] }
 pollster = "0.4"
