@@ -14,13 +14,22 @@ uint32_t holm_runtime_abi_version(void);
 uint32_t holm_runtime_has_wgpu(void);
 
 /**
- * Create a Runtime Session bound to a CAMetalLayer.
+ * Create a Runtime Session bound to a CAMetalLayer (iOS).
  * @param metal_layer  CAMetalLayer* (not retained by Rust; must outlive the session)
  * @param width        pixel width (>=1)
  * @param height       pixel height (>=1)
  * @return opaque handle, or 0 on failure
  */
 uint64_t holm_runtime_session_create_metal(void *metal_layer, uint32_t width, uint32_t height);
+
+/**
+ * Create a Runtime Session bound to an OHNativeWindow (HarmonyOS / ADR 0010).
+ * @param native_window  OHNativeWindow* from XComponent OnSurfaceCreated (must outlive session)
+ * @param width          pixel width (>=1)
+ * @param height         pixel height (>=1)
+ * @return opaque handle, or 0 on failure
+ */
+uint64_t holm_runtime_session_create_ohos(void *native_window, uint32_t width, uint32_t height);
 
 void holm_runtime_session_destroy(uint64_t handle);
 

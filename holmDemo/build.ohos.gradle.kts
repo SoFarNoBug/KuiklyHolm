@@ -12,10 +12,8 @@ val KEY_PAGE_NAME = "pageName"
 
 kotlin {
     androidTarget {
-        compilations.all {
-            kotlinOptions {
-                jvmTarget = "1.8"
-            }
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
         }
         publishLibraryVariants("release")
     }
@@ -129,13 +127,10 @@ dependencies {
 }
 
 android {
+    // Ohos 壳走 AGP 7.4.2（build.ohos.gradle.kts）；勿用 AGP 8+ 的 compileSdk { release() }
     namespace = "com.jlj.kuiklyholmui.shared"
-    compileSdk {
-        version = release(37) {
-            minorApiLevel = 0
-        }
-    }
-    buildToolsVersion = "36.0.0"
+    compileSdk = 34
+    buildToolsVersion = "34.0.0"
     defaultConfig {
         minSdk = 21
         targetSdk = 30

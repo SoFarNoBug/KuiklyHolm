@@ -23,3 +23,21 @@ set_target_properties(kuikly_shared
 
 add_library(entry SHARED napi_init.cpp)
 target_link_libraries(entry PUBLIC libace_napi.z.so libhilog_ndk.z.so kuikly_shared kuikly_render)
+
+# ADR 0010 · libholm_xc.so（独立于 libentry）+ 脚本产物 libholm_runtime.so
+set(HOLM_RUNTIME_LIB_DIR ${NATIVERENDER_ROOT_PATH}/../../../libs/${OHOS_ARCH})
+add_library(holm_runtime SHARED IMPORTED)
+set_target_properties(holm_runtime
+        PROPERTIES
+        IMPORTED_LOCATION ${HOLM_RUNTIME_LIB_DIR}/libholm_runtime.so)
+
+add_library(holm_xc SHARED holm_xc/holm_xc_plugin.cpp)
+target_include_directories(holm_xc PRIVATE
+        ${NATIVERENDER_ROOT_PATH}/holm_xc
+        ${HOLM_RUNTIME_LIB_DIR})
+target_link_libraries(holm_xc PUBLIC
+        libace_napi.z.so
+        libace_ndk.z.so
+        libhilog_ndk.z.so
+        libnative_window.so
+        holm_runtime)

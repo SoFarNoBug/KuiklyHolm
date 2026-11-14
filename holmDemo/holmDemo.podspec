@@ -5,7 +5,7 @@ Pod::Spec.new do |spec|
     spec.source                   = { :http=> ''}
     spec.authors                  = ''
     spec.license                  = 'MIT'
-    spec.summary                  = 'KuiklyHolm demo shared pages'
+    spec.summary                  = 'Holm demo shared pages'
     spec.vendored_frameworks      = 'build/cocoapods/framework/holmDemo.framework'
     spec.libraries                = 'c++'
     spec.ios.deployment_target    = '15.0'

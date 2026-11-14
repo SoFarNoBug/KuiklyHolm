@@ -37,3 +37,9 @@ pollster = "0.4"
 # ADR 0009：Metal + C Session；勿静默换非 wgpu
 wgpu = { version = "23", default-features = false, features = ["wgsl", "metal"] }
 pollster = "0.4"
+
+# ADR 0010：Ohos 报 target_os=linux + target_env=ohos；仅本 target 升 wgpu 30（VK_OHOS_surface）
+[target.'cfg(target_env = "ohos")'.dependencies]
+wgpu = { version = "30.0.2", default-features = false, features = ["wgsl"] }
+raw-window-handle = "0.6"
+pollster = "0.4"

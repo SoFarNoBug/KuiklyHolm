@@ -1,0 +1,6 @@
+{
+  "name": "libholm_xc.so",
+  "types": "./index.d.ts",
+  "version": "",
+  "description": "Holm XComponent Runtime bridge (ADR 0010)"
+}

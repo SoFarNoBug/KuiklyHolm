@@ -1,4 +1,4 @@
-//! 共享 Runtime Session 核心（H5 wasm / Android native 共用管线与 tick）。
+//! 共享 Runtime Session 核心（H5 wasm / Android / iOS · wgpu 23）。
 
 use crate::shaders;
 

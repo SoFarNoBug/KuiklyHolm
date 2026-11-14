@@ -1,5 +1,7 @@
 package com.jlj.kuiklybase.holm
 
+import kotlin.concurrent.Volatile
+
 /**
  * @CreateDate: 2026/11/12
  * @Author: jlj

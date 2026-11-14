@@ -5,7 +5,7 @@ $Hdc = if (Test-Path "D:\DevEco_Studio_26.0\sdk\default\openharmony\toolchains\h
 } else {
   "hdc"
 }
-$Bundle = "com.jlj.kuiklyholmui"
+$Bundle = "com.jlj.kuiklyholm.demo"
 $HapSigned = Join-Path $PSScriptRoot "entry\build\default\outputs\default\entry-default-signed.hap"
 $HapUnsigned = Join-Path $PSScriptRoot "entry\build\default\outputs\default\entry-default-unsigned.hap"
 

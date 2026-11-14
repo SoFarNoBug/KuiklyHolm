@@ -1,5 +1,12 @@
 # dualtrack-lite-vs-standard · changelog
 
+## 2026-11-14（鸿蒙 Runtime ADR 0010）
+
+- [ADD] `holm_runtime_session_create_ohos` + `build-ohos.sh` → `libholm_runtime.so`（wgpu 30 / ohos-only）
+- [ADD] `libholm_xc.so` XComponent OnFrame 外泵 + `KRHolmSurface.ets`；Lite=`LITE_PENDING`
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan 执行 ADR 0010｜待批 0
+- 自测：`./build-ohos.sh` 出 so；`holm_xc_plugin.cpp` 对 SDK 头可编；真机隧道待勾
+
 ## 2026-11-14（关 iOS P2-objc-shadertoy-drift）
 
 - [MODIFY] iOS Lite：Shadertoy wrap/vert 单源走 holmDemo Kotlin API

@@ -1,11 +1,15 @@
-//! Holm Runtime — DualTrack B · wgpu Session（H5 wasm + Android JNI + iOS C ABI）。
+//! Holm Runtime — DualTrack B · wgpu Session（H5 wasm + Android JNI + iOS/Ohos C ABI）。
 
 #![allow(dead_code)]
 
 #[cfg(feature = "wgpu_backend")]
 mod shaders;
 
-#[cfg(feature = "wgpu_backend")]
+#[cfg(all(feature = "wgpu_backend", not(target_env = "ohos")))]
+mod session_core;
+
+#[cfg(all(feature = "wgpu_backend", target_env = "ohos"))]
+#[path = "session_core_ohos.rs"]
 mod session_core;
 
 #[cfg(all(target_arch = "wasm32", feature = "wgpu_backend"))]
@@ -19,6 +23,9 @@ mod android_jni;
 
 #[cfg(all(target_os = "ios", feature = "wgpu_backend"))]
 mod ios_c_api;
+
+#[cfg(all(target_env = "ohos", feature = "wgpu_backend"))]
+mod ohos_c_api;
 
 pub const BACKEND_ID: &str = "wgpu-m0";
 

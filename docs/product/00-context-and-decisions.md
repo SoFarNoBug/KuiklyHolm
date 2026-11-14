@@ -21,9 +21,10 @@
 | --- | --- |
 | Kuikly 主路线原生 View；扩展走 expand-native-ui | Compose overview / 渲染博客 |
 | 岛上可喂业务片元 | ADR 0005；Demo `fragmentShader` |
-| 双后端通面（Lite GLES + Runtime wgpu） | DualTrack；ADR 0006 |
+| 双后端通面（Lite GLES + Runtime wgpu） | DualTrack；ADR 0006 / 0009 / 0010 |
 | 旧「特效产品」身份已推翻 | ADR 0007 |
 | 三包 + Provider 目标架构 | ADR 0008 |
+| 鸿蒙 Runtime：XComponent + 外泵 + 双 so | ADR 0010（Lite 后置） |
 
 ## 2. 目标（Goals）
 
@@ -107,7 +108,7 @@ Stage 0 曾在 2026-11-12 选 **Lite(A)**（ADR 0002），目标是「特效尖�
 | D6 | 少岛；列表默认禁实时重岛；Backdrop 见 01/07 | 锁定 |
 | D7 | 后端档演进：Lite 通面 →（按需）Standard / Full | **修订锁定** |
 | D8 | Web：WebGPU→WebGL 降级须登记 | 锁定 |
-| D9 | 鸿蒙能力子集 + Caps；ABI 形稳 | 锁定 |
+| D9 | 鸿蒙能力子集 + Caps；ABI 形稳；Runtime 形态见 ADR 0010 | 锁定 |
 | D10 | 命名 Holm / HolmSurface / KRHolmSurface / holm_* | 锁定 |
 | D11 | 目标默认后端叙事对齐 ADR 0008（Provider 必设；显式选 gl/wgpu） | **修订锁定** |
 | D12 | **身份：通用渲染底座**（ADR 0007）；不绑定单一业务 | **修订锁定** |
