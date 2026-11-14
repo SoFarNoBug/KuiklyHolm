@@ -15,9 +15,6 @@ object HolmIos {
 
     fun cacheDirOrNull(): String? = _cacheDir
 
-    /** DualTrack A：iOS 本波验收 scene 集合（非五席全量）。 */
-    val dualTrackScenes: List<String> = listOf(
-        HolmSceneShaders.SCENE_FROST,
-        HolmSceneShaders.SCENE_LIQUID_APPROX,
-    )
+    /** 官方五席已删；iOS 壳须宿主片元（本波暂未接 fragmentShader Attr，空则清屏+error）。 */
+    val dualTrackScenes: List<String> = emptyList()
 }

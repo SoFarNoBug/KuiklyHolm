@@ -34,7 +34,7 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
     private val _renderer = HolmGlesRenderer()
     private val _runtimeView = SurfaceView(context)
     private var _playing: Boolean = true
-    private var _scene: String = HolmSceneShaders.SCENE_FROST
+    private var _scene: String = ""
     private var _liquidBoost: Float = HolmSurfaceAttr.DEFAULT_LIQUID_BOOST
     private var _liquidBend: Float = HolmSurfaceAttr.DEFAULT_LIQUID_BEND
     private var _warpAmount: Float = HolmSurfaceAttr.DEFAULT_WARP_AMOUNT
@@ -711,7 +711,7 @@ private class HolmGlesRenderer : GLSurfaceView.Renderer {
     private var _lastFrameNs: Long = 0L
     private var _quad: FloatBuffer? = null
     private var _ready: Boolean = false
-    private var _scene: String = HolmSceneShaders.SCENE_FROST
+    private var _scene: String = ""
     private var _fragmentBody: String = ""
     private var _vertexSrc: String = ""
     private var _liquidBoost: Float = HolmSurfaceAttr.DEFAULT_LIQUID_BOOST

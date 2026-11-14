@@ -1,5 +1,29 @@
 # holm-render-substrate · changelog
 
+## 2026-11-14（审查收口：重编 Runtime 产物 + 文档/iOS 死代码）
+
+- [MODIFY] 重编并入仓 `libholm_runtime.so` / `holm_runtime_bg.wasm`（产物已无 `holm-frost`/`holm-glow`/`holm-liquid`）
+- [MODIFY] android runbook 去掉 `holm_spike` 尖刺节；CONTEXT 状态对齐「五席已删」
+- [MODIFY] `docs/product/00` / ADR 0008：五席源码改为「已删」
+- [MODIFY] iOS `KRHolmSurface.m`：去掉死 vert/ unused GL 状态，仍清屏 + `FRAGMENT_REQUIRED`
+- 关闭审查：`P1-plan-soft-drift` / `P1-doc-drift` / `P2-ios-dead-vert` / `P2-product-adr-stale`（`P1-device-verify` 仍待真机）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：收口审查项｜待批 0
+- 本单无真机验证
+
+## 2026-11-14（删除官方五席源码 · Demo 只留示例1）
+
+- [DELETE] Core：`Frost/Glow/LiquidApprox/GradientBg/FullscreenWarpShaderSource` + `HolmSceneShaders`；根目录 `shaders/*` 五席文件；Demo `HolmSpikePager`
+- [ADD] `HolmBuiltinShaders`（仅全屏 vert）；`HolmShaderResolve` 无宿主片元则抛错
+- [MODIFY] Android/JS View 默认 `_scene=""`；空 fragment → error/清屏（不回 frost）
+- [MODIFY] holm-runtime：删 FROST/GLOW/LIQUID WGSL 与三套 pipe；空 custom → ClearTri
+- [MODIFY] iOS `KRHolmSurface`：去内嵌 frost/liquid；`FRAGMENT_REQUIRED` + 清屏
+- [MODIFY] Demo：Home / `holm_runtime_m0` 只留「示例1」隧道 + 双轨；无五席 chip
+- [MODIFY] CONTEXT / glossary / ADR 0003 文首 / runbook / file-map / 真机表主路径 → 隧道
+- known: `holm_api` 全文未本单重写｜不修理由：计划非目标；changelog 记一行
+- note: Runtime `.so`/wasm 已于同日审查收口条目重编入仓
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：删席沿用底座契约｜待批 0
+- 本单无真机验证
+
 ## 2026-11-14（审讯收口：三包目标 + Provider + Demo 隧道优先）
 
 - [ADD] ADR [0008](../../adr/0008-holm-core-gl-wgpu-packages.md)：`holm-core` / `holm-gl` / `holm-wgpu`；Provider 必设；可共存；岛可覆盖

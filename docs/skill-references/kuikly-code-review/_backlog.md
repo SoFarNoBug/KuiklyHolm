@@ -14,6 +14,7 @@
 - [ ] Offscreen Worker 异步 init 失败须与主线程失败同契约（BLOCKED + ready + 可回退/看门狗）｜2026-11-13｜自评：已达标（dualtrack-r4 已关对应 P0；待批晋升）
 - [ ] DualTrack/expand View：`executor` 热切后须按当前轨重发 `onReady`（含 backend），不得依赖「Surface 已创建则不再 onSurfaceCreated」｜2026-11-14｜自评：未达标（android-runtime-dualtrack P1-doc-drift）
 - [ ] 持 native Surface 的急拆：await 超时也必须停泵并丢弃句柄，禁止超时后继续 tick｜2026-11-14｜自评：未达标（android-runtime-dualtrack P1-concurrency）
+- [ ] 删除/改写 holm-runtime 着色器源后，须同单或明确门禁更新入仓 `.so`/wasm，并对照产物字符串或行为验收；禁止只改 Rust 源却宣称仓库无官方席｜2026-11-14｜自评：未达标（delete-five-scenes P1-plan-soft-drift）
 
 ## 已晋升
 

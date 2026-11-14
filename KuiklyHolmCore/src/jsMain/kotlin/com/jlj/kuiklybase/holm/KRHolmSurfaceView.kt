@@ -18,7 +18,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
 
     private var _canvas: HTMLCanvasElement = newCanvasElement()
     private var _playing: Boolean = true
-    private var _scene: String = HolmSceneShaders.SCENE_FROST
+    private var _scene: String = ""
     private var _liquidBoost: Float = HolmSurfaceAttr.DEFAULT_LIQUID_BOOST
     private var _liquidBend: Float = HolmSurfaceAttr.DEFAULT_LIQUID_BEND
     private var _warpAmount: Float = HolmSurfaceAttr.DEFAULT_WARP_AMOUNT
@@ -385,7 +385,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
         dispatch(msg)
     }
 
-    /** wrap 失败不静默回 frost：返回空串，泵侧 rebuild 失败并保留上次程序。 */
+    /** wrap 失败：返回空串，泵侧 rebuild 失败并保留上次程序（无官方席回退）。 */
     private fun resolveLiteFragmentOrEmpty(): String {
         return try {
             HolmShaderResolve.fragment(_scene, _fragmentShader)

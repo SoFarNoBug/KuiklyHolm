@@ -15,7 +15,7 @@ object HolmRuntimePumpSource {
   function createHolmRuntimePump(send) {
     var canvas = null;
     var session = null;
-    var scene = "frost";
+    var scene = "";
     var customFs = "";
     var liquidBoost = 1.35;
     var liquidBend = 0.05;
@@ -157,7 +157,7 @@ object HolmRuntimePumpSource {
     return {
       init: function (msg) {
         canvas = msg.canvas;
-        scene = msg.scene || "frost";
+        scene = msg.scene || "";
         customFs = typeof msg.customFs === "string" ? msg.customFs : "";
         liquidBoost = typeof msg.liquidBoost === "number" ? msg.liquidBoost : 1.35;
         liquidBend = typeof msg.liquidBend === "number" ? msg.liquidBend : 0.05;

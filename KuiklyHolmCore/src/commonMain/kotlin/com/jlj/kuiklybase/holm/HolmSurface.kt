@@ -43,25 +43,25 @@ class HolmSurfaceAttr : ComposeAttr() {
         return this
     }
 
-    /** liquid_approx：边缘色散/高光强度（原 ior）。其它 scene 忽略。 */
+    /** 预留 uniform：边缘色散/高光强度（历史 liquid 席）；无官方席时仍可写入。 */
     fun liquidBoost(value: Float): HolmSurfaceAttr {
         PROP_LIQUID_BOOST with value
         return this
     }
 
-    /** liquid_approx：边缘 UV 拧曲幅度（原 warp）。其它 scene 忽略。 */
+    /** 预留 uniform：边缘 UV 拧曲幅度（历史 liquid 席）；无官方席时仍可写入。 */
     fun liquidBend(value: Float): HolmSurfaceAttr {
         PROP_LIQUID_BEND with value
         return this
     }
 
-    /** fullscreen_warp：全屏场扭曲幅度。其它 scene 忽略。 */
+    /** 预留 uniform：全屏场扭曲幅度（历史 warp 席）。 */
     fun warpAmount(value: Float): HolmSurfaceAttr {
         PROP_WARP_AMOUNT with value
         return this
     }
 
-    /** gradient_bg：条带平移速率。其它 scene 忽略。 */
+    /** 预留 uniform：条带平移速率（历史 gradient 席）。 */
     fun scrollSpeed(value: Float): HolmSurfaceAttr {
         PROP_SCROLL_SPEED with value
         return this
@@ -80,7 +80,7 @@ class HolmSurfaceAttr : ComposeAttr() {
     }
 
     /**
-     * DualTrack 旁路：`lite`（默认，GLES/WebGL 五席）或 `runtime`（holm-runtime wgpu M0）。
+     * DualTrack 旁路：`lite`（默认，GLES/WebGL）或 `runtime`（holm-runtime wgpu M0）。
      * runtime 缺 native 时平台侧 `onError(BLOCKED)`，不静默回落 GLES。
      */
     fun executor(value: String): HolmSurfaceAttr {
@@ -90,7 +90,7 @@ class HolmSurfaceAttr : ComposeAttr() {
 
     /**
      * 业务片元源码。Lite：Shadertoy **正文**（库补壳）；Runtime：WGSL 片元段（含 `@fragment fn fs_main`）。
-     * 空字符串=走官方 `scene`；非空覆盖上色，失败不静默回 frost。
+     * 空字符串：无官方席回退 → Lite error/清屏；Runtime → ClearTri。
      */
     fun fragmentShader(value: String): HolmSurfaceAttr {
         PROP_FRAGMENT_SHADER with value

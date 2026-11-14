@@ -7,7 +7,7 @@
 - 根工程：`KuiklyHolmUI`；库 `:KuiklyHolmCore`；Demo `:holmDemo`
 - 命名：`HolmSurface` / `KRHolmSurface` / `holm_*`
 - 形态：现状胖 Core + `holm-runtime`；**目标**三包可插拔（尚未物理拆）
-- 节奏：稳固岛与 shader 契约 → 文档目标架构 → 另单拆包；Demo **主推隧道**，五席叙事废弃
+- 节奏：稳固岛与 shader 契约 → 文档目标架构 → 另单拆包；Demo **主推隧道**；五席源码已删
 
 ## 接手阅读顺序
 

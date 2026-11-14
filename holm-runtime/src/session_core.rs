@@ -18,9 +18,6 @@ unsafe impl bytemuck::Zeroable for FrameUniforms {}
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum SceneKind {
-    Frost,
-    Glow,
-    LiquidApprox,
     ClearTri,
     Custom,
 }
@@ -28,11 +25,8 @@ pub enum SceneKind {
 impl SceneKind {
     pub fn from_name(name: &str) -> Self {
         match name {
-            "glow" => Self::Glow,
-            "liquid_approx" => Self::LiquidApprox,
-            "clear_tri" => Self::ClearTri,
             "custom" => Self::Custom,
-            _ => Self::Frost,
+            _ => Self::ClearTri,
         }
     }
 }
@@ -54,9 +48,6 @@ pub struct HolmRuntimeSessionCore {
     pub uniform_buf: wgpu::Buffer,
     pub bind_group: wgpu::BindGroup,
     pub pipe_layout: wgpu::PipelineLayout,
-    pub pipe_frost: wgpu::RenderPipeline,
-    pub pipe_glow: wgpu::RenderPipeline,
-    pub pipe_liquid: wgpu::RenderPipeline,
     pub pipe_clear: wgpu::RenderPipeline,
     pub pipe_custom: Option<wgpu::RenderPipeline>,
     pub scene: SceneKind,
@@ -189,12 +180,6 @@ impl HolmRuntimeSessionCore {
             push_constant_ranges: &[],
         });
 
-        let pipe_frost =
-            Self::build_pipe(&device, &pipe_layout, format, "holm-frost", shaders::FROST_FS)?;
-        let pipe_glow =
-            Self::build_pipe(&device, &pipe_layout, format, "holm-glow", shaders::GLOW_FS)?;
-        let pipe_liquid =
-            Self::build_pipe(&device, &pipe_layout, format, "holm-liquid", shaders::LIQUID_FS)?;
         let pipe_clear = Self::build_pipe(
             &device,
             &pipe_layout,
@@ -211,12 +196,9 @@ impl HolmRuntimeSessionCore {
             uniform_buf,
             bind_group,
             pipe_layout,
-            pipe_frost,
-            pipe_glow,
-            pipe_liquid,
             pipe_clear,
             pipe_custom: None,
-            scene: SceneKind::Frost,
+            scene: SceneKind::ClearTri,
             liquid_boost: 1.35,
             liquid_bend: 0.05,
             playing: true,
@@ -270,7 +252,7 @@ impl HolmRuntimeSessionCore {
         }
         self.scene = SceneKind::from_name(scene);
         if self.scene == SceneKind::Custom && self.pipe_custom.is_none() {
-            self.scene = SceneKind::Frost;
+            self.scene = SceneKind::ClearTri;
         }
     }
 
@@ -279,7 +261,7 @@ impl HolmRuntimeSessionCore {
         if trimmed.is_empty() {
             self.pipe_custom = None;
             if self.scene == SceneKind::Custom {
-                self.scene = SceneKind::Frost;
+                self.scene = SceneKind::ClearTri;
             }
             return Ok(());
         }
@@ -340,9 +322,6 @@ impl HolmRuntimeSessionCore {
             .create_view(&wgpu::TextureViewDescriptor::default());
 
         let pipeline = match self.scene {
-            SceneKind::Frost => &self.pipe_frost,
-            SceneKind::Glow => &self.pipe_glow,
-            SceneKind::LiquidApprox => &self.pipe_liquid,
             SceneKind::ClearTri => &self.pipe_clear,
             SceneKind::Custom => self.pipe_custom.as_ref().unwrap_or(&self.pipe_clear),
         };

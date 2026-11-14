@@ -36,7 +36,7 @@ object HolmGlPumpSource {
     var shaderFailed = false;
     var vertSrc = "";
     var fragSrc = "";
-    var scene = "frost";
+    var scene = "";
     var liquidBoost = 1.35;
     var liquidBend = 0.05;
     var warpAmount = 0.04;
@@ -287,7 +287,7 @@ object HolmGlPumpSource {
         canvas = msg.canvas;
         vertSrc = msg.vert || "";
         fragSrc = msg.frag || "";
-        scene = msg.scene || "frost";
+        scene = msg.scene || "";
         liquidBoost = typeof msg.liquidBoost === "number" ? msg.liquidBoost : 1.35;
         liquidBend = typeof msg.liquidBend === "number" ? msg.liquidBend : 0.05;
         warpAmount = typeof msg.warpAmount === "number" ? msg.warpAmount : 0.04;

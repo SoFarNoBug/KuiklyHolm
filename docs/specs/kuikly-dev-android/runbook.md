@@ -42,7 +42,7 @@ adb shell am start -n com.jlj.kuiklyholmui/.KuiklyRenderActivity -e pageName hol
 |---|---|
 | applicationId | `com.jlj.kuiklyholmui` |
 | Activity | `.KuiklyRenderActivity` |
-| 入口页 | Home → **Frost 尖刺** / `holm_spike` |
+| 入口页 | Home → **示例1 / 双轨** / `holm_runtime_m0` |
 | Runtime 页 | `holm_runtime_m0`（需先编 `.so`，见下） |
 
 ## Android Runtime（arm64 `.so`）
@@ -94,19 +94,19 @@ vivo 等机型偶发要在「设置 → 更多设置 → 开发者选项」里�
 2. `./gradlew --stop`
 3. 关闭占用该 jar 的 IDE 索引/其它 Gradle；再装包
 
-## Holm 尖刺目视（holm_spike）
+## DualTrack 目视（holm_runtime_m0 · 示例1）
 
-- scene：霜化 / 柔光 / 液态  
+- 示例：霓虹隧道（Lite GLSL / Runtime WGSL）；官方五席已删  
 - `maxFps`：`0 / 30 / 60 / 120`  
 - **Android 限帧语义**（勿当 bug）：`onPerf` = **真实 GL 提交率**；`maxFps` 经 `Surface.setFrameRate` 只是系统提示。`RENDERMODE_CONTINUOUSLY` 下设 30 仍可能报 ~60。跳画会闪，当前不做；真贴档需 WHEN_DIRTY + `requestRender`（未做）。见 `KRHolmSurfaceView.applySurfaceFrameRate` KDoc。  
-- backend：`onReady` 报 `gles2`（Lite 刻意 GLES2，与 H5 WebGL1 同源；非探测失败）
+- backend：Lite `gles2`；Runtime `wgpu-m0`（缺 so → BLOCKED）
 
-## DualTrack 目视（holm_runtime_m0）
+## DualTrack 切轨期望
 
 | 轨 | 期望 | 已知坑（已修） |
 |---|---|---|
-| Lite + custom 隧道 | 霓虹隧道清晰、无满屏彩噪 | Shadertoy 壳 mediump → 真机花屏；现优先 highp |
-| Runtime frost/glow/liquid/custom | 颜色正常、不发白蒙雾 | Session 优先 sRGB + 片元再伽马 → 发白；现优先非 sRGB |
+| Lite + 示例1 隧道 | 霓虹隧道清晰、无满屏彩噪 | Shadertoy 壳 mediump → 真机花屏；现优先 highp |
+| Runtime + 示例1 隧道 | 颜色正常、不发白蒙雾 | Session 优先 sRGB + 片元再伽马 → 发白；现优先非 sRGB |
 | 切 Lite ↔ Runtime | Lite 回 GLES；Runtime 换 SurfaceView | 失败须 BLOCKED，禁静默 GLES |
 
 ## 与 H5 对照
@@ -125,7 +125,6 @@ vivo 等机型偶发要在「设置 → 更多设置 → 开发者选项」里�
 | `androidApp/` | 壳；注册 `KRHolmSurface`；`jniLibs/arm64-v8a` |
 | `KuiklyHolmCore/src/androidMain/.../KRHolmSurfaceView.kt` | Lite GLES2 + Runtime SurfaceView |
 | `holm-runtime/` | wgpu Session；`build-android.ps1` |
-| `holmDemo/.../HolmSpikePager.kt` | `holm_spike` |
-| `holmDemo/.../HolmRuntimeM0Pager.kt` | `holm_runtime_m0` |
+| `holmDemo/.../HolmRuntimeM0Pager.kt` | `holm_runtime_m0`（示例1 / 双轨） |
 | `docs/specs/dualtrack-lite-vs-standard/changelog.md` | DualTrack changelog |
 | `docs/adr/0006-android-runtime-surface-session.md` | Android Runtime ADR |

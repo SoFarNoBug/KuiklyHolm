@@ -13,7 +13,7 @@
 | **HolmSurface / KRHolmSurface** | API / viewName |
 | **岛** | 布局决定位置与大小的局部 GPU 区域 |
 | **隧道样本** | Demo 主推宿主片元示例 |
-| **五席（废弃叙事）** | 历史 frost/glow/…；不主推；源码可暂留 |
+| **五席（已删源码）** | 历史 frost/glow/…；官方实现已移除；Demo 主推隧道示例1 |
 | **fragmentShader / Shadertoy 薄壳** | 宿主喂片元（ADR 0005） |
 | **setCustomFs** | Runtime 热换 WGSL 片元 |
 | **Android Runtime Session** | arm64 `.so` + SurfaceView 外泵（ADR 0006） |

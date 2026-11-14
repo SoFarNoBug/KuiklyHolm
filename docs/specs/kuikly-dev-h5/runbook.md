@@ -5,7 +5,7 @@
 ## 结论
 
 本仓 H5 可冒烟：**双进程 + 双端口**；业务包走精简 Node 静态服（**不用** Kuikly 官方 whistle / npm serve）。  
-已验证（本机）：`8080` / `8083` 均 200；入口 `?page_name=home` → **Frost 尖刺** / `holm_spike`。
+已验证（本机）：`8080` / `8083` 均 200；入口 `?page_name=home` → **示例1 / 双轨** / `holm_runtime_m0`。
 
 ## 拓扑
 
@@ -61,7 +61,7 @@ node static_server/serve/index.js
 | pageName | 角色 |
 |---|---|
 | `home` | 入口 |
-| `holm_spike` | Stage 0 Lite 尖刺（frost / glow / liquid_approx） |
+| `holm_runtime_m0` | 示例1（隧道）/ Lite↔Runtime 双轨 |
 
 | 改了什么 | 重跑什么 |
 |---|---|
@@ -96,12 +96,12 @@ node static_server/serve/index.js
 5. **Windows + 未装 CocoaPods**  
    `gradle.properties` 可设 `kotlin.native.ignoreDisabledTargets=true`，避免无关 native 目标拖死配置。
 
-## Holm 尖刺目视（holm_spike）
+## Holm 示例1 目视（holm_runtime_m0）
 
-- scene：霜化 / 柔光 / 液态  
+- 示例1：霓虹隧道（Lite GLSL / Runtime WGSL）  
 - `maxFps`：`0 / 30 / 60 / 120`  
 - **H5 限帧语义**：`onPerf` = 真实 WebGL 提交率；`maxFps` 经 rAF + `nextDue` **跳提交**（与 Android `setFrameRate` 提示不同）。见 `HolmGlPumpSource`。  
-- backend：`onReady` 报 `webgl` 或 `webgl-worker`
+- backend：`onReady` 报 `webgl` / `webgl-worker`（Lite）或 `wgpu-m0`（Runtime）
 
 ## 与 Android 对照
 
@@ -138,7 +138,7 @@ node static_server/serve/index.js
 
 - `http://127.0.0.1:8080/`、`/h5App.js`、`http://127.0.0.1:8083/nativevue2.js` 均 200  
 - `h5App.js` **不含** `webpackUniversalModuleDefinition`  
-- 浏览器：`#root` 下出现业务节点；可进 `holm_spike`
+- 浏览器：`#root` 下出现业务节点；可进 `holm_runtime_m0`
 
 ## 相关路径
 
@@ -147,5 +147,5 @@ node static_server/serve/index.js
 | `h5App/` | 宿主壳；`webpack.config.d/output.js` |
 | `static_server/serve/index.js` | 8083 业务包静态服 |
 | `KuiklyHolmCore/src/jsMain/.../HolmGlPumpSource.kt` | WebGL 泵 / maxFps |
-| `holmDemo/.../HolmSpikePager.kt` | `holm_spike` |
-| `docs/specs/stage0-lite-spike/changelog.md` | 尖刺业务 changelog |
+| `holmDemo/.../HolmRuntimeM0Pager.kt` | `holm_runtime_m0`（示例1） |
+| `docs/specs/holm-render-substrate/changelog.md` | 底座 / 删五席 changelog |

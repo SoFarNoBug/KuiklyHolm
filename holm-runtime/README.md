@@ -37,9 +37,8 @@ cd holm-runtime
 
 - [x] 工具链 + wasm-bindgen
 - [x] H5 Session 泵帧
-- [x] H5 frost / glow / liquid_approx（观感近似）
-- [x] H5 `setCustomFs`
+- [x] H5 `setCustomFs` + ClearTri（官方五席 WGSL 已删）
 - [x] Android arm64 `.so` + JNI Session API
-- [ ] Android 真机 frost / glow / liquid / custom + logcat `[holm-perf]`
+- [ ] Android 真机隧道 custom + logcat `[holm-perf]`
 - [ ] resize / destroy 专项压测
 - [x] H5 wasm 包体 ≈ 3.84 MiB（写入 DualTrack changelog）

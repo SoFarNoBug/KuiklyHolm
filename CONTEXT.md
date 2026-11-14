@@ -34,9 +34,9 @@ _Avoid_：仅靠 classpath 静默默选
 Demo 当前主推的宿主片元示例（霓虹隧道）。
 _Avoid_：官方五席产品目录
 
-**五席（废弃叙事）**：
-历史 frost/glow/liquid_approx/gradient_bg/fullscreen_warp；源码可暂留，产品不主推。
-_Avoid_：官方特效完成态
+**五席（已删源码）**：
+历史 frost/glow/liquid_approx/gradient_bg/fullscreen_warp；官方实现已从 Core/runtime/iOS/Demo 移除。
+_Avoid_：官方特效完成态 / scene=frost 出画
 
 ## SoT
 
@@ -61,5 +61,5 @@ _Avoid_：官方特效完成态
 ## 当前状态
 
 - 身份：ADR 0007；目标拆包：ADR 0008（文档已定，Gradle 未拆）
-- Demo：Home 主推隧道双轨页；五席入口标废弃
-- 后单：真拆三依赖、删五席源码、`holm_api` 规范对齐
+- Demo：Home 仅「示例1 / 双轨」；官方五席源码已删
+- 后单：真拆三依赖、Runtime 产物与源同步门禁、`holm_api` 规范对齐

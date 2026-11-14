@@ -1,16 +1,16 @@
 ﻿# file-map（Holm）
 
-> Stage 0 Lite 尖刺已落地；Runtime / 策略 B 后置。
+> 通用渲染底座；Demo 主推示例1（隧道）双轨。官方五席源码已删。
 
 | 路径 | 说明 |
 | --- | --- |
-| `KuiklyHolmCore/` | 库：`HolmSurface`（`executor` / `fragmentShader`）+ 五席 + Shadertoy 壳 + Android/JS View + Runtime 桥 |
-| `holm-runtime/` | DualTrack B：Rust+wgpu；`setCustomFs`；`build-wasm.ps1` → `h5App/.../resources/holm-runtime/` |
-| `iosApp/.../KRHolmSurface.*` | Track A：iOS GLES2 Lite 薄壳（frost/liquid_approx） |
+| `KuiklyHolmCore/` | 库：`HolmSurface`（`executor` / `fragmentShader`）+ Builtin vert + Shadertoy 壳 + Android/JS View + Runtime 桥 |
+| `holm-runtime/` | DualTrack B：Rust+wgpu；`setCustomFs`；空 custom → ClearTri；`build-wasm.ps1` / `build-android.ps1` |
+| `iosApp/.../KRHolmSurface.*` | Track A：iOS GLES2 Lite 薄壳（五席已删；无宿主片元 → 清屏+error） |
 | `KuiklyHolmCore/.../HolmGlPumpSource.kt` | H5 纯 JS WebGL 泵（Blob Worker / 主线程回退） |
-| `shaders/frost.*.glsl` / `glow.frag.glsl` / `liquid_approx.frag.glsl` | 同源 GLSL ES（与 `*ShaderSource` 对齐） |
-| `holmDemo/` | Demo：`home` + `holm_spike` + `holm_runtime_m0`（custom/双轨/采集） |
+| `holmDemo/` | Demo：`home` + `holm_runtime_m0`（示例1 / 双轨 / 采集） |
 | `docs/specs/business-custom-shader/` | 业务片元 changelog |
+| `docs/specs/holm-render-substrate/` | 底座身份 / 删五席 changelog |
 | `docs/adr/0005-*.md` | 业务片元 + Shadertoy 薄壳 |
 | `androidApp/` / `h5App/` | 注册 `KRHolmSurface`；其它端壳仍在 |
 | `docs/specs/kuikly-dev-android/runbook.md` | Android 真机装包 / 排障 |
@@ -18,6 +18,6 @@
 | `settings.gradle.kts` | 根 `KuiklyHolmUI`；include Core / Demo / android / h5 |
 | `settings.ohos.gradle.kts` | 鸿蒙另册；Core + holmDemo |
 | `docs/product/` | 产品 SoT |
-| `docs/adr/` | 0001 胖 Core；0002 Stage0 Lite |
+| `docs/adr/` | 0007 底座身份；0008 三包+Provider |
 | `docs/skill-references/` | AI 编码规范货架 |
 | `.cursor/` | Cursor rules / skills / hooks |

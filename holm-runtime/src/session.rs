@@ -68,7 +68,7 @@ impl HolmRuntimeSession {
         self.inner.set_scene(scene);
     }
 
-    /// 业务 WGSL 片元正文（须含 `@fragment fn fs_main`）；空串清除并回 frost。
+    /// 业务 WGSL 片元正文（须含 `@fragment fn fs_main`）；空串清除并回 ClearTri。
     #[wasm_bindgen(js_name = setCustomFs)]
     pub fn set_custom_fs(&mut self, fs: &str) -> Result<(), JsValue> {
         self.inner

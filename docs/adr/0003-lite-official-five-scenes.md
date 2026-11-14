@@ -1,6 +1,7 @@
 # ADR 0003: Lite 官方五席锁定 + Attr 可读改名
 
-> **Superseded in part by [ADR 0007](./0007-holm-as-generic-render-substrate.md) / [ADR 0008](./0008-holm-core-gl-wgpu-packages.md)**：五席**产品叙事废弃**；Demo 主推隧道；源码可暂留标废弃（删除另单）。Attr/scene 键工程约定仍有效。
+> **Superseded in part by [ADR 0007](./0007-holm-as-generic-render-substrate.md) / [ADR 0008](./0008-holm-core-gl-wgpu-packages.md)**：五席**产品叙事废弃**；Demo 主推隧道。  
+> **2026-11-14**：官方五席 **GLSL/WGSL 源码已从仓库移除**（见 `docs/specs/holm-render-substrate/changelog.md`）；Attr 预留键（`liquidBoost` 等）仍保留。
 
 ## Status
 

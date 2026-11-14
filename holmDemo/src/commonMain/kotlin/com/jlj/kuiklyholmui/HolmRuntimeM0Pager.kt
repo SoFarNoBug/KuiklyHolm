@@ -7,7 +7,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.jlj.kuiklybase.holm.HolmExecutor
-import com.jlj.kuiklybase.holm.HolmSceneShaders
 import com.jlj.kuiklybase.holm.HolmSurface
 import com.jlj.kuiklybase.holm.HolmSurfaceAttr
 import com.jlj.kuiklyholmui.base.BasePager
@@ -41,7 +40,7 @@ import kotlinx.coroutines.delay
 /**
  * @CreateDate: 2026/11/12
  * @Author: jlj
- * @Description: Demo 主推：霓虹隧道 + gl/wgpu 双轨切轨与 JSONL 采集；五席 chip 仅废弃入口。
+ * @Description: Demo 主推：示例1（霓虹隧道）+ gl/wgpu 双轨切轨与 JSONL 采集。
  */
 @Page("holm_runtime_m0", supportInLocal = true)
 internal class HolmRuntimeM0Pager : BasePager() {
@@ -67,23 +66,18 @@ private fun HolmRuntimeM0Screen() {
     var backendId by remember { mutableStateOf("") }
     var errorText by remember { mutableStateOf("") }
     var perfText by remember { mutableStateOf("fps=—") }
-    var scene by remember { mutableStateOf(NeonTunnelShaders.SCENE_CUSTOM) }
     var executor by remember { mutableStateOf(HolmExecutor.RUNTIME) }
     var maxFps by remember { mutableStateOf(HolmSurfaceAttr.DEFAULT_MAX_FPS) }
-    var liquidBoost by remember { mutableStateOf(HolmSurfaceAttr.DEFAULT_LIQUID_BOOST) }
-    var liquidBend by remember { mutableStateOf(HolmSurfaceAttr.DEFAULT_LIQUID_BEND) }
     var islandSize by remember { mutableStateOf(IntSize(1, 1)) }
     var collecting by remember { mutableStateOf(false) }
     var runId by remember { mutableStateOf(0) }
     var sampleIndex by remember { mutableStateOf(0) }
-    val isCustom = scene == NeonTunnelShaders.SCENE_CUSTOM
-    val isLiquid = scene == HolmSceneShaders.SCENE_LIQUID_APPROX
-    val fragmentShader = when {
-        !isCustom -> ""
-        HolmExecutor.isRuntime(executor) -> NeonTunnelShaders.RUNTIME_FS
-        else -> NeonTunnelShaders.LITE_BODY
+    val scene = NeonTunnelShaders.SCENE_CUSTOM
+    val fragmentShader = if (HolmExecutor.isRuntime(executor)) {
+        NeonTunnelShaders.RUNTIME_FS
+    } else {
+        NeonTunnelShaders.LITE_BODY
     }
-    val displayScene = if (isCustom) HolmSceneShaders.SCENE_FROST else scene
 
     // runId 变一次 = 新一轮 10s；到期自动停并打 END（给人看的页面不堆 JSON）
     LaunchedEffect(runId, collecting) {
@@ -102,7 +96,7 @@ private fun HolmRuntimeM0Screen() {
             .padding(top = (statusBarHeight + 16).dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
     ) {
         Text(
-            text = "Holm · 隧道样本 / 双轨",
+            text = "Holm · 示例1 / 双轨",
             fontSize = 20.sp,
             lineHeight = 20.sp,
             fontWeight = FontWeight.Bold,
@@ -135,52 +129,9 @@ private fun HolmRuntimeM0Screen() {
             },
         )
         Spacer(modifier = Modifier.height(8.dp))
-        RuntimeSceneRow(
-            scene = scene,
-            onSelect = { next ->
-                scene = next
-                if (next != NeonTunnelShaders.SCENE_CUSTOM) {
-                    errorText = ""
-                }
-            },
-        )
+        RuntimeExampleRow()
         Spacer(modifier = Modifier.height(8.dp))
         RuntimeMaxFpsRow(value = maxFps, onSelect = { maxFps = it })
-        if (isLiquid) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "boost=$liquidBoost bend=$liquidBend（点切换）",
-                fontSize = 12.sp,
-                lineHeight = 12.sp,
-                color = DemoTheme.TextSecondary,
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Row(modifier = Modifier.fillMaxWidth()) {
-                RuntimeChip(
-                    label = "boost+",
-                    active = false,
-                    onClick = { liquidBoost = (liquidBoost + 0.25f).coerceAtMost(2.5f) },
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                RuntimeChip(
-                    label = "boost-",
-                    active = false,
-                    onClick = { liquidBoost = (liquidBoost - 0.25f).coerceAtLeast(1.0f) },
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                RuntimeChip(
-                    label = "bend+",
-                    active = false,
-                    onClick = { liquidBend = (liquidBend + 0.03f).coerceAtMost(0.2f) },
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                RuntimeChip(
-                    label = "bend-",
-                    active = false,
-                    onClick = { liquidBend = (liquidBend - 0.03f).coerceAtLeast(0.0f) },
-                )
-            }
-        }
         Spacer(modifier = Modifier.height(8.dp))
         RuntimeChip(
             label = if (collecting) "停止采集（10s）" else "开始采集（10s）",
@@ -195,7 +146,7 @@ private fun HolmRuntimeM0Screen() {
                     collecting = true
                     println(
                         "[holm-perf] BEGIN runId=$runId executor=$executor scene=$scene " +
-                            "maxFps=$maxFps custom=$isCustom backend=$backendId " +
+                            "maxFps=$maxFps example=1 backend=$backendId " +
                             "${islandSize.width}x${islandSize.height}",
                     )
                 }
@@ -212,11 +163,9 @@ private fun HolmRuntimeM0Screen() {
             contentAlignment = Alignment.Center,
         ) {
             HolmSurface(
-                scene = displayScene,
+                scene = scene,
                 modifier = Modifier.fillMaxSize(),
                 playing = true,
-                liquidBoost = liquidBoost,
-                liquidBend = liquidBend,
                 maxFps = maxFps,
                 executor = executor,
                 fragmentShader = fragmentShader,
@@ -245,7 +194,7 @@ private fun HolmRuntimeM0Screen() {
                             append("\"executor\":\"").append(executor).append("\",")
                             append("\"backend\":\"").append(escapeJson(backendId)).append("\",")
                             append("\"maxFps\":").append(maxFps).append(',')
-                            append("\"custom\":").append(isCustom).append(',')
+                            append("\"example\":1,")
                             append("\"fps\":").append(perf.fps).append(',')
                             append("\"frameMs\":").append(perf.frameMs).append(',')
                             append("\"width\":").append(islandSize.width).append(',')
@@ -311,33 +260,21 @@ private fun RuntimeExecutorRow(
 }
 
 @Composable
-private fun RuntimeSceneRow(
-    scene: String,
-    onSelect: (String) -> Unit,
-) {
+private fun RuntimeExampleRow() {
     Row(modifier = Modifier.fillMaxWidth()) {
-        RuntimeChip(
-            label = "隧道",
-            active = scene == NeonTunnelShaders.SCENE_CUSTOM,
-            onClick = { onSelect(NeonTunnelShaders.SCENE_CUSTOM) },
+        Text(
+            text = "示例",
+            fontSize = 13.sp,
+            lineHeight = 13.sp,
+            color = DemoTheme.TextSecondary,
+            modifier = Modifier
+                .padding(end = 8.dp)
+                .align(Alignment.CenterVertically),
         )
-        Spacer(modifier = Modifier.width(8.dp))
         RuntimeChip(
-            label = "霜化(废)",
-            active = scene == HolmSceneShaders.SCENE_FROST,
-            onClick = { onSelect(HolmSceneShaders.SCENE_FROST) },
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        RuntimeChip(
-            label = "柔光(废)",
-            active = scene == HolmSceneShaders.SCENE_GLOW,
-            onClick = { onSelect(HolmSceneShaders.SCENE_GLOW) },
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        RuntimeChip(
-            label = "液态(废)",
-            active = scene == HolmSceneShaders.SCENE_LIQUID_APPROX,
-            onClick = { onSelect(HolmSceneShaders.SCENE_LIQUID_APPROX) },
+            label = "示例1",
+            active = true,
+            onClick = { },
         )
     }
 }

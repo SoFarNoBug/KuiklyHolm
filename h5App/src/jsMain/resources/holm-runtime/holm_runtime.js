@@ -60,7 +60,7 @@ let wasm_bindgen = (function(exports) {
             wasm.holmruntimesession_resize(this.__wbg_ptr, width, height);
         }
         /**
-         * 业务 WGSL 片元正文（须含 `@fragment fn fs_main`）；空串清除并回 frost。
+         * 业务 WGSL 片元正文（须含 `@fragment fn fs_main`）；空串清除并回 ClearTri。
          * @param {string} fs
          */
         setCustomFs(fs) {
@@ -1801,17 +1801,17 @@ let wasm_bindgen = (function(exports) {
                 arg0.writeTexture(arg1, arg2, arg3, arg4);
             },
             __wbindgen_generic_0000000000000001: function(arg0, arg1) {
-                // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 2425, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
+                // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 2426, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
                 const ret = makeMutClosure(arg0, arg1, wasm_bindgen_82074682d88d34af___convert__closures_____invoke___wasm_bindgen_82074682d88d34af___JsValue__core_37ee0ce0c4cd57d5___result__Result_____wasm_bindgen_82074682d88d34af___JsError___true_);
                 return ret;
             },
             __wbindgen_generic_0000000000000002: function(arg0, arg1) {
-                // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 339, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+                // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 340, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
                 const ret = makeMutClosure(arg0, arg1, wasm_bindgen_82074682d88d34af___convert__closures_____invoke___wasm_bindgen_82074682d88d34af___JsValue______true_);
                 return ret;
             },
             __wbindgen_generic_0000000000000003: function(arg0, arg1) {
-                // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [NamedExternref("GPUUncapturedErrorEvent")], shim_idx: 339, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+                // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [NamedExternref("GPUUncapturedErrorEvent")], shim_idx: 340, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
                 const ret = makeMutClosure(arg0, arg1, wasm_bindgen_82074682d88d34af___convert__closures_____invoke___wasm_bindgen_82074682d88d34af___JsValue______true__14);
                 return ret;
             },
