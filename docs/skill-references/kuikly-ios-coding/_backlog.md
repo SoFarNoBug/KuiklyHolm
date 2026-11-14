@@ -6,7 +6,7 @@
 
 ## 候选
 
-（暂无）
+- [x] iOS Lite ObjC Shadertoy wrap 与 `HolmShadertoyShell` 须同文｜2026-11-14｜证据：已改为调用 holmDemo `wrapFragmentBody` / `gles2Vertex`｜自评：已达标（关 P2-objc-shadertoy-drift）
 
 ## 已晋升
 

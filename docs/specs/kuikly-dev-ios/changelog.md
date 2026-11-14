@@ -1,5 +1,25 @@
 # changelog · kuikly-dev-ios
 
+## 2026-11-14（关 P2-objc-shadertoy-drift）
+
+- [MODIFY] `KRHolmGlesHostView`：wrap/vert 改调 `HolmShadertoyShell` / `HolmBuiltinShaders`（holmDemo）；删 ObjC 内嵌信封
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改关审查 P2｜待批 0
+- 自测：Lite 隧道仍出画
+
+## 2026-11-14（修 Lite ~1fps / fps=0）
+
+- [MODIFY] `KRHolmGlesHostView`：缓冲改 1x（不乘 nativeScale）；尺寸未变跳过 `renderbufferStorage`
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改 Lite 主线程堵帧｜待批 0
+- 自测：Lite 隧道流畅；状态行 fps>0
+
+## 2026-11-14（iOS Lite GLES）
+
+- [ADD] `KRHolmGlesHostView`：CAEAGLLayer + Shadertoy wrap（对齐 HolmShadertoyShell）
+- [MODIFY] `KRHolmSurface`：Lite 出画 / `gles2-ios`；与 Runtime 互斥 teardown；去 `LITE_PENDING`
+- [MODIFY] `pbxproj`：链 OpenGLES；`runbook` / ADR 0009 Consequences / CONTEXT
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan 落地 iOS Lite｜待批 0
+- 自测：Simulator Runtime↔Lite 隧道；空片元 `FRAGMENT_REQUIRED`
+
 ## 2026-11-14（关审查 P2 DisplayLink/resize）
 
 - [MODIFY] `KRHolmSurface`：`CADisplayLink` 经弱持有 proxy；`layout` 像素尺寸未变跳过 `session_resize`

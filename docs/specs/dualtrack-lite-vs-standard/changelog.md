@@ -1,5 +1,24 @@
 # dualtrack-lite-vs-standard · changelog
 
+## 2026-11-14（关 iOS P2-objc-shadertoy-drift）
+
+- [MODIFY] iOS Lite：Shadertoy wrap/vert 单源走 holmDemo Kotlin API
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改关 P2｜待批 0
+- 自测：Lite 隧道出画
+
+## 2026-11-14（修 iOS Lite ~1fps）
+
+- [MODIFY] iOS Lite GLES 缓冲 1x（对齐不乘 DPR）；避免隧道堵主线程导致 fps=0
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改｜待批 0
+- 自测：Lite fps>0；Runtime 无改
+
+## 2026-11-14（iOS Lite GLES）
+
+- [ADD] iOS `KRHolmGlesHostView` + `KRHolmSurface` Lite 轨：Shadertoy 隧道；`onReady.backend=gles2-ios`
+- [MODIFY] 去 `LITE_PENDING`；Runtime↔Lite 互斥子 View；链 OpenGLES
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan 补 ADR 0009 后单 Lite｜待批 0
+- 自测：Duo/真机 Runtime↔Lite 隧道；backend 不粘 wgpu
+
 ## 2026-11-14（关 iOS review P2 DisplayLink/resize）
 
 - [MODIFY] iOS `KRHolmSurface`：DisplayLink weak proxy；像素未变跳过 resize

@@ -1,13 +1,13 @@
 ﻿# runbook · kuikly-dev-ios
 
-> ADR 0009：iOS Runtime（`CAMetalLayer` + ObjC 主线程外泵 + C Session）。Lite `fragmentShader` 本波诚实失败。
+> ADR 0009：iOS Runtime（`CAMetalLayer` + C Session）+ Lite GLES（`CAEAGLLayer` 子 View + Shadertoy）。
 
 ## 结论
 
-- 原生类：`iosApp/iosApp/KuiklyExpand/Views/KRHolmSurface.{h,m}` + `KRHolmMetalHostView`
+- 原生类：`KRHolmSurface` 容器 + `KRHolmMetalHostView` + `KRHolmGlesHostView`
 - **类名 = viewName** `KRHolmSurface`
 - Runtime：`holm-runtime` xcframework → `holm_runtime_session_*`；`onReady.backend=wgpu-m0*`
-- Lite：深蓝 + `onError LITE_PENDING`（后单补 GLES 片元）
+- Lite：GLES2 Shadertoy；`onReady.backend=gles2-ios`；空片元 → `FRAGMENT_REQUIRED`
 - Attr：`executor` / `fragmentShader` / `scene` / `playing` / `maxFps` / knobs + `onReady` / `onError` / `onPerf`
 
 ## 前置
@@ -32,7 +32,7 @@ cd ../iosApp
 pod install
 open iosApp.xcworkspace
 # 选 Simulator / 真机 → Run
-# Home →「示例1 / 双轨」(holm_runtime_m0)；默认 Runtime 隧道
+# Home →「示例1 / 双轨」(holm_runtime_m0)；默认 Runtime 隧道；可切 Lite
 ```
 
 Kotlin 侧若需先编 framework：
@@ -46,15 +46,16 @@ Kotlin 侧若需先编 framework：
 ## 验收勾选
 
 - [ ] 模拟器 Runtime 隧道可见；`onReady backend=wgpu-m0*`
-- [ ] 切 Lite → 深蓝 + `LITE_PENDING`（无假 GLES 动画）
-- [ ] 切回 Runtime → 隧道恢复
-- [ ] `maxFps` 30/60/0 可感知或采集 fps 合理
+- [ ] 切 Lite → 隧道；`onReady backend=gles2-ios`（**无** `LITE_PENDING`）
+- [ ] 切回 Runtime → 隧道恢复；backend 回 wgpu
+- [ ] Lite / Runtime 下 `maxFps` 30/60/0 可感知或采集 fps 合理
 - [ ] 旋转 / resize / 二次进页不崩
 - [ ] 真机 arm64 同左
-- [ ]（负向）未跑 `build-ios.sh` → 链接失败；create/tick 失败 → `BLOCKED`
+- [ ]（负向）Lite 空 `fragmentShader` → 深蓝 + `FRAGMENT_REQUIRED`
+- [ ]（负向）未跑 `build-ios.sh` → 链接失败；create/tick 失败 → `BLOCKED`（勿 GLES 冒充 Runtime）
 
 ## 已知限制
 
-- iOS Lite 宿主 GLSL 本波不做（ADR 0009 顺序：先 Runtime）
+- ObjC Shadertoy wrap 与 Kotlin `HolmShadertoyShell` 须同文；改壳双端同单
 - xcframework **不**入库（`holm-runtime/dist/` gitignore）；本机脚本生成
 - Windows CI **无法**跑本端

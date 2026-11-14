@@ -21,5 +21,5 @@ H5 / Android Runtime（wgpu Session + 外泵 + 宿主 WGSL）已通；iOS 仅有
 
 - 推翻 `holm-runtime/README`「本波不做 iOS Runtime」；实现前以本 ADR 为准。
 - 与 ADR 0006 同构但泵线程不同：Android=渲染线程；iOS=主线程（UIKit/wgpu-in-app 惯例）。
-- Demo `holm_runtime_m0` 双轨 UI 可保持；iOS 上 Lite 轨本波为负向诚实失败。
-- 后单：Lite GLES（或后续 Metal Lite）子树 + `fragmentShader` Shadertoy wrap；可选把 Android JNI 收拢到同一 C Session。
+- Demo `holm_runtime_m0` 双轨 UI 可保持；Lite 轨曾为本波负向诚实失败。
+- **已落地（后单）**：Lite GLES 子 View（`CAEAGLLayer` + Shadertoy wrap，`backend=gles2-ios`）；与 Runtime Metal 子树互斥。可选后单：Metal Lite；Android JNI 收拢到同一 C Session。

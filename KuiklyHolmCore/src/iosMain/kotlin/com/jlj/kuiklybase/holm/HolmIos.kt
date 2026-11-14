@@ -5,7 +5,7 @@ import kotlin.concurrent.Volatile
 /**
  * @CreateDate: 2026/11/12
  * @Author: jlj
- * @Description: iOS 宿主初始化占位。Runtime 由 iosApp `KRHolmSurface` + holm-runtime C Session（ADR 0009）承担；viewName=KRHolmSurface。
+ * @Description: iOS 宿主初始化占位。Runtime=Metal C Session；Lite=GLES2 Shadertoy（iosApp KRHolmSurface）；viewName=KRHolmSurface。
  */
 object HolmIos {
     @Volatile
@@ -17,6 +17,6 @@ object HolmIos {
 
     fun cacheDirOrNull(): String? = _cacheDir
 
-    /** 官方五席已删；Lite 片元后置（本波 Lite=LITE_PENDING）；Runtime 走宿主 WGSL。 */
+    /** 官方五席已删；Lite/Runtime 均由宿主 fragmentShader（GLSL / WGSL）提供。 */
     val dualTrackScenes: List<String> = emptyList()
 }

@@ -20,9 +20,11 @@
 		FF6B715029A2A6FF009349F1 /* KuiklyRenderComponentExpandHandler.m in Sources */ = {isa = PBXBuildFile; fileRef = FF6B714F29A2A6FF009349F1 /* KuiklyRenderComponentExpandHandler.m */; };
 		A1B2C3D429A2B001009349F1 /* KRHolmSurface.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D329A2B001009349F1 /* KRHolmSurface.m */; };
 		A1B2C3D829A2B001009349F1 /* KRHolmMetalHostView.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D629A2B001009349F1 /* KRHolmMetalHostView.m */; };
+		A1B2C3F229A2B001009349F1 /* KRHolmGlesHostView.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3F029A2B001009349F1 /* KRHolmGlesHostView.m */; };
 		A1B2C3E129A2B001009349F1 /* HolmRuntime.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1B2C3E029A2B001009349F1 /* HolmRuntime.xcframework */; };
 		A1B2C3E329A2B001009349F1 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1B2C3E229A2B001009349F1 /* Metal.framework */; };
 		A1B2C3E529A2B001009349F1 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1B2C3E429A2B001009349F1 /* QuartzCore.framework */; };
+		A1B2C3F429A2B001009349F1 /* OpenGLES.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1B2C3F329A2B001009349F1 /* OpenGLES.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -51,9 +53,12 @@
 		A1B2C3D529A2B001009349F1 /* KRHolmSurface.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KRHolmSurface.h; sourceTree = "<group>"; };
 		A1B2C3D629A2B001009349F1 /* KRHolmMetalHostView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KRHolmMetalHostView.m; sourceTree = "<group>"; };
 		A1B2C3D729A2B001009349F1 /* KRHolmMetalHostView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KRHolmMetalHostView.h; sourceTree = "<group>"; };
+		A1B2C3F029A2B001009349F1 /* KRHolmGlesHostView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KRHolmGlesHostView.m; sourceTree = "<group>"; };
+		A1B2C3F129A2B001009349F1 /* KRHolmGlesHostView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KRHolmGlesHostView.h; sourceTree = "<group>"; };
 		A1B2C3E029A2B001009349F1 /* HolmRuntime.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = HolmRuntime.xcframework; path = ../holm-runtime/dist/ios/HolmRuntime.xcframework; sourceTree = "<group>"; };
 		A1B2C3E229A2B001009349F1 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		A1B2C3E429A2B001009349F1 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+		A1B2C3F329A2B001009349F1 /* OpenGLES.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGLES.framework; path = System/Library/Frameworks/OpenGLES.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -64,6 +69,7 @@
 				A1B2C3E129A2B001009349F1 /* HolmRuntime.xcframework in Frameworks */,
 				A1B2C3E329A2B001009349F1 /* Metal.framework in Frameworks */,
 				A1B2C3E529A2B001009349F1 /* QuartzCore.framework in Frameworks */,
+				A1B2C3F429A2B001009349F1 /* OpenGLES.framework in Frameworks */,
 				3FDCFB96518F86B53D4E5ADD /* Pods_iosApp.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -102,6 +108,7 @@
 				A1B2C3E029A2B001009349F1 /* HolmRuntime.xcframework */,
 				A1B2C3E229A2B001009349F1 /* Metal.framework */,
 				A1B2C3E429A2B001009349F1 /* QuartzCore.framework */,
+				A1B2C3F329A2B001009349F1 /* OpenGLES.framework */,
 				28A2BBF98AD622240C0C6069 /* Pods_iosApp.framework */,
 			);
 			name = Frameworks;
@@ -169,6 +176,8 @@
 				A1B2C3D329A2B001009349F1 /* KRHolmSurface.m */,
 				A1B2C3D729A2B001009349F1 /* KRHolmMetalHostView.h */,
 				A1B2C3D629A2B001009349F1 /* KRHolmMetalHostView.m */,
+				A1B2C3F129A2B001009349F1 /* KRHolmGlesHostView.h */,
+				A1B2C3F029A2B001009349F1 /* KRHolmGlesHostView.m */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -335,6 +344,7 @@
 				FF6B715029A2A6FF009349F1 /* KuiklyRenderComponentExpandHandler.m in Sources */,
 				A1B2C3D429A2B001009349F1 /* KRHolmSurface.m in Sources */,
 				A1B2C3D829A2B001009349F1 /* KRHolmMetalHostView.m in Sources */,
+				A1B2C3F229A2B001009349F1 /* KRHolmGlesHostView.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

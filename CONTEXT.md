@@ -39,8 +39,12 @@ _Avoid_：官方五席产品目录
 _Avoid_：官方特效完成态 / scene=frost 出画
 
 **iOS Runtime Session**：
-iOS 上 wgpu Session 通面形态：容器岛内 `CAMetalLayer` 子 View + ObjC 主线程外泵 + C ABI（ADR 0009）；先于 Lite 片元路径。
+iOS 上 wgpu Session 通面形态：容器岛内 `CAMetalLayer` 子 View + ObjC 主线程外泵 + C ABI（ADR 0009）。
 _Avoid_：用 GLES 冒充 Runtime；KN 拥有 DisplayLink；MTKView 抢 wgpu drawable
+
+**iOS Lite GLES**：
+同容器下 `CAEAGLLayer` 子 View + Shadertoy `fragmentShader`；`onReady.backend=gles2-ios`。
+_Avoid_：根 layer 热换 CAEAGL；用 Lite 冒充 wgpu
 
 ## SoT
 
@@ -67,5 +71,5 @@ _Avoid_：用 GLES 冒充 Runtime；KN 拥有 DisplayLink；MTKView 抢 wgpu dra
 
 - 身份：ADR 0007；目标拆包：ADR 0008（文档已定，Gradle 未拆）
 - Demo：Home 仅「示例1 / 双轨」；官方五席源码已删
-- iOS Runtime：ADR 0009 已落地（C Session + xcframework + KRHolmSurface Metal 外泵）；Lite 片元后单
-- 后单：补 iOS Lite `fragmentShader`；真拆三依赖、Runtime 产物与源同步门禁、`holm_api` 规范对齐
+- iOS：ADR 0009 Runtime Metal + Lite GLES 子树均已落地（`gles2-ios` / `wgpu-m0*`）
+- 后单：真拆三依赖、Runtime 产物与源同步门禁、`holm_api` 规范对齐
