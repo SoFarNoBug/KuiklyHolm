@@ -1,8 +1,10 @@
 # ADR 0004: DualTrack 收口 · Keep Lite
 
+> **Superseded in part by [ADR 0007](./0007-holm-as-generic-render-substrate.md)**：「Keep Lite 官方五席为业务默认」的**产品身份**已废止；Lite/Runtime 作**后端档**对照的技术结论与旁路工程仍有效。
+
 ## Status
 
-Accepted（2026-11-12）
+Accepted（2026-11-12）；产品身份段部分 superseded（2026-11-14）
 
 ## Context
 

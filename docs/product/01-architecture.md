@@ -1,13 +1,13 @@
-﻿# 01 · 架构详解（Holm · Kuikly 优先）
+﻿# 01 · 架构详解（Holm · 通用渲染底座）
 
-> 决策：`00`（D0–D12）。身份：**Kuikly 业务优先**。  
-> Lite 可不实现完整本文；Standard/Full 按层落地。  
-> 硬问题：`07`。
+> **身份以 [`00`](./00-context-and-decisions.md) + [ADR 0007](../adr/0007-holm-as-generic-render-substrate.md) / [ADR 0008](../adr/0008-holm-core-gl-wgpu-packages.md) 为准。**  
+> 决策：`00`（含 D13 三包）。身份：**通用渲染底座**；目标 **holm-core / holm-gl / holm-wgpu**。  
+> 硬问题：`07`。下文若仍出现「特效产品 / Lite 五席 KPI」措辞，以 00/0007/0008 覆盖。
 
 ## 1. 一句话
 
-**Kuikly 画壳；Holm 做局部 GPU 特效增强。**  
-核心锚点是 **同源 Shader/Pass**；统一 Runtime/RHI 是 **可插拔增强**，不是 Lite 的强制底座。
+**Kuikly（或宿主）画壳；Holm 提供局部 GPU 岛，按传入 shader 出帧。**  
+核心锚点是 **shader 契约 / Pass 语义**；统一 Runtime/RHI 是 **可插拔后端档**，不是 Lite 的强制项。
 
 ## 2. 四层可插拔栈（对内）
 

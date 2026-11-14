@@ -41,7 +41,7 @@ import kotlinx.coroutines.delay
 /**
  * @CreateDate: 2026/11/12
  * @Author: jlj
- * @Description: DualTrack 旁路 + custom 业务片元 + Lite/Runtime 切轨与 JSONL 性能采集。
+ * @Description: Demo 主推：霓虹隧道 + gl/wgpu 双轨切轨与 JSONL 采集；五席 chip 仅废弃入口。
  */
 @Page("holm_runtime_m0", supportInLocal = true)
 internal class HolmRuntimeM0Pager : BasePager() {
@@ -67,7 +67,7 @@ private fun HolmRuntimeM0Screen() {
     var backendId by remember { mutableStateOf("") }
     var errorText by remember { mutableStateOf("") }
     var perfText by remember { mutableStateOf("fps=—") }
-    var scene by remember { mutableStateOf(HolmSceneShaders.SCENE_FROST) }
+    var scene by remember { mutableStateOf(NeonTunnelShaders.SCENE_CUSTOM) }
     var executor by remember { mutableStateOf(HolmExecutor.RUNTIME) }
     var maxFps by remember { mutableStateOf(HolmSurfaceAttr.DEFAULT_MAX_FPS) }
     var liquidBoost by remember { mutableStateOf(HolmSurfaceAttr.DEFAULT_LIQUID_BOOST) }
@@ -102,7 +102,7 @@ private fun HolmRuntimeM0Screen() {
             .padding(top = (statusBarHeight + 16).dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
     ) {
         Text(
-            text = "Holm · 自定义 / 双轨对比",
+            text = "Holm · 隧道样本 / 双轨",
             fontSize = 20.sp,
             lineHeight = 20.sp,
             fontWeight = FontWeight.Bold,
@@ -317,27 +317,27 @@ private fun RuntimeSceneRow(
 ) {
     Row(modifier = Modifier.fillMaxWidth()) {
         RuntimeChip(
-            label = "霜化",
+            label = "隧道",
+            active = scene == NeonTunnelShaders.SCENE_CUSTOM,
+            onClick = { onSelect(NeonTunnelShaders.SCENE_CUSTOM) },
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        RuntimeChip(
+            label = "霜化(废)",
             active = scene == HolmSceneShaders.SCENE_FROST,
             onClick = { onSelect(HolmSceneShaders.SCENE_FROST) },
         )
         Spacer(modifier = Modifier.width(8.dp))
         RuntimeChip(
-            label = "柔光",
+            label = "柔光(废)",
             active = scene == HolmSceneShaders.SCENE_GLOW,
             onClick = { onSelect(HolmSceneShaders.SCENE_GLOW) },
         )
         Spacer(modifier = Modifier.width(8.dp))
         RuntimeChip(
-            label = "液态",
+            label = "液态(废)",
             active = scene == HolmSceneShaders.SCENE_LIQUID_APPROX,
             onClick = { onSelect(HolmSceneShaders.SCENE_LIQUID_APPROX) },
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        RuntimeChip(
-            label = "custom",
-            active = scene == NeonTunnelShaders.SCENE_CUSTOM,
-            onClick = { onSelect(NeonTunnelShaders.SCENE_CUSTOM) },
         )
     }
 }

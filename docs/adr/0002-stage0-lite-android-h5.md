@@ -1,8 +1,10 @@
 # ADR 0002: Stage 0 选 Lite(A) · Android+H5 霜化尖刺
 
+> **Superseded in part by [ADR 0007](./0007-holm-as-generic-render-substrate.md)**：产品身份不再是「选 Lite 做玻璃特效交付」；本文工程尖刺与 O0=Lite(A) 史实仍有效。
+
 ## Status
 
-Accepted（2026-11-12）
+Accepted（2026-11-12）；身份段部分 superseded（2026-11-14）
 
 ## Context
 

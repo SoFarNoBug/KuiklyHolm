@@ -2,55 +2,64 @@
 
 ## 一句话
 
-在 Kuikly 页面里用局部 GPU 岛做高级视觉特效（及可选简单 3D）；业务优先、效果优先；统一 Runtime 不是默认必上。
+**通用渲染底座**：业务定岛的位置与大小，传入上色 shader，局部 GPU 岛出帧；目标拆成 `holm-core` / `holm-gl` / `holm-wgpu`，须显式 Provider。
+
+## Language
+
+**Holm**：
+通用 shader-in / surface-out 渲染底座产品名；不绑定单一业务。
+_Avoid_：玻璃特效产品、粒子引擎
+
+**岛 / HolmSurface / KRHolmSurface**：
+页面上由布局决定位置与大小的局部 GPU 表面及 API / viewName。
+_Avoid_：整页自绘引擎
+
+**holm-core**：
+目标骨架依赖：统一岛 API、生命周期、喂 shader / 选后端；不含画像素实现。
+_Avoid_：把特效目录塞进 core
+
+**holm-gl**：
+目标轻量 GL 族后端依赖（Android/iOS GLES、H5 WebGL 等）。
+_Avoid_：Lite（易混旧特效产品档）
+
+**holm-wgpu**：
+目标 wgpu Runtime 后端依赖（含 `.so` / wasm 等按端产物）。
+_Avoid_：用 GLES 冒充 wgpu 通面
+
+**Provider**：
+宿主必须显式注册的后端实现入口；未设置则失败。
+_Avoid_：仅靠 classpath 静默默选
+
+**隧道样本**：
+Demo 当前主推的宿主片元示例（霓虹隧道）。
+_Avoid_：官方五席产品目录
+
+**五席（废弃叙事）**：
+历史 frost/glow/liquid_approx/gradient_bg/fullscreen_warp；源码可暂留，产品不主推。
+_Avoid_：官方特效完成态
 
 ## SoT
 
 | 主题 | 路径 |
 | --- | --- |
-| 决策 / 身份 / 重量档 | [`docs/product/00-context-and-decisions.md`](docs/product/00-context-and-decisions.md) |
+| 决策 / 身份 | [`docs/product/00-context-and-decisions.md`](docs/product/00-context-and-decisions.md) |
+| 身份 ADR | [`docs/adr/0007-holm-as-generic-render-substrate.md`](docs/adr/0007-holm-as-generic-render-substrate.md) |
+| 三包 + Provider | [`docs/adr/0008-holm-core-gl-wgpu-packages.md`](docs/adr/0008-holm-core-gl-wgpu-packages.md) |
 | 架构 | [`docs/product/01-architecture.md`](docs/product/01-architecture.md) |
-| P0 硬问题 | [`docs/product/07-p0-hard-problems.md`](docs/product/07-p0-hard-problems.md) |
-| 阶段 | [`docs/product/phases/`](docs/product/phases/) |
-| 术语 / 证据 | [`docs/product/references/`](docs/product/references/) |
-| 仓库形态 ADR | [`docs/adr/0001-repo-shape-fat-core-shell.md`](docs/adr/0001-repo-shape-fat-core-shell.md) |
-| Stage 0 ADR | [`docs/adr/0002-stage0-lite-android-h5.md`](docs/adr/0002-stage0-lite-android-h5.md) |
-| Lite 五席 ADR | [`docs/adr/0003-lite-official-five-scenes.md`](docs/adr/0003-lite-official-five-scenes.md) |
-| DualTrack 收口 | [`docs/adr/0004-lite-vs-standard-dualtrack.md`](docs/adr/0004-lite-vs-standard-dualtrack.md) |
-| Android Runtime Session | [`docs/adr/0006-android-runtime-surface-session.md`](docs/adr/0006-android-runtime-surface-session.md) |
+| 术语 | [`docs/product/references/glossary.md`](docs/product/references/glossary.md) |
 | AI 工作流 | [`.cursor/agents-guide.md`](.cursor/agents-guide.md) |
 
-## 工程壳
+## 工程壳（现状 · 尚未物理拆包）
 
 | 项 | 值 |
 | --- | --- |
 | 根工程 | `KuiklyHolmUI` |
-| 库 | `:KuiklyHolmCore` · `com.jlj.kuiklybase.holm` |
-| Demo | `:holmDemo` · `com.jlj.kuiklyholmui` |
-| 端 | `androidApp` / `iosApp` / `h5App` / `ohosApp`（ohos 另册 settings） |
-| 形态 | **胖 Core** 同构壳；独立 `holm-runtime`（H5 wasm + Android arm64 `.so`） |
-| Stage 0 | **Lite(A)**（2026-11-12） |
-
-## 领域词（短表）
-
-- **Holm / HolmSurface / KRHolmSurface**：产品与 Kuikly 组件 / viewName
-- **Lite / Standard / Full**：重量档（见 00）；**当前选 Lite**
-- **Stage 0**：选型门禁（已关闭 → Lite）
-- **岛**：局部 GPU 表面，不替换主 UI 树
-- **霜化尖刺**：同源 GLSL ES；策略 A 程序化输入；Android GLES2 + H5 WebGL1
-- **官方五席**：`frost` / `glow` / `liquid_approx` / `gradient_bg` / `fullscreen_warp`（ADR 0003）
-- **liquidBoost / liquidBend / warpAmount / scrollSpeed**：按 scene 解耦的 Lite Attr（废弃 `ior`/`warp`）
-- **业务片元 / fragmentShader**、**Shadertoy 薄壳**：ADR 0005；非官方第六席
-- **Android Runtime Session**：`SurfaceView` 换栈 + 渲染线程外泵 JNI `tick`；急拆；arm64-only（ADR 0006）
-
-更全见 [`docs/product/references/glossary.md`](docs/product/references/glossary.md)。
+| 库 | `:KuiklyHolmCore`（对应未来 holm-core+后端暂合居） |
+| Runtime | `holm-runtime`（对应未来 holm-wgpu 产物） |
+| Demo | `:holmDemo` · 主推 `holm_runtime_m0` 隧道 |
 
 ## 当前状态
 
-- 已落地：协作壳 + 产品文档 + **Stage 0 Lite 官方五席**（`holm_spike`）
-- **双轨对比已收口**：ADR 0004 **Keep Lite**；O0 仍 **Lite(A)**（未改选）
-- 旁路：`executor` + Demo `holm_runtime_m0`（custom 业务片元 + Lite/Runtime 切轨 + JSONL 采集）
-- 业务自定义片元：Lite Shadertoy 壳 + Runtime `setCustomFs`（H5 / Android）
-- Android Runtime：arm64 `libholm_runtime.so` + `KRHolmSurfaceView` SurfaceView 外泵（缺库仍 BLOCKED）
-- 编译门禁：`:androidApp:compileDebugKotlin`；JS：Core / holmDemo / h5App `compileKotlinJs`
-- 下一步：arm64 真机对照 frost/glow/liquid/custom + logcat `[holm-perf]`；Mac 验 iOS Lite
+- 身份：ADR 0007；目标拆包：ADR 0008（文档已定，Gradle 未拆）
+- Demo：Home 主推隧道双轨页；五席入口标废弃
+- 后单：真拆三依赖、删五席源码、`holm_api` 规范对齐
