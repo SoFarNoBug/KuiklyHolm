@@ -84,7 +84,7 @@ pub fn classify_wgpu_error(err: &wgpu::Error) -> (&'static str, String) {
 }
 
 pub fn install_uncaptured_handler(device: &wgpu::Device, sink: ErrorSink) {
-    device.on_uncaptured_error(Box::new(move |err| {
+    device.on_uncaptured_error(Arc::new(move |err| {
         let (code, msg) = classify_wgpu_error(&err);
         sink.emit(code, &msg);
     }));

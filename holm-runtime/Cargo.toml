@@ -2,7 +2,7 @@
 name = "holm_runtime"
 version = "0.0.1"
 edition = "2021"
-description = "Holm Standard M0 spike · Rust + wgpu Session (H5 wasm + Android + iOS)"
+description = "Holm Standard M0 spike · Rust + wgpu Session (H5 wasm + Android + iOS + Ohos)"
 license = "MIT"
 publish = false
 
@@ -16,11 +16,11 @@ wgpu_backend = []
 
 [dependencies]
 bytemuck = { version = "1", features = ["derive"] }
-# 与 wgpu 23 对齐；Ohos(wgpu30) 仍用其做同步 WGSL 语法校验（不跑 naga 后端）
-naga = { version = "23.1", default-features = false, features = ["wgsl-in"] }
+# 与 wgpu 30 对齐；同步 WGSL 语法校验（不跑 naga 后端）
+naga = { version = "30.0.2", default-features = false, features = ["wgsl-in"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wgpu = { version = "23", default-features = false, features = ["wgsl", "webgpu", "webgl"] }
+wgpu = { version = "30.0.2", default-features = false, features = ["wgsl", "webgpu", "webgl"] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
@@ -28,8 +28,8 @@ console_error_panic_hook = "0.1"
 web-sys = { version = "0.3", features = ["HtmlCanvasElement", "OffscreenCanvas", "Window", "Document", "console"] }
 
 [target.'cfg(target_os = "android")'.dependencies]
-# wgpu 23：Android 经 target cfg 拉 vulkan；勿写不存在的 feature `gles`
-wgpu = { version = "23", default-features = false, features = ["wgsl"] }
+# wgpu 30：显式 vulkan + gles，匹配 JNI Backends::VULKAN | GL
+wgpu = { version = "30.0.2", default-features = false, features = ["wgsl", "vulkan", "gles"] }
 jni = "0.21"
 ndk-sys = "0.6"
 raw-window-handle = "0.6"
@@ -37,11 +37,11 @@ pollster = "0.4"
 
 [target.'cfg(target_os = "ios")'.dependencies]
 # ADR 0009：Metal + C Session；勿静默换非 wgpu
-wgpu = { version = "23", default-features = false, features = ["wgsl", "metal"] }
+wgpu = { version = "30.0.2", default-features = false, features = ["wgsl", "metal"] }
 pollster = "0.4"
 
-# ADR 0010：Ohos 报 target_os=linux + target_env=ohos；仅本 target 升 wgpu 30（VK_OHOS_surface）
+# ADR 0010：Ohos 报 target_os=linux + target_env=ohos；VK_OHOS_surface 需 wgpu 30
 [target.'cfg(target_env = "ohos")'.dependencies]
-wgpu = { version = "30.0.2", default-features = false, features = ["wgsl"] }
+wgpu = { version = "30.0.2", default-features = false, features = ["wgsl", "vulkan"] }
 raw-window-handle = "0.6"
 pollster = "0.4"

@@ -45,10 +45,9 @@ impl HolmRuntimeSession {
         width: u32,
         height: u32,
     ) -> Result<HolmRuntimeSession, JsValue> {
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::BROWSER_WEBGPU | wgpu::Backends::GL,
-            ..Default::default()
-        });
+        let mut desc = wgpu::InstanceDescriptor::new_without_display_handle();
+        desc.backends = wgpu::Backends::BROWSER_WEBGPU | wgpu::Backends::GL;
+        let instance = wgpu::Instance::new(desc);
         let surface = instance
             .create_surface(target)
             .map_err(|e| JsValue::from_str(&format!("create_surface: {e}")))?;

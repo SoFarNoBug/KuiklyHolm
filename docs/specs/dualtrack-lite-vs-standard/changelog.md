@@ -1,5 +1,30 @@
 # dualtrack-lite-vs-standard · changelog
 
+## 2026-11-15（Android Runtime · DisplayHandle）
+
+- [MODIFY] `android_jni`：wgpu 30 `create_surface` 补 `AndroidDisplayHandle`——`InstanceDescriptor::new_with_display_handle` + `SurfaceTargetUnsafe::from_display_and_window`（关真机 `MissingDisplayHandle`）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改 Runtime 创建卡点｜待批 0
+- 真机验证表：`docs/reviews/device-check-list/unify-wgpu-30.md`（本单续跑 Runtime 轨）
+- 自测：`build-android.ps1` → installDebug → `holm_runtime_m0` 非 BLOCKED
+
+## 2026-11-15（审查回执行 · unify-wgpu-30 P2）
+
+- [MODIFY] `session_core::build_pipe`：`device.poll(Wait)` 失败 `map_err` 返回 `WGPU_INTERNAL`（关 `P2-poll-error-swallowed`）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：审查回执行 P2｜待批 0
+- 本单无真机验证（H5 联调见 runbook；可执行档仍 `device-check-list/unify-wgpu-30.md`）
+- 审查回执行：`docs/reviews/review-unify-wgpu-30.md`
+- 自测：wasm/android release 重编；H5 Runtime 隧道 `wgpu-m0`≈60fps；故意失败 `SHADER_CUSTOM`；切回隧道恢复
+
+## 2026-11-15（全端统一 wgpu 30.0.2）
+
+- [MODIFY] `holm-runtime`：wasm / Android / iOS / Ohos 统一 `wgpu = "30.0.2"` + `naga = "30.0.2"`；`Cargo.lock` 去掉 23.x
+- [MODIFY] 合并 `session_core_ohos.rs` → 单一 `session_core.rs`（wgpu 30 API + wasm error-scope 守卫）；修 `present_clear_only` 为 `CurrentSurfaceTexture` + `queue.present`
+- [MODIFY] 入口：`InstanceDescriptor::new_without_display_handle`；`on_uncaptured_error(Arc)`；`ErrorScopeGuard::pop` + `PollType::wait_indefinitely`
+- [MODIFY] Android features 显式 `vulkan`+`gles`；Ohos 显式 `vulkan`
+- 自测：`build-wasm.ps1` OK（`holm_runtime_bg.wasm` ≈ 4.02 MiB）；`cargo ndk` arm64 `.so` OK（≈ 7.89 MiB）；iOS/Ohos 本机无 apple-ios / ohos target → **BLOCKED**（共享 session_core，API 与 Android 同源）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：依赖统一升档｜待批 0
+- 本单无真机验证
+
 ## 2026-11-15（样本展示名：Raymarching - 基础图形）
 
 - [MODIFY] `DemoSample.IQ_PRIMITIVES.label`：`IQ原语` → `Raymarching - 基础图形`（id 不变）

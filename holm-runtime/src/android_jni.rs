@@ -1,20 +1,64 @@
-//! Android JNIÃ¯Â¼ÂÃ¤Â»Â `android.view.Surface` Ã¥Â»?SessionÃ¯Â¼ÂÃ¤Â¾Â Kotlin Ã¥Â¤ÂÃ¦Â³Âµ tickÃ£Â?
+//! Android JNI：从 `android.view.Surface` 建 Session，供 Kotlin 外泵 tick。
 
 use crate::session_core::HolmRuntimeSessionCore;
-use jni::objects::{JClass, JObject, JString};
+use jni::objects::{JClass, JObject, JString, JValue};
 use jni::sys::{jboolean, jfloat, jint, jlong, jstring, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 use raw_window_handle::{
     AndroidDisplayHandle, AndroidNdkWindowHandle, DisplayHandle, HandleError, HasDisplayHandle,
     HasWindowHandle, RawDisplayHandle, RawWindowHandle, WindowHandle,
 };
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::ptr::NonNull;
+use std::sync::Mutex;
+
+static LAST_CREATE_ERROR: Mutex<String> = Mutex::new(String::new());
+
+fn set_last_create_error(msg: impl Into<String>) {
+    if let Ok(mut g) = LAST_CREATE_ERROR.lock() {
+        *g = msg.into();
+    }
+}
+
+fn clear_last_create_error() {
+    if let Ok(mut g) = LAST_CREATE_ERROR.lock() {
+        g.clear();
+    }
+}
+
+fn log_e(env: &mut JNIEnv, msg: &str) {
+    let Ok(tag) = env.new_string("holm-runtime") else {
+        return;
+    };
+    let Ok(text) = env.new_string(msg) else {
+        return;
+    };
+    let _ = env.call_static_method(
+        "android/util/Log",
+        "e",
+        "(Ljava/lang/String;Ljava/lang/String;)I",
+        &[JValue::Object(&tag), JValue::Object(&text)],
+    );
+}
 
 struct AndroidWindowPtr(*mut ndk_sys::ANativeWindow);
 
-// Safety: ANativeWindow Ã§Â?create/destroy Ã©ÂÂÃ¥Â¯Â¹Ã¯Â¼ÂSession Ã¤Â»ÂÃ¥ÂÂ¨ Holm Ã¦Â¸Â²Ã¦ÂÂÃ§ÂºÂ¿Ã§Â¨ÂÃ¤Â½Â¿Ã§ÂÂ¨Ã£Â?
+// Safety: ANativeWindow 与 create/destroy 配对；Session 仅在 Holm 渲染线程使用。
 unsafe impl Send for AndroidWindowPtr {}
 unsafe impl Sync for AndroidWindowPtr {}
+
+/// wgpu 30：`InstanceDescriptor::display` 与 `create_surface` 都需要 DisplayHandle。
+/// Android 无独立 display 连接，用空的 `AndroidDisplayHandle` 作平台标记（须与 surface 侧一致）。
+#[derive(Debug)]
+struct AndroidDisplayOwner;
+
+impl HasDisplayHandle for AndroidDisplayOwner {
+    fn display_handle(&self) -> Result<DisplayHandle<'_>, HandleError> {
+        Ok(unsafe {
+            DisplayHandle::borrow_raw(RawDisplayHandle::Android(AndroidDisplayHandle::new()))
+        })
+    }
+}
 
 struct AndroidSurfaceTarget {
     window: AndroidWindowPtr,
@@ -75,19 +119,23 @@ pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeHasW
 
 #[no_mangle]
 pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeCreate(
-    env: JNIEnv,
+    mut env: JNIEnv,
     _class: JClass,
     surface: JObject,
     width: jint,
     height: jint,
 ) -> jlong {
     if surface.is_null() {
+        set_last_create_error("surface is null");
+        log_e(&mut env, "nativeCreate: surface is null");
         return 0;
     }
     // fromSurface already acquires; release once in destroy
     let window_ptr =
         unsafe { ndk_sys::ANativeWindow_fromSurface(env.get_raw(), surface.as_raw()) };
     if window_ptr.is_null() {
+        set_last_create_error("ANativeWindow_fromSurface returned null");
+        log_e(&mut env, "nativeCreate: ANativeWindow_fromSurface null");
         return 0;
     }
 
@@ -97,31 +145,60 @@ pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeCrea
         window: AndroidWindowPtr(window_ptr),
     };
 
-    let created = (|| {
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::VULKAN | wgpu::Backends::GL,
-            ..Default::default()
-        });
-        let target_unsafe = unsafe { wgpu::SurfaceTargetUnsafe::from_window(&target) }
-            .map_err(|e| format!("surface_target: {e}"))?;
+    // wgpu 30：Android 先走 Vulkan（与 Ohos 对齐）；GL 作回退。勿静默 GLES 冒充成功。
+    // from_window 会把 display 置 None → MissingDisplayHandle；须 Instance.display + from_display_and_window。
+    let created = catch_unwind(AssertUnwindSafe(|| {
+        let mut desc =
+            wgpu::InstanceDescriptor::new_with_display_handle(Box::new(AndroidDisplayOwner));
+        desc.backends = wgpu::Backends::VULKAN | wgpu::Backends::GL;
+        let instance = wgpu::Instance::new(desc);
+        let target_unsafe =
+            unsafe { wgpu::SurfaceTargetUnsafe::from_display_and_window(&target, &target) }
+                .map_err(|e| format!("surface_target: {e}"))?;
         let surface = unsafe { instance.create_surface_unsafe(target_unsafe) }
             .map_err(|e| format!("create_surface: {e}"))?;
         let core = pollster::block_on(HolmRuntimeSessionCore::create_with_surface(
             instance, surface, w, h, false,
         ))?;
         Ok::<HolmRuntimeSessionCore, String>(core)
-    })();
+    }));
 
     match created {
-        Ok(core) => box_session(NativeSession {
-            core,
-            window: AndroidWindowPtr(window_ptr),
-        }),
-        Err(_) => {
+        Ok(Ok(core)) => {
+            clear_last_create_error();
+            box_session(NativeSession {
+                core,
+                window: AndroidWindowPtr(window_ptr),
+            })
+        }
+        Ok(Err(e)) => {
+            set_last_create_error(&e);
+            log_e(&mut env, &format!("nativeCreate failed: {e}"));
+            release_window(window_ptr);
+            0
+        }
+        Err(panic) => {
+            let msg = format!("nativeCreate panic: {panic:?}");
+            set_last_create_error(&msg);
+            log_e(&mut env, &msg);
             release_window(window_ptr);
             0
         }
     }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeLastCreateError(
+    env: JNIEnv,
+    _class: JClass,
+) -> jstring {
+    let msg = LAST_CREATE_ERROR
+        .lock()
+        .map(|g| g.clone())
+        .unwrap_or_default();
+    env.new_string(msg)
+        .map(|s| s.into_raw())
+        .unwrap_or(std::ptr::null_mut())
 }
 
 #[no_mangle]
@@ -277,18 +354,19 @@ pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeDrai
     _class: JClass<'local>,
     handle: jlong,
 ) -> jni::sys::jobjectArray {
-    let empty = || {
-        env.new_object_array(0, "java/lang/String", JObject::null())
-            .map(|a| a.into_raw())
-            .unwrap_or(std::ptr::null_mut())
-    };
     let Some(s) = (unsafe { from_handle(handle) }) else {
-        return empty();
+        return env
+            .new_object_array(0, "java/lang/String", JObject::null())
+            .map(|a| a.into_raw())
+            .unwrap_or(std::ptr::null_mut());
     };
     let errs = s.core.drain_errors();
     let len = (errs.len() * 2) as i32;
     let Ok(arr) = env.new_object_array(len, "java/lang/String", JObject::null()) else {
-        return empty();
+        return env
+            .new_object_array(0, "java/lang/String", JObject::null())
+            .map(|a| a.into_raw())
+            .unwrap_or(std::ptr::null_mut());
     };
     for (i, (code, msg)) in errs.into_iter().enumerate() {
         let Ok(jc) = env.new_string(&code) else {

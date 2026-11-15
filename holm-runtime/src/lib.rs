@@ -8,11 +8,7 @@ mod shaders;
 #[cfg(feature = "wgpu_backend")]
 mod error_bridge;
 
-#[cfg(all(feature = "wgpu_backend", not(target_env = "ohos")))]
-mod session_core;
-
-#[cfg(all(feature = "wgpu_backend", target_env = "ohos"))]
-#[path = "session_core_ohos.rs"]
+#[cfg(feature = "wgpu_backend")]
 mod session_core;
 
 #[cfg(all(target_arch = "wasm32", feature = "wgpu_backend"))]

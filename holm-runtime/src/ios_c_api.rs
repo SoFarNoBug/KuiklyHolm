@@ -36,10 +36,9 @@ pub extern "C" fn holm_runtime_session_create_metal(
     let h = height.max(1);
 
     let result = catch_unwind(AssertUnwindSafe(|| {
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::METAL,
-            ..Default::default()
-        });
+        let mut desc = wgpu::InstanceDescriptor::new_without_display_handle();
+        desc.backends = wgpu::Backends::METAL;
+        let instance = wgpu::Instance::new(desc);
         // SAFETY: caller guarantees a live CAMetalLayer* for the session lifetime.
         let target = wgpu::SurfaceTargetUnsafe::CoreAnimationLayer(metal_layer);
         let surface = unsafe { instance.create_surface_unsafe(target) }

@@ -27,4 +27,5 @@ H5 / Android / iOS Runtime（wgpu Session + 宿主外泵 + WGSL）已通；鸿�
 - 与 ADR 0009 同构：壳外泵 + C Session；差异在 XComponent/Vulkan/双 so，而非 Metal/xcframework。
 - Demo `holm_runtime_m0` 可共用；鸿蒙上 Lite 本波曾为负向诚实失败。
 - **已落地（ADR 0011）**：同 XComponent + EGL/GLES Shadertoy，`backend=gles2-ohos`；与 Runtime 互斥切轨。
+- **2026-11-15**：`holm-runtime` 全端统一 **wgpu 30.0.2**（不再 Ohos 独占）；`session_core_ohos` 双核心退役，单一 `session_core`；Ohos 仍依赖 Vulkan / `VK_OHOS_surface`。
 - 可选后单：Android JNI 收拢到同一 C Session；Lite 降采样。

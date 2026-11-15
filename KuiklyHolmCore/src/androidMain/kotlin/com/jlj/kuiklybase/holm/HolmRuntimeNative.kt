@@ -38,10 +38,21 @@ object HolmRuntimeNative {
         return if (!isLibraryLoaded()) {
             "DualTrack B BLOCKED: libholm_runtime.so missing (run holm-runtime/build-android.ps1). No silent non-wgpu stack."
         } else if (!_presentable) {
-            "DualTrack B BLOCKED: holm_runtime loaded but Session/Surface not ready. No silent GLES stand-in."
+            val detail = runCatching { nativeLastCreateError() }.getOrDefault("").trim()
+            if (detail.isNotEmpty()) {
+                "DualTrack B BLOCKED: Session/Surface create failed: $detail. No silent GLES stand-in."
+            } else {
+                "DualTrack B BLOCKED: holm_runtime loaded but Session/Surface not ready. No silent GLES stand-in."
+            }
         } else {
             "DualTrack B BLOCKED: holm_runtime unavailable."
         }
+    }
+
+    /** 最近一次 nativeCreate 失败原因（空=无失败或已成功）。 */
+    fun lastCreateError(): String {
+        if (!isLibraryLoaded()) return ""
+        return runCatching { nativeLastCreateError() }.getOrDefault("")
     }
 
     fun markPresentable(ok: Boolean) {
@@ -132,6 +143,7 @@ object HolmRuntimeNative {
     private external fun nativeAbiVersion(): Int
     private external fun nativeHasWgpu(): Int
     private external fun nativeCreate(surface: Surface, width: Int, height: Int): Long
+    private external fun nativeLastCreateError(): String
     private external fun nativeDestroy(handle: Long)
     private external fun nativeResize(handle: Long, width: Int, height: Int)
     private external fun nativeSetScene(handle: Long, scene: String)

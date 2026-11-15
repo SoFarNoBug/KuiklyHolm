@@ -1,10 +1,10 @@
-//! 共享 Runtime Session 核心（H5 wasm / Android / iOS · wgpu 23）。
+//! 共享 Runtime Session 核心（H5 wasm / Android / iOS / Ohos · wgpu 30）。
 
 use crate::error_bridge::{
     install_uncaptured_handler, validate_wgsl_module, ErrorSink, CODE_SHADER_CUSTOM, CODE_SURFACE,
 };
 #[cfg(not(target_arch = "wasm32"))]
-use crate::error_bridge::classify_wgpu_error;
+use crate::error_bridge::{classify_wgpu_error, CODE_WGPU_INTERNAL};
 use crate::shaders;
 
 #[repr(C)]
@@ -77,9 +77,10 @@ impl HolmRuntimeSessionCore {
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 compatible_surface: Some(&surface),
                 force_fallback_adapter: false,
+                apply_limit_buckets: false,
             })
             .await
-            .ok_or_else(|| "no wgpu adapter".to_string())?;
+            .map_err(|e| format!("no wgpu adapter: {e}"))?;
 
         let backend_id = backend_label(adapter.get_info().backend);
 
@@ -90,15 +91,14 @@ impl HolmRuntimeSessionCore {
         };
 
         let (device, queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor {
-                    label: Some("holm-runtime-session"),
-                    required_features: wgpu::Features::empty(),
-                    required_limits,
-                    memory_hints: Default::default(),
-                },
-                None,
-            )
+            .request_device(&wgpu::DeviceDescriptor {
+                label: Some("holm-runtime-session"),
+                required_features: wgpu::Features::empty(),
+                required_limits,
+                memory_hints: Default::default(),
+                trace: Default::default(),
+                experimental_features: Default::default(),
+            })
             .await
             .map_err(|e| format!("request_device: {e}"))?;
 
@@ -142,6 +142,7 @@ impl HolmRuntimeSessionCore {
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format,
+            color_space: wgpu::SurfaceColorSpace::Auto,
             width: width.max(1),
             height: height.max(1),
             present_mode,
@@ -185,8 +186,8 @@ impl HolmRuntimeSessionCore {
         });
         let pipe_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("holm-pipe-layout"),
-            bind_group_layouts: &[&bind_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(&bind_layout)],
+            immediate_size: 0,
         });
 
         let pipe_clear = Self::build_pipe(
@@ -227,9 +228,9 @@ impl HolmRuntimeSessionCore {
         let src = shaders::module_source(fs);
         validate_wgsl_module(&src)?;
 
-        // wasm 上 pop_error_scope 不能同步 block；靠 naga + uncaptured。
+        // wasm 上 error scope 不能同步 block；靠 naga + uncaptured。
         #[cfg(not(target_arch = "wasm32"))]
-        device.push_error_scope(wgpu::ErrorFilter::Validation);
+        let error_scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
 
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some(label),
@@ -257,14 +258,16 @@ impl HolmRuntimeSessionCore {
             primitive: wgpu::PrimitiveState::default(),
             depth_stencil: None,
             multisample: wgpu::MultisampleState::default(),
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
         #[cfg(not(target_arch = "wasm32"))]
         {
-            device.poll(wgpu::Maintain::Wait);
-            if let Some(err) = pollster::block_on(device.pop_error_scope()) {
+            device
+                .poll(wgpu::PollType::wait_indefinitely())
+                .map_err(|e| format!("{CODE_WGPU_INTERNAL}: device poll: {e}"))?;
+            if let Some(err) = pollster::block_on(error_scope.pop()) {
                 let (code, msg) = classify_wgpu_error(&err);
                 return Err(format!("{code}: {msg}"));
             }
@@ -318,10 +321,14 @@ impl HolmRuntimeSessionCore {
 
     /// 仅 Clear 呈一帧（不画三角）；供 setCustomFs 失败后抹掉上一特效。
     fn present_clear_only(&mut self) -> Result<(), String> {
-        let frame = self
-            .surface
-            .get_current_texture()
-            .map_err(|e| format!("get_current_texture: {e}"))?;
+        let frame = match self.surface.get_current_texture() {
+            wgpu::CurrentSurfaceTexture::Success(t) | wgpu::CurrentSurfaceTexture::Suboptimal(t) => {
+                t
+            }
+            other => {
+                return Err(format!("get_current_texture: {other:?}"));
+            }
+        };
         let view = frame
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
@@ -336,6 +343,7 @@ impl HolmRuntimeSessionCore {
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
                     resolve_target: None,
+                    depth_slice: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
                             r: 0.05,
@@ -349,10 +357,11 @@ impl HolmRuntimeSessionCore {
                 depth_stencil_attachment: None,
                 timestamp_writes: None,
                 occlusion_query_set: None,
+                multiview_mask: None,
             });
         }
         self.queue.submit(Some(encoder.finish()));
-        frame.present();
+        self.queue.present(frame);
         Ok(())
     }
 
@@ -401,9 +410,11 @@ impl HolmRuntimeSessionCore {
             .write_buffer(&self.uniform_buf, 0, bytemuck::bytes_of(&uniforms));
 
         let frame = match self.surface.get_current_texture() {
-            Ok(f) => f,
-            Err(e) => {
-                let msg = format!("get_current_texture: {e}");
+            wgpu::CurrentSurfaceTexture::Success(t) | wgpu::CurrentSurfaceTexture::Suboptimal(t) => {
+                t
+            }
+            other => {
+                let msg = format!("get_current_texture: {other:?}");
                 self.error_sink.emit(CODE_SURFACE, &msg);
                 return Err(msg);
             }
@@ -428,6 +439,7 @@ impl HolmRuntimeSessionCore {
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
                     resolve_target: None,
+                    depth_slice: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
                             r: 0.05,
@@ -441,13 +453,14 @@ impl HolmRuntimeSessionCore {
                 depth_stencil_attachment: None,
                 timestamp_writes: None,
                 occlusion_query_set: None,
+                multiview_mask: None,
             });
             pass.set_pipeline(pipeline);
-            pass.set_bind_group(0, &self.bind_group, &[]);
+            pass.set_bind_group(0, Some(&self.bind_group), &[]);
             pass.draw(0..3, 0..1);
         }
         self.queue.submit(Some(encoder.finish()));
-        frame.present();
+        self.queue.present(frame);
         Ok(())
     }
 }

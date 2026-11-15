@@ -1,7 +1,7 @@
 # holm-runtime · DualTrack B（Standard / Lite3 近似）
 
 > **状态（2026-11-15）**：H5 wasm + Android JNI Session 已通；iOS C Session + xcframework 见 ADR 0009；鸿蒙 Runtime 见 ADR 0010；鸿蒙 Lite EGL 见 ADR 0011。  
-> 尖刺默认：**Rust + wgpu**（禁止静默换非 wgpu 栈）。
+> 尖刺默认：**Rust + wgpu 30.0.2**（全端统一；禁止静默换非 wgpu 栈）。`naga` 同步 30.0.2；单一 `session_core.rs`。
 
 ## 范围
 
@@ -72,4 +72,4 @@ cd holm-runtime
 - [x] 鸿蒙 aarch64 `libholm_runtime.so` + `libholm_xc` / `KRHolmSurface` 接线（ADR 0010；真机隧道待勾）
 - [x] 鸿蒙 Lite EGL 接线（ADR 0011；`gles2-ohos`；真机双轨待勾）
 - [ ] resize / destroy 专项压测
-- [x] H5 wasm 包体 ≈ 3.84 MiB（写入 DualTrack changelog）
+- [x] H5 wasm 包体 ≈ 4.02 MiB（wgpu 30 统一后；写入 DualTrack changelog）
