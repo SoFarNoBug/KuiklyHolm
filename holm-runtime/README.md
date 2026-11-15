@@ -1,6 +1,6 @@
 # holm-runtime · DualTrack B（Standard / Lite3 近似）
 
-> **状态（2026-11-14）**：H5 wasm + Android JNI Session 已通；iOS C Session + xcframework 见 ADR 0009；鸿蒙 C Session + 双 so 见 ADR 0010。  
+> **状态（2026-11-15）**：H5 wasm + Android JNI Session 已通；iOS C Session + xcframework 见 ADR 0009；鸿蒙 Runtime 见 ADR 0010；鸿蒙 Lite EGL 见 ADR 0011。  
 > 尖刺默认：**Rust + wgpu**（禁止静默换非 wgpu 栈）。
 
 ## 范围
@@ -8,9 +8,10 @@
 - H5：`HolmRuntimeSession` + `onReady.backend=wgpu-m0`（或 `wgpu-m0-gl`）
 - Android：`HolmRuntimeNative` JNI + `KRHolmSurfaceView` `SurfaceView` 换栈（ADR 0006）
 - iOS：`holm_runtime_session_*` C ABI + `CAMetalLayer`；iosApp ObjC 主线程外泵（ADR 0009）
-- 鸿蒙：`holm_runtime_session_create_ohos` + `libholm_runtime.so`；`libholm_xc.so` XComponent OnFrame 外泵（ADR 0010）；Lite 本波 `LITE_PENDING`
+- 鸿蒙 Runtime：`holm_runtime_session_create_ohos` + `libholm_runtime.so`；`libholm_xc.so` XComponent OnFrame（ADR 0010）
+- 鸿蒙 Lite：同 XComponent EGL/GLES Shadertoy，`onReady.backend=gles2-ohos`（ADR 0011；实现在 `libholm_xc`，非本 crate）
 - 席位：`clear_tri` fallback；`setCustomFs` 热换自定义片元（官方五席 WGSL 已删）
-- **不做（本波）**：逐字 GLSL≡WGSL、真 Backdrop、改 O0、Rust 内泵、Android 多 ABI、把 Android JNI 收拢到 C Session、鸿蒙 Lite GLES
+- **不做（本波）**：逐字 GLSL≡WGSL、真 Backdrop、改 O0、Rust 内泵、Android 多 ABI、把 Android JNI 收拢到 C Session
 
 ## H5 解锁
 
@@ -57,7 +58,8 @@ cd holm-runtime
 # ohosApp CMake 另编 libholm_xc.so（XComponent）；改 Rust 后须重跑本脚本（Hvigor 不编 Rust）
 ```
 
-缺 `.so` / create 失败 → Demo `onError(BLOCKED)`；`executor=lite` → `LITE_PENDING`。详见 `docs/specs/kuikly-dev-ohos/runbook.md`。
+缺 `.so` / create 失败 → Demo `onError(BLOCKED)`，禁止 GLES 冒充 wgpu。  
+`executor=lite` → `libholm_xc` EGL 隧道（`gles2-ohos`），见 ADR 0011 / `docs/specs/kuikly-dev-ohos/runbook.md`。
 
 ## 验收
 
@@ -68,5 +70,6 @@ cd holm-runtime
 - [ ] Android 真机隧道 custom + logcat `[holm-perf]`
 - [x] iOS device+sim xcframework + ObjC 外泵接线（ADR 0009；真机隧道观感待勾）
 - [x] 鸿蒙 aarch64 `libholm_runtime.so` + `libholm_xc` / `KRHolmSurface` 接线（ADR 0010；真机隧道待勾）
+- [x] 鸿蒙 Lite EGL 接线（ADR 0011；`gles2-ohos`；真机双轨待勾）
 - [ ] resize / destroy 专项压测
 - [x] H5 wasm 包体 ≈ 3.84 MiB（写入 DualTrack changelog）

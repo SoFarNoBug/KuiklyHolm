@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-11-14
+- Note: Lite 已由 [ADR 0011](./0011-ohos-lite-egl-xcomponent.md) 落地；下文「Lite=`LITE_PENDING`」为史实，不再作现行行为。
 
 ## Context
 
@@ -9,7 +10,7 @@ H5 / Android / iOS Runtime（wgpu Session + 宿主外泵 + WGSL）已通；鸿�
 
 ## Decision
 
-1. **顺序**：本波只验收 Runtime 隧道；`executor=lite` → 深蓝 + 诚实 `onError`（如 `LITE_PENDING`），**禁止** GLES 冒充 wgpu；Lite 片元后置。
+1. **顺序**：本波只验收 Runtime 隧道；`executor=lite` → 深蓝 + 诚实 `onError`（如 `LITE_PENDING`），**禁止** GLES 冒充 wgpu；Lite 片元后置（**现行**：见 ADR 0011）。
 2. **呈现面**：ETS `KRHolmSurface`（`KuiklyRenderBaseView`，`viewName=KRHolmSurface`）内嵌 **`XComponent`（surface）**；Attr 对齐双轨（`executor` / `fragmentShader` / `maxFps` / `onReady` / `onError` / `onPerf`…）。
 3. **泵与胶水**：**XComponent NAPI 回调**拥有生命周期 + `OnFrame` → 同步 C `tick`；Rust **无内泵**。不把泵放到 Kotlin/Native。`maxFps`：`SetExpectedFrameRateRange` + 必要时跳帧；`0`=不限。
 4. **ABI**：新增 `holm_runtime_session_create_ohos(window: *mut c_void, w, h)`；其余 `destroy` / `resize` / `tick` / `set_custom_fs` / `set_scene` / … 与 iOS 共用 `holm_runtime_session_*`。ohos target 拉 **wgpu + Vulkan**。Android JNI / iOS Metal create **本波不改**。
@@ -24,5 +25,6 @@ H5 / Android / iOS Runtime（wgpu Session + 宿主外泵 + WGSL）已通；鸿�
 
 - 产品 DualTrack B 曾不含鸿蒙；本 ADR 开通鸿蒙 Runtime 尖刺/通面路径，鸿蒙仍可为 PARTIAL（真机 Vulkan 能力依赖设备）。
 - 与 ADR 0009 同构：壳外泵 + C Session；差异在 XComponent/Vulkan/双 so，而非 Metal/xcframework。
-- Demo `holm_runtime_m0` 可共用；鸿蒙上 Lite 本波为负向诚实失败。
-- 后单：鸿蒙 Lite GLES（或 EGL on XComponent）+ Shadertoy；可选把 Android JNI 收拢到同一 C Session。
+- Demo `holm_runtime_m0` 可共用；鸿蒙上 Lite 本波曾为负向诚实失败。
+- **已落地（ADR 0011）**：同 XComponent + EGL/GLES Shadertoy，`backend=gles2-ohos`；与 Runtime 互斥切轨。
+- 可选后单：Android JNI 收拢到同一 C Session；Lite 降采样。

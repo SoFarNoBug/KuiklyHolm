@@ -47,8 +47,12 @@ _Avoid_：用 GLES 冒充 Runtime；KN 拥有 DisplayLink；MTKView 抢 wgpu dra
 _Avoid_：根 layer 热换 CAEAGL；用 Lite 冒充 wgpu
 
 **鸿蒙 Runtime Session**：
-鸿蒙上 wgpu Session 通面形态：ETS `KRHolmSurface` 内嵌 `XComponent` + NAPI `OnFrame` 外泵 + C ABI（ADR 0010）；先于鸿蒙 Lite。
+鸿蒙上 wgpu Session 通面形态：ETS `KRHolmSurface` 内嵌 `XComponent` + NAPI `OnFrame` 外泵 + C ABI（ADR 0010）。
 _Avoid_：用 GLES 冒充 Runtime；KN 拥有帧泵；把 Runtime 耦进 `libentry.so`
+
+**鸿蒙 Lite GLES**：
+同 XComponent 上 EGL/GLES Shadertoy（ADR 0011）；`onReady.backend=gles2-ohos`；与 Runtime 互斥切轨。
+_Avoid_：`LITE_PENDING` 冒充完成；用 GLES 冒充 wgpu；另挂第二 XComponent 当默认
 
 ## SoT
 
@@ -59,6 +63,7 @@ _Avoid_：用 GLES 冒充 Runtime；KN 拥有帧泵；把 Runtime 耦进 `libent
 | 三包 + Provider | [`docs/adr/0008-holm-core-gl-wgpu-packages.md`](docs/adr/0008-holm-core-gl-wgpu-packages.md) |
 | iOS Runtime | [`docs/adr/0009-ios-runtime-cametallayer-objc-session.md`](docs/adr/0009-ios-runtime-cametallayer-objc-session.md) |
 | 鸿蒙 Runtime | [`docs/adr/0010-ohos-runtime-xcomponent-session.md`](docs/adr/0010-ohos-runtime-xcomponent-session.md) |
+| 鸿蒙 Lite | [`docs/adr/0011-ohos-lite-egl-xcomponent.md`](docs/adr/0011-ohos-lite-egl-xcomponent.md) |
 | 架构 | [`docs/product/01-architecture.md`](docs/product/01-architecture.md) |
 | 术语 | [`docs/product/references/glossary.md`](docs/product/references/glossary.md) |
 | AI 工作流 | [`.cursor/agents-guide.md`](.cursor/agents-guide.md) |
@@ -77,5 +82,5 @@ _Avoid_：用 GLES 冒充 Runtime；KN 拥有帧泵；把 Runtime 耦进 `libent
 - 身份：ADR 0007；目标拆包：ADR 0008（文档已定，Gradle 未拆）
 - Demo：Home 仅「示例1 / 双轨」；官方五席源码已删
 - iOS：ADR 0009 Runtime Metal + Lite GLES 子树均已落地（`gles2-ios` / `wgpu-m0*`）
-- 鸿蒙 Runtime：ADR 0010 接线已落（`create_ohos` + `libholm_xc` + `KRHolmSurface`）；真机隧道待勾；Lite 后置
-- 后单：真机验收 Runtime → 再补鸿蒙 Lite；真拆三依赖、Runtime 产物与源同步门禁、`holm_api` 规范对齐
+- 鸿蒙：ADR 0010 Runtime + ADR 0011 Lite（同 XC EGL，`gles2-ohos`）；真机隧道/互切待勾
+- 后单：真机验收双轨；真拆三依赖、Runtime 产物与源同步门禁、`holm_api` 规范对齐

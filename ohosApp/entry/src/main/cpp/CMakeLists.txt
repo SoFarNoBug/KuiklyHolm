@@ -31,7 +31,10 @@ set_target_properties(holm_runtime
         PROPERTIES
         IMPORTED_LOCATION ${HOLM_RUNTIME_LIB_DIR}/libholm_runtime.so)
 
-add_library(holm_xc SHARED holm_xc/holm_xc_plugin.cpp)
+# ADR 0010 Runtime + ADR 0011 Lite EGL/GLES
+add_library(holm_xc SHARED
+        holm_xc/holm_xc_plugin.cpp
+        holm_xc/holm_xc_lite_gl.cpp)
 target_include_directories(holm_xc PRIVATE
         ${NATIVERENDER_ROOT_PATH}/holm_xc
         ${HOLM_RUNTIME_LIB_DIR})
@@ -40,4 +43,6 @@ target_link_libraries(holm_xc PUBLIC
         libace_ndk.z.so
         libhilog_ndk.z.so
         libnative_window.so
+        libEGL.so
+        libGLESv2.so
         holm_runtime)

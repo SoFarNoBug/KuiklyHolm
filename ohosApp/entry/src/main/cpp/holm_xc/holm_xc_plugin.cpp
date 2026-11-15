@@ -1,7 +1,7 @@
 /**
  * @file holm_xc_plugin.cpp
- * @brief ADR 0010 · libholm_xc.so：XComponent OnFrame 外泵 + NAPI Attr 桥
- * @date 2026-11-14
+ * @brief ADR 0010/0011 · libholm_xc.so：XComponent OnFrame + Runtime/Lite 双轨
+ * @date 2026-11-15
  * @author Auto
  */
 #include "holm_xc_island.h"
@@ -26,6 +26,7 @@ namespace {
 
 constexpr const char *kExecutorRuntime = "runtime";
 constexpr const char *kExecutorLite = "lite";
+constexpr const char *kBackendGles2Ohos = "gles2-ohos";
 constexpr double kNsPerSec = 1e9;
 
 bool NapiOk(napi_status status)
@@ -59,6 +60,21 @@ bool ReadUtf8Arg(napi_env env, napi_value arg, std::string &out)
 bool LooksLikeWgsl(const std::string &src)
 {
     return src.find("@fragment") != std::string::npos || src.find("fn fs_main") != std::string::npos;
+}
+
+std::string TrimCopy(const std::string &src)
+{
+    size_t start = 0;
+    while (start < src.size() &&
+           (src[start] == ' ' || src[start] == '\n' || src[start] == '\r' || src[start] == '\t')) {
+        ++start;
+    }
+    size_t end = src.size();
+    while (end > start &&
+           (src[end - 1] == ' ' || src[end - 1] == '\n' || src[end - 1] == '\r' || src[end - 1] == '\t')) {
+        --end;
+    }
+    return src.substr(start, end - start);
 }
 
 void RecomputeFrameInterval(HolmXcIsland &island)
@@ -158,21 +174,53 @@ void FirePerf(HolmXcIsland &island, double fps)
     FireJsObject(island.env, island.onPerfRef, obj);
 }
 
-void DestroySession(HolmXcIsland &island)
+bool IsRuntime(const HolmXcIsland &island)
+{
+    return island.executor == kExecutorRuntime;
+}
+
+void DestroyRuntimeSession(HolmXcIsland &island)
+{
+    if (island.sessionHandle != 0) {
+        holm_runtime_session_destroy(island.sessionHandle);
+        island.sessionHandle = 0;
+    }
+}
+
+void DestroyLite(HolmXcIsland &island)
+{
+    HolmXcLiteGlDestroy(island.liteGl);
+}
+
+void UnregisterFrame(HolmXcIsland &island)
 {
     if (island.component != nullptr && island.frameRegistered) {
         OH_NativeXComponent_UnregisterOnFrameCallback(island.component);
         island.frameRegistered = false;
     }
-    if (island.sessionHandle != 0) {
-        holm_runtime_session_destroy(island.sessionHandle);
-        island.sessionHandle = 0;
-    }
-    island.nativeWindow = nullptr;
     island.lastFrameTsNs = 0;
     island.lastDrawTsNs = 0;
     island.perfWindowTsNs = 0;
     island.perfFrames = 0;
+}
+
+void TeardownAllGpu(HolmXcIsland &island)
+{
+    UnregisterFrame(island);
+    DestroyRuntimeSession(island);
+    DestroyLite(island);
+    island.nativeWindow = nullptr;
+}
+
+void GetSurfaceSize(HolmXcIsland &island, void *window, uint32_t &outW, uint32_t &outH)
+{
+    uint64_t width = 1;
+    uint64_t height = 1;
+    if (island.component != nullptr && window != nullptr) {
+        OH_NativeXComponent_GetXComponentSize(island.component, window, &width, &height);
+    }
+    outW = static_cast<uint32_t>(std::max<uint64_t>(1, width));
+    outH = static_cast<uint32_t>(std::max<uint64_t>(1, height));
 }
 
 void ApplyRuntimeShaders(HolmXcIsland &island)
@@ -180,16 +228,7 @@ void ApplyRuntimeShaders(HolmXcIsland &island)
     if (island.sessionHandle == 0) {
         return;
     }
-    std::string trimmed = island.fragmentShader;
-    // trim ends
-    while (!trimmed.empty() && (trimmed.back() == ' ' || trimmed.back() == '\n' || trimmed.back() == '\r')) {
-        trimmed.pop_back();
-    }
-    size_t start = 0;
-    while (start < trimmed.size() && (trimmed[start] == ' ' || trimmed[start] == '\n' || trimmed[start] == '\r')) {
-        ++start;
-    }
-    trimmed = trimmed.substr(start);
+    std::string trimmed = TrimCopy(island.fragmentShader);
     if (trimmed.empty()) {
         holm_runtime_session_set_custom_fs(island.sessionHandle, "");
         if (!island.scene.empty()) {
@@ -205,21 +244,167 @@ void ApplyRuntimeShaders(HolmXcIsland &island)
     }
 }
 
-bool IsRuntime(const HolmXcIsland &island)
+/**
+ * @param reportDialectError true=显式 setFragmentShader 时对 WGSL 报 SHADER_DIALECT；
+ *        false=切轨途中暂存 WGSL 不报错（等 Compose 换成 LITE_BODY）。
+ */
+bool ApplyLiteShaders(HolmXcIsland &island, bool reportDialectError)
 {
-    return island.executor == kExecutorRuntime;
+    if (!island.liteGl.ready) {
+        return false;
+    }
+    std::string trimmed = TrimCopy(island.fragmentShader);
+    if (trimmed.empty()) {
+        FireError(island, "FRAGMENT_REQUIRED", "fragmentShader required (Shadertoy body)");
+        return false;
+    }
+    if (LooksLikeWgsl(trimmed)) {
+        if (reportDialectError) {
+            FireError(island, "SHADER_DIALECT",
+                      "Lite fragmentShader must be GLSL Shadertoy body (WGSL ignored)");
+        }
+        return false;
+    }
+    std::string errCode;
+    std::string errMsg;
+    if (!HolmXcLiteGlSetFragmentBody(island.liteGl, trimmed, &errCode, &errMsg)) {
+        FireError(island, errCode.c_str(), errMsg.c_str());
+        return false;
+    }
+    HolmXcLiteGlSetLiquid(island.liteGl, island.liquidBoost, island.liquidBend);
+    return true;
+}
+
+void NotePerf(HolmXcIsland &island, uint64_t timestamp)
+{
+    island.perfFrames += 1;
+    if (island.perfWindowTsNs == 0) {
+        island.perfWindowTsNs = timestamp;
+        return;
+    }
+    double windowSec = static_cast<double>(timestamp - island.perfWindowTsNs) / kNsPerSec;
+    if (windowSec >= 1.0) {
+        double fps = static_cast<double>(island.perfFrames) / windowSec;
+        FirePerf(island, fps);
+        island.perfFrames = 0;
+        island.perfWindowTsNs = timestamp;
+    }
+}
+
+void OnFramePump(OH_NativeXComponent *component, uint64_t timestamp, uint64_t /*targetTimestamp*/)
+{
+    char idBuf[OH_XCOMPONENT_ID_LEN_MAX + 1] = {0};
+    uint64_t idSize = OH_XCOMPONENT_ID_LEN_MAX + 1;
+    if (OH_NativeXComponent_GetXComponentId(component, idBuf, &idSize) != OH_NATIVEXCOMPONENT_RESULT_SUCCESS) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(HolmXcMutex());
+    auto &map = HolmXcIslands();
+    auto it = map.find(idBuf);
+    if (it == map.end()) {
+        return;
+    }
+    HolmXcIsland &island = it->second;
+    if (!island.playing) {
+        return;
+    }
+
+    double dt = 1.0 / 60.0;
+    if (island.lastFrameTsNs != 0 && timestamp > island.lastFrameTsNs) {
+        dt = static_cast<double>(timestamp - island.lastFrameTsNs) / kNsPerSec;
+    }
+    island.lastFrameTsNs = timestamp;
+    if (island.minFrameIntervalSec > 0.0 && island.lastDrawTsNs != 0) {
+        double sinceDraw = static_cast<double>(timestamp - island.lastDrawTsNs) / kNsPerSec;
+        if (sinceDraw + 1e-9 < island.minFrameIntervalSec) {
+            return;
+        }
+    }
+
+    if (IsRuntime(island)) {
+        if (island.sessionHandle == 0) {
+            return;
+        }
+        if (!holm_runtime_session_tick(island.sessionHandle, static_cast<float>(dt))) {
+            if (!island.blockedNotified) {
+                island.blockedNotified = true;
+                FireError(island, "BLOCKED", "holm_runtime tick failed");
+            }
+            return;
+        }
+    } else {
+        if (!island.liteGl.ready) {
+            return;
+        }
+        HolmXcLiteGlDrawFrame(island.liteGl, static_cast<float>(dt));
+    }
+
+    island.lastDrawTsNs = timestamp;
+    NotePerf(island, timestamp);
+}
+
+void EnsureFrameRegistered(HolmXcIsland &island)
+{
+    if (island.component == nullptr || island.frameRegistered) {
+        return;
+    }
+    OH_NativeXComponent_RegisterOnFrameCallback(island.component, OnFramePump);
+    island.frameRegistered = true;
+    ApplyExpectedFps(island);
+}
+
+void StartLiteIfNeeded(HolmXcIsland &island, void *window);
+void StartRuntimeIfNeeded(HolmXcIsland &island, void *window);
+
+void StartLiteIfNeeded(HolmXcIsland &island, void *window)
+{
+    DestroyRuntimeSession(island);
+    if (window == nullptr) {
+        FireError(island, "BLOCKED", "OHNativeWindow null");
+        return;
+    }
+    island.nativeWindow = window;
+
+    uint32_t w = 1;
+    uint32_t h = 1;
+    GetSurfaceSize(island, window, w, h);
+
+    if (island.liteGl.ready && island.liteGl.nativeWindow == window) {
+        std::string errCode;
+        std::string errMsg;
+        HolmXcLiteGlResize(island.liteGl, w, h, &errCode, &errMsg);
+        ApplyLiteShaders(island, false);
+        EnsureFrameRegistered(island);
+        if (!island.readyFired) {
+            island.readyFired = true;
+            island.blockedNotified = false;
+            FireReady(island, kBackendGles2Ohos);
+        }
+        return;
+    }
+
+    DestroyLite(island);
+    std::string errCode;
+    std::string errMsg;
+    if (!HolmXcLiteGlCreate(island.liteGl, window, w, h, &errCode, &errMsg)) {
+        FireError(island, errCode.c_str(), errMsg.c_str());
+        island.blockedNotified = true;
+        return;
+    }
+    if (!ApplyLiteShaders(island, false)) {
+        // 仍可深蓝清屏；不拆 EGL，便于后续补 fragmentShader / 切轨方言暂态
+    }
+    EnsureFrameRegistered(island);
+    if (!island.readyFired) {
+        island.readyFired = true;
+        island.blockedNotified = false;
+        FireReady(island, kBackendGles2Ohos);
+    }
 }
 
 void StartRuntimeIfNeeded(HolmXcIsland &island, void *window)
 {
-    if (!IsRuntime(island)) {
-        DestroySession(island);
-        if (!island.litePendingFired) {
-            island.litePendingFired = true;
-            FireError(island, "LITE_PENDING", "Ohos Lite GLES deferred (ADR 0010). Use executor=runtime.");
-        }
-        return;
-    }
+    DestroyLite(island);
     if (window == nullptr) {
         FireError(island, "BLOCKED", "OHNativeWindow null");
         return;
@@ -233,13 +418,9 @@ void StartRuntimeIfNeeded(HolmXcIsland &island, void *window)
         return;
     }
 
-    uint64_t width = 1;
-    uint64_t height = 1;
-    if (island.component != nullptr) {
-        OH_NativeXComponent_GetXComponentSize(island.component, window, &width, &height);
-    }
-    uint32_t w = static_cast<uint32_t>(std::max<uint64_t>(1, width));
-    uint32_t h = static_cast<uint32_t>(std::max<uint64_t>(1, height));
+    uint32_t w = 1;
+    uint32_t h = 1;
+    GetSurfaceSize(island, window, w, h);
 
     uint64_t handle = holm_runtime_session_create_ohos(window, w, h);
     if (handle == 0) {
@@ -258,72 +439,26 @@ void StartRuntimeIfNeeded(HolmXcIsland &island, void *window)
     const char *backend = backendBuf[0] != '\0' ? backendBuf : "wgpu-m0";
 
     if (!holm_runtime_session_tick(island.sessionHandle, 1.f / 60.f)) {
-        DestroySession(island);
+        DestroyRuntimeSession(island);
         FireError(island, "BLOCKED", "holm_runtime tick failed after create. No silent GLES stand-in.");
         island.blockedNotified = true;
         return;
     }
 
-    if (island.component != nullptr && !island.frameRegistered) {
-        OH_NativeXComponent_RegisterOnFrameCallback(island.component, [](OH_NativeXComponent *component,
-                                                                        uint64_t timestamp,
-                                                                        uint64_t /*targetTimestamp*/) {
-            char idBuf[OH_XCOMPONENT_ID_LEN_MAX + 1] = {0};
-            uint64_t idSize = OH_XCOMPONENT_ID_LEN_MAX + 1;
-            if (OH_NativeXComponent_GetXComponentId(component, idBuf, &idSize) !=
-                OH_NATIVEXCOMPONENT_RESULT_SUCCESS) {
-                return;
-            }
-            std::lock_guard<std::mutex> lock(HolmXcMutex());
-            auto &map = HolmXcIslands();
-            auto it = map.find(idBuf);
-            if (it == map.end()) {
-                return;
-            }
-            HolmXcIsland &island = it->second;
-            if (island.sessionHandle == 0 || !island.playing) {
-                return;
-            }
-            double dt = 1.0 / 60.0;
-            if (island.lastFrameTsNs != 0 && timestamp > island.lastFrameTsNs) {
-                dt = static_cast<double>(timestamp - island.lastFrameTsNs) / kNsPerSec;
-            }
-            island.lastFrameTsNs = timestamp;
-            if (island.minFrameIntervalSec > 0.0 && island.lastDrawTsNs != 0) {
-                double sinceDraw = static_cast<double>(timestamp - island.lastDrawTsNs) / kNsPerSec;
-                if (sinceDraw + 1e-9 < island.minFrameIntervalSec) {
-                    return;
-                }
-            }
-            if (!holm_runtime_session_tick(island.sessionHandle, static_cast<float>(dt))) {
-                if (!island.blockedNotified) {
-                    island.blockedNotified = true;
-                    FireError(island, "BLOCKED", "holm_runtime tick failed");
-                }
-                return;
-            }
-            island.lastDrawTsNs = timestamp;
-            island.perfFrames += 1;
-            if (island.perfWindowTsNs == 0) {
-                island.perfWindowTsNs = timestamp;
-            } else {
-                double windowSec = static_cast<double>(timestamp - island.perfWindowTsNs) / kNsPerSec;
-                if (windowSec >= 1.0) {
-                    double fps = static_cast<double>(island.perfFrames) / windowSec;
-                    FirePerf(island, fps);
-                    island.perfFrames = 0;
-                    island.perfWindowTsNs = timestamp;
-                }
-            }
-        });
-        island.frameRegistered = true;
-        ApplyExpectedFps(island);
-    }
-
+    EnsureFrameRegistered(island);
     if (!island.readyFired) {
         island.readyFired = true;
         island.blockedNotified = false;
         FireReady(island, backend);
+    }
+}
+
+void StartExecutorIfNeeded(HolmXcIsland &island, void *window)
+{
+    if (IsRuntime(island)) {
+        StartRuntimeIfNeeded(island, window);
+    } else {
+        StartLiteIfNeeded(island, window);
     }
 }
 
@@ -348,7 +483,7 @@ void OnSurfaceCreated(OH_NativeXComponent *component, void *window)
     HolmXcIsland &island = HolmXcEnsure(id);
     island.component = component;
     RecomputeFrameInterval(island);
-    StartRuntimeIfNeeded(island, window);
+    StartExecutorIfNeeded(island, window);
 }
 
 void OnSurfaceChanged(OH_NativeXComponent *component, void *window)
@@ -365,17 +500,29 @@ void OnSurfaceChanged(OH_NativeXComponent *component, void *window)
     HolmXcIsland &island = it->second;
     island.component = component;
     island.nativeWindow = window;
-    if (island.sessionHandle == 0) {
-        StartRuntimeIfNeeded(island, window);
+
+    uint32_t w = 1;
+    uint32_t h = 1;
+    GetSurfaceSize(island, window, w, h);
+
+    if (IsRuntime(island)) {
+        if (island.sessionHandle == 0) {
+            StartRuntimeIfNeeded(island, window);
+            return;
+        }
+        holm_runtime_session_resize(island.sessionHandle, w, h);
         return;
     }
-    uint64_t width = 1;
-    uint64_t height = 1;
-    OH_NativeXComponent_GetXComponentSize(component, window, &width, &height);
-    holm_runtime_session_resize(
-        island.sessionHandle,
-        static_cast<uint32_t>(std::max<uint64_t>(1, width)),
-        static_cast<uint32_t>(std::max<uint64_t>(1, height)));
+
+    if (!island.liteGl.ready) {
+        StartLiteIfNeeded(island, window);
+        return;
+    }
+    std::string errCode;
+    std::string errMsg;
+    if (!HolmXcLiteGlResize(island.liteGl, w, h, &errCode, &errMsg)) {
+        FireError(island, errCode.c_str(), errMsg.c_str());
+    }
 }
 
 void OnSurfaceDestroyed(OH_NativeXComponent *component, void * /*window*/)
@@ -389,7 +536,7 @@ void OnSurfaceDestroyed(OH_NativeXComponent *component, void * /*window*/)
     if (it == HolmXcIslands().end()) {
         return;
     }
-    DestroySession(it->second);
+    TeardownAllGpu(it->second);
     it->second.component = nullptr;
     it->second.readyFired = false;
 }
@@ -468,15 +615,13 @@ napi_value NapiSetExecutor(napi_env env, napi_callback_info info)
     island->executor = exec;
     island->readyFired = false;
     island->blockedNotified = false;
-    island->litePendingFired = false;
+    // 切轨：先卸当前轨 GPU，再启目标轨（同 window）
     if (IsRuntime(*island)) {
+        DestroyLite(*island);
         StartRuntimeIfNeeded(*island, island->nativeWindow);
     } else {
-        DestroySession(*island);
-        if (!island->litePendingFired) {
-            island->litePendingFired = true;
-            FireError(*island, "LITE_PENDING", "Ohos Lite GLES deferred (ADR 0010). Use executor=runtime.");
-        }
+        DestroyRuntimeSession(*island);
+        StartLiteIfNeeded(*island, island->nativeWindow);
     }
     return undefined;
 }
@@ -494,8 +639,12 @@ napi_value NapiSetFragmentShader(napi_env env, napi_callback_info info)
         return undefined;
     }
     ReadUtf8Arg(env, args[1], island->fragmentShader);
-    if (island->sessionHandle != 0 && IsRuntime(*island)) {
-        ApplyRuntimeShaders(*island);
+    if (IsRuntime(*island)) {
+        if (island->sessionHandle != 0) {
+            ApplyRuntimeShaders(*island);
+        }
+    } else if (island->liteGl.ready) {
+        ApplyLiteShaders(*island, true);
     }
     return undefined;
 }
@@ -584,6 +733,9 @@ napi_value NapiSetLiquid(napi_env env, napi_callback_info info)
     if (island->sessionHandle != 0) {
         holm_runtime_session_set_liquid(island->sessionHandle, island->liquidBoost, island->liquidBend);
     }
+    if (island->liteGl.ready) {
+        HolmXcLiteGlSetLiquid(island->liteGl, island->liquidBoost, island->liquidBend);
+    }
     return undefined;
 }
 
@@ -630,7 +782,7 @@ napi_value NapiDestroyIsland(napi_env env, napi_callback_info info)
     std::lock_guard<std::mutex> lock(HolmXcMutex());
     auto it = HolmXcIslands().find(id);
     if (it != HolmXcIslands().end()) {
-        DestroySession(it->second);
+        TeardownAllGpu(it->second);
         if (it->second.onReadyRef) {
             napi_delete_reference(env, it->second.onReadyRef);
         }

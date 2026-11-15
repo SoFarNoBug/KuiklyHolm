@@ -1,7 +1,7 @@
 /**
- * KRHolmSurface — ADR 0010 鸿蒙 Runtime 岛（XComponent + libholm_xc 外泵）
- * Lite 本波诚实 LITE_PENDING；禁止 GLES 冒充 wgpu。
- * @date 2026-11-14
+ * KRHolmSurface — ADR 0010/0011 鸿蒙双轨岛（XComponent + libholm_xc）
+ * Runtime=wgpu；Lite=同窗 EGL/GLES Shadertoy（backend=gles2-ohos）；禁止 GLES 冒充 wgpu。
+ * @date 2026-11-15
  * @author Auto
  */
 import { KRAny, KuiklyRenderBaseView, KuiklyRenderCallback } from '@kuikly-open/render';

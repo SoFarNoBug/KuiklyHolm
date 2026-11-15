@@ -1,5 +1,20 @@
 # dualtrack-lite-vs-standard · changelog
 
+## 2026-11-15（审查整改 ohos-lite-adr0011）
+
+- [MODIFY] README / eglTerminate / 切轨方言瞬态（见 ohos changelog）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改关 P1-doc-drift + P2｜待批 0
+- 真机验证表：仍待勾 `device-check-list/ohos-lite-adr0011.md`
+
+## 2026-11-15（鸿蒙 Lite ADR 0011）
+
+- [ADD] 同 XComponent EGL/GLES Lite：`gles2-ohos`；去 `LITE_PENDING`
+- [ADD] C++ wrap/vert 对齐 `HolmShadertoyShell` / `HolmBuiltinShaders`（改 SoT 须同步 `holm_xc_shadertoy.h`）
+- [MODIFY] Runtime↔Lite 互切急拆；共用 OnFrame + maxFps
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan｜待批 0
+- 真机验证表：`docs/reviews/device-check-list/ohos-lite-adr0011.md`（交审核员）
+- 自测：Lite 隧道 + 互切；空 FS / WGSL 负向
+
 ## 2026-11-14（鸿蒙 Runtime ADR 0010）
 
 - [ADD] `holm_runtime_session_create_ohos` + `build-ohos.sh` → `libholm_runtime.so`（wgpu 30 / ohos-only）

@@ -62,15 +62,17 @@ python3 -c "from pathlib import Path; p=Path('ohosApp/AppScope/app.json5'); b=p.
 
 1. 打开 Demo「示例1 / 双轨」(`holm_runtime_m0`)。
 2. **Runtime**：`executor=runtime` → 隧道出画；`onReady.backend` 为 `wgpu-m0`（或 `backend_id`）。
-3. **Lite**：`executor=lite` → 深蓝底 + `onError(LITE_PENDING)`（本波不冒充 GLES）。
-4. 切轨 / 离页：急拆 Session（`UnregisterOnFrame` + `destroy`），无泄漏。
-5. `maxFps`：`SetExpectedFrameRateRange` + OnFrame 跳帧可感知。
+3. **Lite**：`executor=lite` → 霓虹隧道出画；`onReady.backend=gles2-ohos`；**无** `LITE_PENDING`。
+4. Runtime↔Lite 互切多次：backend 不粘；无崩。
+5. 切轨 / 离页：急拆 Session **与** Lite EGL（`UnregisterOnFrame` + destroy），无泄漏。
+6. `maxFps`：`SetExpectedFrameRateRange` + OnFrame 跳帧可感知。
+7. 负向：空 `fragmentShader` → `FRAGMENT_REQUIRED`；Lite 喂 WGSL → `SHADER_DIALECT`。
 
 ## 架构备忘
 
 | 产物 | 职责 |
 | --- | --- |
 | `libholm_runtime.so` | wgpu Session C ABI（`create_ohos` / tick / …） |
-| `libholm_xc.so` | XComponent 生命周期 + OnFrame 外泵 + NAPI Attr |
-| `libentry.so` | KN init / dirs（**不含** Runtime） |
+| `libholm_xc.so` | XComponent + OnFrame + NAPI；Runtime 泵 + **Lite EGL/GLES**（ADR 0011） |
+| `libentry.so` | KN init / dirs（**不含** Runtime/Lite GL） |
 | `KRHolmSurface.ets` | expand-native-ui 注册；内嵌 `XComponent(libraryname='holm_xc')` |

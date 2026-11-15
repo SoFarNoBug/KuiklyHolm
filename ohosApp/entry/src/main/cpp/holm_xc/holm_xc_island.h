@@ -1,11 +1,13 @@
 /**
  * @file holm_xc_island.h
- * @brief ADR 0010 · XComponent 岛状态（按 XComponent id 索引）
- * @date 2026-11-14
+ * @brief ADR 0010/0011 · XComponent 岛状态（按 XComponent id 索引）
+ * @date 2026-11-15
  * @author Auto
  */
 #ifndef HOLM_XC_ISLAND_H
 #define HOLM_XC_ISLAND_H
+
+#include "holm_xc_lite_gl.h"
 
 #include <napi/native_api.h>
 #include <cstdint>
@@ -26,12 +28,12 @@ struct HolmXcIsland {
     float liquidBend = 0.05f;
 
     uint64_t sessionHandle = 0;
+    HolmXcLiteGl liteGl;
     void *nativeWindow = nullptr;
     OH_NativeXComponent *component = nullptr;
     bool frameRegistered = false;
     bool readyFired = false;
     bool blockedNotified = false;
-    bool litePendingFired = false;
 
     uint64_t lastFrameTsNs = 0;
     uint64_t lastDrawTsNs = 0;
