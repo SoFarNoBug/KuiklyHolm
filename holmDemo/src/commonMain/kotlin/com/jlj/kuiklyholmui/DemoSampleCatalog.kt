@@ -5,7 +5,7 @@ import com.jlj.kuiklybase.holm.HolmExecutor
 /**
  * @CreateDate: 2026/11/15
  * @Author: jlj
- * @Description: Demo 双轨样本目录（隧道 / Raymarching / 程序化海洋 / 故意失败）；chip 切换用。
+ * @Description: Demo 双轨样本目录（隧道 / Raymarching / 程序化海洋 / 电缆巢 / 故意失败）；chip 切换用。
  */
 enum class DemoSample(
     val id: String,
@@ -17,6 +17,8 @@ enum class DemoSample(
     IQ_PRIMITIVES("iq_primitives", "Raymarching - 基础图形", 2),
     /** afl_ext 程序化海面（MIT · shadertoy.com/view/MdXyzX）。 */
     PROCEDURAL_OCEAN("procedural_ocean", "程序化海洋", 4),
+    /** mrange 电缆巢（CC0 · shadertoy.com）。 */
+    CABLE_NEST("cable_nest", "电缆巢", 5),
     /** 故意编不过：展示 onError 捕获（Runtime=WGSL 保留字 ref；Lite=未定义标识符）。 */
     BAD_COMPILE("bad_compile", "故意失败", 3),
     ;
@@ -25,6 +27,7 @@ enum class DemoSample(
         TUNNEL -> NeonTunnelShaders.LITE_BODY
         IQ_PRIMITIVES -> IqPrimitivesShaders.LITE_BODY
         PROCEDURAL_OCEAN -> ProceduralOceanShaders.LITE_BODY
+        CABLE_NEST -> CableNestShaders.LITE_BODY
         BAD_COMPILE -> BadCompileShaders.LITE_BODY
     }
 
@@ -32,6 +35,7 @@ enum class DemoSample(
         TUNNEL -> NeonTunnelShaders.RUNTIME_FS
         IQ_PRIMITIVES -> IqPrimitivesShaders.RUNTIME_FS
         PROCEDURAL_OCEAN -> ProceduralOceanShaders.RUNTIME_FS
+        CABLE_NEST -> CableNestShaders.RUNTIME_FS
         BAD_COMPILE -> BadCompileShaders.RUNTIME_FS
     }
 
@@ -39,6 +43,7 @@ enum class DemoSample(
     fun uiCredit(): String? = when (this) {
         IQ_PRIMITIVES -> IqPrimitivesShaders.UI_CREDIT
         PROCEDURAL_OCEAN -> ProceduralOceanShaders.UI_CREDIT
+        CABLE_NEST -> CableNestShaders.UI_CREDIT
         else -> null
     }
 

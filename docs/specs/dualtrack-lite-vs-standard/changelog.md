@@ -1,5 +1,13 @@
 # dualtrack-lite-vs-standard · changelog
 
+## 2026-11-16（Demo · 电缆巢 CC0）
+
+- [ADD] `DemoSample.CABLE_NEST`（「电缆巢」）+ `CableNestShaders` Lite/Runtime；作者 mrange · shadertoy.com · CC0
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：口令加 CC0 样本｜待批 0
+- 真机验证表：本单无真机验证表（码农自测编译 + 可选装包）
+- 自测：`holm_runtime_m0` →「电缆巢」Lite/Runtime 出画；可见出处小字
+- carried-over: cam path warp「忘了哪份 shader」｜不修理由：作者整份 CC0 且未点名 NC 源
+
 ## 2026-11-16（onShaderCompiled 双耗时 · 四端）
 
 - [ADD] 双轨装载结束事件 `onShaderCompiled`（ADR 0012）；Lite wrap/compile 分计；Runtime `wrapMs=0`
