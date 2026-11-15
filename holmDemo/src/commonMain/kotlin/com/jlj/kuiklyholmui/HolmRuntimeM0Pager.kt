@@ -1,7 +1,6 @@
 package com.jlj.kuiklyholmui
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,12 +34,11 @@ import com.tencent.kuikly.compose.ui.unit.IntSize
 import com.tencent.kuikly.compose.ui.unit.dp
 import com.tencent.kuikly.compose.ui.unit.sp
 import com.tencent.kuikly.core.annotations.Page
-import kotlinx.coroutines.delay
 
 /**
  * @CreateDate: 2026/11/12
  * @Author: jlj
- * @Description: Demo 主推：多样本 chip（隧道 / IQ / 程序化海洋 / 电缆巢）+ gl/wgpu 双轨与 JSONL 采集。
+ * @Description: Demo 主推：多样本 chip（隧道 / IQ / 程序化海洋 / 故意失败）+ Lite/Runtime 双轨。
  */
 @Page("holm_runtime_m0", supportInLocal = true)
 internal class HolmRuntimeM0Pager : BasePager() {
@@ -56,38 +54,22 @@ private val RUNTIME_MAX_FPS_STEPS = intArrayOf(0, 30, HolmSurfaceAttr.DEFAULT_MA
 private val RUNTIME_MAX_FPS_LABELS = arrayOf("0", "30", "60", "120")
 private val ISLAND_FAIL_BLUE = Color(0xFF051447)
 private val ERROR_RED = Color(0xFFFF3355)
-/** 点「开始采集」后自动记 JSONL 的时长；到期停采，便于复制给 AI。 */
-private const val COLLECT_DURATION_MS: Long = 10_000L
 
 @Composable
 private fun HolmRuntimeM0Screen() {
     val statusBarHeight = LocalActivity.current.pageData.statusBarHeight
     var backendText by remember { mutableStateOf("waiting onReady…") }
-    var backendId by remember { mutableStateOf("") }
     var errorText by remember { mutableStateOf("") }
     var perfText by remember { mutableStateOf("fps=—") }
     var compileText by remember { mutableStateOf("compile=—") }
     var executor by remember { mutableStateOf(HolmExecutor.RUNTIME) }
     var maxFps by remember { mutableStateOf(HolmSurfaceAttr.DEFAULT_MAX_FPS) }
     var islandSize by remember { mutableStateOf(IntSize(1, 1)) }
-    var collecting by remember { mutableStateOf(false) }
-    var runId by remember { mutableStateOf(0) }
-    var sampleIndex by remember { mutableStateOf(0) }
     var sample by remember { mutableStateOf(DemoSample.TUNNEL) }
     // SHADER_/WGPU_ 失败后必须 false，否则 Attr 持续 playing=true 会把泵拉起来播 ClearTri
     var surfacePlaying by remember { mutableStateOf(true) }
     val scene = NeonTunnelShaders.SCENE_CUSTOM
     val fragmentShader = sample.fragmentFor(executor)
-
-    // runId 变一次 = 新一轮 10s；到期自动停并打 END（给人看的页面不堆 JSON）
-    LaunchedEffect(runId, collecting) {
-        if (!collecting) return@LaunchedEffect
-        delay(COLLECT_DURATION_MS)
-        if (collecting) {
-            collecting = false
-            println("[holm-perf] END runId=$runId samples=$sampleIndex reason=timeout")
-        }
-    }
 
     Column(
         modifier = Modifier
@@ -126,7 +108,6 @@ private fun HolmRuntimeM0Screen() {
                 surfacePlaying = true
                 errorText = ""
                 // 等 onReady 前勿粘旧 backend（审查 P1-doc-drift）
-                backendId = ""
                 backendText = "waiting onReady…"
             },
         )
@@ -152,26 +133,6 @@ private fun HolmRuntimeM0Screen() {
         }
         Spacer(modifier = Modifier.height(8.dp))
         RuntimeMaxFpsRow(value = maxFps, onSelect = { maxFps = it })
-        Spacer(modifier = Modifier.height(8.dp))
-        RuntimeChip(
-            label = if (collecting) "停止采集（10s）" else "开始采集（10s）",
-            active = collecting,
-            onClick = {
-                if (collecting) {
-                    collecting = false
-                    println("[holm-perf] END runId=$runId samples=$sampleIndex reason=manual")
-                } else {
-                    runId += 1
-                    sampleIndex = 0
-                    collecting = true
-                    println(
-                        "[holm-perf] BEGIN runId=$runId executor=$executor scene=$scene " +
-                            "maxFps=$maxFps example=${sample.jsonExample} sample=${sample.id} " +
-                            "backend=$backendId ${islandSize.width}x${islandSize.height}",
-                    )
-                }
-            },
-        )
         Spacer(modifier = Modifier.height(12.dp))
         Box(
             modifier = Modifier
@@ -191,7 +152,6 @@ private fun HolmRuntimeM0Screen() {
                 fragmentShader = fragmentShader,
                 onReady = { ready ->
                     errorText = ""
-                    backendId = ready.backend
                     backendText = "onReady backend=${ready.backend} quality=${ready.quality}"
                 },
                 onError = { err ->
@@ -230,27 +190,6 @@ private fun HolmRuntimeM0Screen() {
                             errorText = ""
                         }
                     }
-                    if (collecting) {
-                        sampleIndex += 1
-                        val line = buildString {
-                            append('{')
-                            append("\"runId\":").append(runId).append(',')
-                            append("\"ts\":").append(sampleIndex).append(',')
-                            append("\"sampleIndex\":").append(sampleIndex).append(',')
-                            append("\"executor\":\"").append(executor).append("\",")
-                            append("\"backend\":\"").append(escapeJson(backendId)).append("\",")
-                            append("\"maxFps\":").append(maxFps).append(',')
-                            append("\"example\":").append(sample.jsonExample).append(',')
-                            append("\"sample\":\"").append(sample.id).append("\",")
-                            append("\"fps\":").append(perf.fps).append(',')
-                            append("\"frameMs\":").append(perf.frameMs).append(',')
-                            append("\"width\":").append(islandSize.width).append(',')
-                            append("\"height\":").append(islandSize.height)
-                            append('}')
-                        }
-                        // H5：println → console；Android：logcat。前缀便于 AI/DevTools 过滤
-                        println("[holm-perf] $line")
-                    }
                 },
             )
             if (errorText.isNotEmpty()) {
@@ -263,17 +202,6 @@ private fun HolmRuntimeM0Screen() {
                 )
             }
         }
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            text = if (collecting) {
-                "采集中…控制台 [holm-perf]，约 10s 自动停。"
-            } else {
-                "开始采集 → 控制台/[logcat] 静默打 [holm-perf] JSONL（约 10s）。"
-            },
-            fontSize = 12.sp,
-            lineHeight = 14.sp,
-            color = DemoTheme.TextSecondary,
-        )
     }
 }
 
@@ -400,6 +328,3 @@ private fun RuntimeChip(
         )
     }
 }
-
-private fun escapeJson(s: String): String =
-    s.replace("\\", "\\\\").replace("\"", "\\\"")

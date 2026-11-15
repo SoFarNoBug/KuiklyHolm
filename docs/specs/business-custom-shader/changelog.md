@@ -1,5 +1,11 @@
 # changelog · business-custom-shader
 
+## 2026-11-16（Demo 去掉 JSONL 采集入口）
+
+- [MODIFY] `holm_runtime_m0`：删除「开始采集」按钮、采集提示文案及 `[holm-perf]` JSONL 相关状态
+- 本单无真机验证（UI 删控件）
+- 轻量治理：规范自检见会话实现回报；gate 跳过（纯业务）
+
 ## 2026-11-16（审查整改 · onShaderCompiled P2）
 
 - [MODIFY] H5 Runtime Worker：`setCustomFs` 失败保留 `compileMs`（关 P2-h5-runtime-fail-compileMs-zero）

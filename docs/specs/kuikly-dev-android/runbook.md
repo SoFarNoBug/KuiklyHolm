@@ -59,12 +59,6 @@ cd ..
 
 缺 so → Demo `onError(BLOCKED)`，深蓝底，**不**静默 GLES。
 
-采集 `[holm-perf]`（Demo `println`）：
-
-```bash
-adb logcat | findstr holm-perf
-```
-
 ## 仅编译（不装机）
 
 ```bash
