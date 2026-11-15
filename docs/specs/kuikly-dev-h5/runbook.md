@@ -120,19 +120,56 @@ node static_server/serve/index.js
 | 8080 200 但仍空 | 8083 的 `nativevue2.js` 是否 200、体积是否数 MB | 重跑 pack；看 serve 启动日志解析到的目录 |
 | pack 卡在 Yarn | GitHub 超时 | `node static_server/fetch-yarn-ivy.js` 后再 pack |
 | 改了 config.d 无效 | 旧 webpack 进程仍在 | 杀 8080 占用进程后重跑 `jsBrowserDevelopmentRun` |
-| `Cannot expand ZIP … kotlin_resources.zip` / zip 仅几百字节 | Gradle 缓存损坏的 `compose-js` 资源包 | 删坏包后重编，见下节 |
+| `Cannot expand ZIP … kotlin_resources.zip` | 缓存里的 zip 实为反爬 HTML，或真损坏 | 见下节；**勿只删了再 `--refresh-dependencies`**（会再下到 HTML） |
+| Runtime 岛黑屏 / 深蓝清屏，Lite 正常 | 坏 WGSL 编译失败未接 onError（旧 wasm）或业务未看错误条 | 先看页内 `onError SHADER_CUSTOM` / `WGPU_*`；改 `holm-runtime` 后须重跑 `holm-runtime/build-wasm.ps1` 再 pack H5 |
 
-### compose-js `kotlin_resources.zip` 损坏
+### compose-js `kotlin_resources.zip`（pack / webpack 失败）
 
-`:h5App:jsBrowserDevelopmentWebpack` / `compileKotlinJs` 报类似：
+`:holmDemo:packLocalJsBundleDebug` / `:h5App:jsBrowserDevelopmentRun` 等在
+`:…:jsResolveResourcesFromDependencies` 报：
 
 `Cannot expand ZIP '…\compose-js\2.31.0-2.1.21\…\compose-2.31.0-2.1.21.kotlin_resources.zip'`
 
-且该文件体积异常小（例：~1 KB）时：
+#### 根因（本仓踩过，2026-11-15）
 
-1. `./gradlew --stop`  
-2. 删除该损坏 zip（路径在报错里；通常在 `%USERPROFILE%\.gradle\caches\modules-2\files-2.1\com.tencent.kuikly-open\compose-js\…`）  
-3. 再跑 `:h5App:jsBrowserDevelopmentWebpack` 或 `jsBrowserDevelopmentRun`（会重新下载）
+| 点 | 说明 |
+|---|---|
+| 合法包很小 | `compose-js` 的 `jsResourcesElements` 元数据里该 zip **约 350 B**（空资源壳），**不能**单凭「几百字节」判坏 |
+| 坏包特征 | 体积常 ~1 KB；用文本打开开头是 `<script>…`（腾讯云反爬 / Bot 挑战），**不是** `PK` zip 头 |
+| 易踩镜像 | Gradle 经 `mirrors.cloud.tencent.com/.../maven-public/` 拉该文件时，有时落到 HTML；`--refresh-dependencies` 仍会再下坏包 |
+| 可用源 | `https://mirrors.tencent.com/nexus/repository/maven-tencent/com/tencent/kuikly-open/compose-js/<ver>/compose-js-<ver>-kotlin_resources.kotlin_resources.zip` |
+
+版本号以工程依赖为准（例：`2.31.0-2.1.21`）。校验值以 Gradle 缓存里对应 `.module` 的 `jsResourcesElements-published.files[]` 为准（同版示例：`sha1=ec1367d3…`、`sha256=f288c648…`、`size=350`）。
+
+#### 处理
+
+1. 确认坏包：打开报错路径的 zip，若是 HTML/`<script>` → 按下面手工灌缓存；若是真 zip 损坏再谈删缓存重下。  
+2. `./gradlew --stop`  
+3. 删掉所有坏副本：  
+   `%USERPROFILE%\.gradle\caches\modules-2\files-2.1\com.tencent.kuikly-open\compose-js\<ver>\**\*.kotlin_resources.zip`  
+4. 从 **maven-tencent** 下载正确文件，校验 sha1/sha256 与 `.module` 一致后，装到：  
+   `…\compose-js\<ver>\<sha1>\compose-2.31.0-2.1.21.kotlin_resources.zip`  
+   （缓存内文件名是 `compose-<ver>.kotlin_resources.zip`；远端 URL 名是 `compose-js-<ver>-kotlin_resources.kotlin_resources.zip`。）  
+5. **不要**立刻 `--refresh-dependencies` 覆盖刚灌好的包；直接重跑 `packLocalJsBundleDebug` / `jsBrowserDevelopmentRun`。
+
+PowerShell 示例（版本按实际改）：
+
+```powershell
+$ver = "2.31.0-2.1.21"
+$url = "https://mirrors.tencent.com/nexus/repository/maven-tencent/com/tencent/kuikly-open/compose-js/$ver/compose-js-$ver-kotlin_resources.kotlin_resources.zip"
+$out = "$env:TEMP\compose-kotlin_resources.zip"
+Invoke-WebRequest -Uri $url -OutFile $out -UseBasicParsing
+$sha1 = (Get-FileHash $out -Algorithm SHA1).Hash.ToLower()
+# 对照 .module 的 sha1 / size（合法约 350）
+Get-ChildItem "$env:USERPROFILE\.gradle\caches\modules-2\files-2.1\com.tencent.kuikly-open\compose-js\$ver" -Recurse -Filter "*.kotlin_resources.zip" | Remove-Item -Force
+$dest = "$env:USERPROFILE\.gradle\caches\modules-2\files-2.1\com.tencent.kuikly-open\compose-js\$ver\$sha1"
+New-Item -ItemType Directory -Force -Path $dest | Out-Null
+Copy-Item $out "$dest\compose-$ver.kotlin_resources.zip" -Force
+.\gradlew.bat --stop
+.\gradlew.bat :holmDemo:packLocalJsBundleDebug
+```
+
+若反复从 `maven-public` 拉到 HTML，优先保证 `settings.gradle.kts` 里 **maven-tencent** 可解析到该坐标；手工灌缓存只是本机应急。
 
 快速自检（PowerShell 思路）：
 

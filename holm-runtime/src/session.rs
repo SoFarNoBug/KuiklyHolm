@@ -71,9 +71,10 @@ impl HolmRuntimeSession {
     /// 业务 WGSL 片元正文（须含 `@fragment fn fs_main`）；空串清除并回 ClearTri。
     #[wasm_bindgen(js_name = setCustomFs)]
     pub fn set_custom_fs(&mut self, fs: &str) -> Result<(), JsValue> {
+        // 只带 message；code 由宿主填 SHADER_CUSTOM，避免双前缀
         self.inner
             .set_custom_fs(fs)
-            .map_err(|e| JsValue::from_str(&format!("setCustomFs: {e}")))
+            .map_err(|e| JsValue::from_str(&e))
     }
 
     #[wasm_bindgen(js_name = setLiquid)]
@@ -95,6 +96,35 @@ impl HolmRuntimeSession {
         self.inner
             .tick(dt_secs)
             .map_err(|e| JsValue::from_str(&e))
+    }
+
+    /// 最近一次错误码（setCustomFs / tick / uncaptured）。
+    #[wasm_bindgen(js_name = lastErrorCode)]
+    pub fn last_error_code(&self) -> String {
+        self.inner.last_error().0
+    }
+
+    /// 最近一次错误文案。
+    #[wasm_bindgen(js_name = lastErrorMessage)]
+    pub fn last_error_message(&self) -> String {
+        self.inner.last_error().1
+    }
+
+    /// 取出 pending 错误队列（含 uncaptured）；元素为 `{code, message}`。
+    #[wasm_bindgen(js_name = drainErrors)]
+    pub fn drain_errors(&self) -> js_sys::Array {
+        let out = js_sys::Array::new();
+        for (code, message) in self.inner.drain_errors() {
+            let obj = js_sys::Object::new();
+            let _ = js_sys::Reflect::set(&obj, &JsValue::from_str("code"), &JsValue::from_str(&code));
+            let _ = js_sys::Reflect::set(
+                &obj,
+                &JsValue::from_str("message"),
+                &JsValue::from_str(&message),
+            );
+            out.push(&obj);
+        }
+        out
     }
 
     /// 释放 Session（宿主卸岛时调用）。

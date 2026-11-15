@@ -1,5 +1,110 @@
 # dualtrack-lite-vs-standard · changelog
 
+## 2026-11-15（样本展示名：Raymarching - 基础图形）
+
+- [MODIFY] `DemoSample.IQ_PRIMITIVES.label`：`IQ原语` → `Raymarching - 基础图形`（id 不变）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：对齐 Shadertoy 场景名｜待批 0
+- 本单无真机验证
+- 自测：示例 chip 可见「Raymarching - 基础图形」
+
+## 2026-11-15（IQ原语 MIT 出处标注）
+
+- [ADD] Demo 选中「IQ原语」时一行小字：作者 Inigo Quilez · 出处 shadertoy.com · MIT
+- [MODIFY] `IqPrimitivesShaders`：KDoc + LITE/RUNTIME 注释头保留 MIT notice 与 Shadertoy/iquilezles 链接
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：口令加版权标注｜待批 0
+- 本单无真机验证
+- 自测：Runtime→IQ原语 → 可见出处小字；切走隧道小字消失
+
+## 2026-11-15（失败停泵：勿 ClearTri 假特效）
+
+- [MODIFY] `set_custom_fs` 失败：`present_clear_only` 暗色清屏 + `playing=false`（H5/Ohos session_core）
+- [MODIFY] H5 Worker / 主线程 / Android：失败对齐停泵；Demo `surfacePlaying` 仅对 `SHADER_CUSTOM`/`SHADER_COMPILE`/WGPU_/TICK/SURFACE 置 false（勿吃 SHADER_WRAP）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：浏览器复现 bad_compile 仍 60fps ClearTri｜待批 0
+- 本单无真机验证（H5 浏览器自测已过：红字 + 暗屏无黄三角；切回隧道出画）
+- 自测：隧道→故意失败 → 红字 + 停画/无黄三角；切回隧道恢复
+
+## 2026-11-15（切换样本失败卸掉上一档特效）
+
+- [MODIFY] Runtime `set_custom_fs` 失败 → ClearTri（卸 `pipe_custom`）；宿主先 `setCustomFs("")` 再装新
+- [MODIFY] Lite H5/Android：compile/link 失败删除上一 program，深蓝清屏
+- [NOTE] H5 宿主改动在 `h5App`/`KuiklyHolmCore` jsMain，**须重编/重启 8080**；只 pack Demo 不够
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：切换示例/轨应停旧特效｜待批 0
+- 本单无真机验证
+- 自测：隧道→故意失败 → 红字 + **不再**播隧道；切回隧道出画
+
+## 2026-11-15（Demo 故意失败样本）
+
+- [ADD] `DemoSample.BAD_COMPILE` / `BadCompileShaders`：Runtime `let ref`、Lite 未定义标识符；chip「故意失败」
+- [MODIFY] 换样本时清 `errorText`，避免 sticky 挡住下一档
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：口令加负向 Demo chip｜待批 0
+- 本单无真机验证
+- 自测：Runtime→故意失败 → 红字 `SHADER_CUSTOM` 含 reserved；切回隧道出画
+
+## 2026-11-15（审查回执行 · wgpu-error-to-business P1/P2）
+
+- [MODIFY] H5 主线程：`sessionTick` 透传 message + 每帧/失败 `drainErrors`；Worker catch 仅 drain（空才 fallback fire）
+- [MODIFY] Android：`setCustomFs`/`tick` 失败只 drain 一次，避免 lastError+drain 双发
+- [MODIFY] Ohos tick（帧泵 + create 首帧）读 `last_error_*`；wasm `setCustomFs` 错误 JsValue 去 `SHADER_CUSTOM:` 前缀
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：审查回执行 P1/P2｜待批 0
+- 本单无真机验证（H5 联调见 runbook；可执行档仍 `device-check-list/wgpu-error-to-business.md`）
+- 审查回执行：`docs/reviews/review-wgpu-error-to-business.md`
+
+## 2026-11-15（wgpu 错误全量 onError）
+
+- [ADD] `holm-runtime`：`error_bridge` + naga 同步 WGSL 校验；`on_uncaptured_error` / pending drain；`set_custom_fs` 失败不覆盖成功管线
+- [ADD] H5 `drainErrors` / Android `lastError*`+`drainErrors` / iOS·Ohos `last_error_*`；宿主透传完整 message
+- [MODIFY] Demo：`SHADER_*` / `WGPU_*` / `TICK` / `SURFACE` 不被 onPerf 清空
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan wgpu onError｜待批 0
+- 本单无真机验证
+- 自测：坏 WGSL（如 `let ref`）→ Runtime `onError SHADER_CUSTOM` 含 reserved keyword；合法 IQ 出画
+
+## 2026-11-15（修 IQ Runtime 黑屏）
+
+- [MODIFY] `IqPrimitivesShaders.RUNTIME_FS`：WGSL 保留字 `ref` → `refl`（编译失败会留下清屏≈黑屏）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改 Runtime 编译｜待批 0
+- 本单无真机验证
+
+## 2026-11-15（Demo 换 IQ SDF 原语陈列）
+
+- [ADD] `IqPrimitivesShaders`：移植 Inigo Quilez Raymarching primitives（MIT；Lite+WGSL；GLES2 去重载/位运算，桩 iMouse/iFrame，AA=1，去 gamma）
+- [MODIFY] `DemoSampleCatalog`：仅 隧道 + IQ原语；删除豆包 Phong/棋盘/大理石/菲涅尔/SDF 与血浆/水波/火焰
+- [REMOVE] `DemoEffectShaders.kt`
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：口令换样本｜待批 0
+- 本单无真机验证
+- 自测：H5 Lite 出 IQ 场景；弱端可能掉帧属预期
+
+## 2026-11-15（Demo 样本改用豆包 Shader 合集）
+
+- [MODIFY] `DemoEffectShaders` / `DemoSampleCatalog`：去掉血浆/水波/火焰；接入 Phong / 棋盘 / 大理石 / 菲涅尔 / SDF（Lite+WGSL；合集 `u_scale`/`u_intensity` 写死常量）
+- [MODIFY] `holm_runtime_m0` 示例 chip 按每行 3 个分行（6 样本）
+- 来源：豆包线程「Shader代码合集」（噪声 3D 哈希按可编译修正）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：口令换样本、无库契约变更｜待批 0
+- 本单无真机验证
+- 自测：H5 六 chip × Lite/Runtime 出画
+
+## 2026-11-15（Demo ACD 特效观感重做）
+
+- [MODIFY] `DemoEffectShaders`：血浆 / 水波 / 火焰 Lite+WGSL 成对重写（高对比域扭曲、多源涟漪+高光、上升湍流+热核/火花）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：口令改观感、无契约变更｜待批 0
+- 本单无真机验证
+- 自测：H5 `holm_runtime_m0` 四 chip × Lite/Runtime 出画且主题可辨
+
+## 2026-11-15（审查整改 demo-acd-samples P2）
+
+- [MODIFY] 切样本不再清 `backend`/`waiting onReady`（仅切 executor 清）
+- [MODIFY] 示例 chip 两行排布 + compact padding（窄屏不挤出）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改关 P2｜待批 0
+- 本单无真机验证
+
+## 2026-11-15（Demo 多样本 A/C/D chip）
+
+- [ADD] `DemoSampleCatalog` + `DemoEffectShaders`：血浆 / 水波 / 火焰（Lite body + Runtime WGSL 成对）
+- [MODIFY] `holm_runtime_m0`：示例 chip 切 隧道/血浆/水波/火焰；切样本清 backend；JSONL 带 `sample`
+- [MODIFY] Home 入口文案「示例 / 双轨」
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan Demo ACD｜待批 0
+- 本单无真机验证
+- 自测：四 chip × Lite/Runtime 出画；切样本不崩
+
 ## 2026-11-15（审查整改 ohos-lite-adr0011）
 
 - [MODIFY] README / eglTerminate / 切轨方言瞬态（见 ohos changelog）

@@ -16,6 +16,8 @@ wgpu_backend = []
 
 [dependencies]
 bytemuck = { version = "1", features = ["derive"] }
+# 与 wgpu 23 对齐；Ohos(wgpu30) 仍用其做同步 WGSL 语法校验（不跑 naga 后端）
+naga = { version = "23.1", default-features = false, features = ["wgsl-in"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wgpu = { version = "23", default-features = false, features = ["wgsl", "webgpu", "webgl"] }

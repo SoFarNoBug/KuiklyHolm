@@ -138,21 +138,37 @@ object HolmGlPumpSource {
       );
     }
 
+    function dropProgram() {
+      if (gl && program) {
+        try { gl.deleteProgram(program); } catch (_) {}
+      }
+      program = null;
+    }
+
     function rebuild() {
       if (!gl || !vertSrc || !fragSrc) return false;
       var vs = compile(gl.VERTEX_SHADER, vertSrc);
       var fs = compile(gl.FRAGMENT_SHADER, fragSrc);
-      if (!vs || !fs) return false;
+      if (!vs || !fs) {
+        // 切换样本失败：卸掉上一档，深蓝清屏（勿继续播旧特效）
+        dropProgram();
+        return false;
+      }
       var prog = gl.createProgram();
-      if (!prog) return false;
+      if (!prog) {
+        dropProgram();
+        return false;
+      }
       gl.attachShader(prog, vs);
       gl.attachShader(prog, fs);
       gl.linkProgram(prog);
       if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
         emitError("SHADER_LINK", gl.getProgramInfoLog(prog) || "link failed");
+        try { gl.deleteProgram(prog); } catch (_) {}
+        dropProgram();
         return false;
       }
-      if (program) gl.deleteProgram(program);
+      dropProgram();
       program = prog;
       shaderFailed = false;
       timeLoc = gl.getUniformLocation(program, "u_time");

@@ -61,6 +61,14 @@ uint32_t holm_runtime_session_tick(uint64_t handle, float dt_secs);
  */
 uint32_t holm_runtime_session_backend_id(uint64_t handle, char *out_buf, uint32_t out_len);
 
+/**
+ * Last error code / message after failed set_custom_fs / tick / uncaptured wgpu.
+ * Copies NUL-terminated UTF-8; truncates if needed.
+ * @return bytes written excluding NUL, or 0
+ */
+uint32_t holm_runtime_session_last_error_code(uint64_t handle, char *out_buf, uint32_t out_len);
+uint32_t holm_runtime_session_last_error_message(uint64_t handle, char *out_buf, uint32_t out_len);
+
 #ifdef __cplusplus
 }
 #endif

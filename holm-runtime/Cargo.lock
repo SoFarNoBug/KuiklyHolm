@@ -401,6 +401,7 @@ dependencies = [
  "console_error_panic_hook",
  "jni",
  "js-sys",
+ "naga 23.1.0",
  "ndk-sys 0.6.0+11769913",
  "pollster",
  "raw-window-handle",

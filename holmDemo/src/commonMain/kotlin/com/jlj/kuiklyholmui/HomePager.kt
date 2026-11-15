@@ -30,7 +30,7 @@ import com.tencent.kuikly.core.pager.Pager
 /**
  * @CreateDate: 2026/11/12
  * @Author: jlj
- * @Description: Holm Demo 入口主页（示例1 / 双轨）。
+ * @Description: Holm Demo 入口主页（示例 / 双轨）。
  */
 @Page("home", supportInLocal = true)
 internal class HomePager : BasePager() {
@@ -73,7 +73,7 @@ private fun HomeScreen() {
         )
         Spacer(modifier = Modifier.height(40.dp))
         HomeButton(
-            label = "示例1 / 双轨 (holm_runtime_m0)",
+            label = "示例 / 双轨 (holm_runtime_m0)",
             onClick = { openPage(localPager, "holm_runtime_m0") },
         )
     }

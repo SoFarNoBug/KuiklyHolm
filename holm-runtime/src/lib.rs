@@ -5,6 +5,9 @@
 #[cfg(feature = "wgpu_backend")]
 mod shaders;
 
+#[cfg(feature = "wgpu_backend")]
+mod error_bridge;
+
 #[cfg(all(feature = "wgpu_backend", not(target_env = "ohos")))]
 mod session_core;
 

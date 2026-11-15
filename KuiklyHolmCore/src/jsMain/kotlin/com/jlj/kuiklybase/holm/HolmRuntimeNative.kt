@@ -107,22 +107,43 @@ object HolmRuntimeNative {
     }
 
     /**
-     * 设置自定义 WGSL 片元（空串清除）。返回 false 表示调用抛错或 API 缺失。
+     * 设置自定义 WGSL 片元（空串清除）。
+     * @return null 成功；非空为错误文案（须 fireError SHADER_CUSTOM）。
      */
-    fun sessionSetCustomFs(session: dynamic, wgslFs: String): Boolean {
-        if (session == null) return false
+    fun sessionSetCustomFs(session: dynamic, wgslFs: String): String? {
+        if (session == null) return "HolmRuntimeSession missing"
         return try {
             js(
                 """
                 (function(s, fs) {
-                  if (!s || typeof s.setCustomFs !== 'function') return false;
+                  if (!s || typeof s.setCustomFs !== 'function') {
+                    throw new Error('setCustomFs missing');
+                  }
                   s.setCustomFs(fs || "");
-                  return true;
+                  return null;
                 })
                 """,
-            ).unsafeCast<(dynamic, String) -> Boolean>()(session, wgslFs)
+            ).unsafeCast<(dynamic, String) -> String?>()(session, wgslFs)
         } catch (t: Throwable) {
-            false
+            t.message?.takeIf { it.isNotBlank() } ?: t.toString()
+        }
+    }
+
+    /** 取出 Session pending 错误（含 uncaptured）；每项 `{code, message}`。 */
+    fun sessionDrainErrors(session: dynamic): Array<dynamic> {
+        if (session == null) return emptyArray()
+        return try {
+            js(
+                """
+                (function(s) {
+                  if (!s || typeof s.drainErrors !== 'function') return [];
+                  var arr = s.drainErrors();
+                  return arr || [];
+                })
+                """,
+            ).unsafeCast<(dynamic) -> Array<dynamic>>()(session)
+        } catch (_: Throwable) {
+            emptyArray()
         }
     }
 
@@ -147,20 +168,25 @@ object HolmRuntimeNative {
         ).unsafeCast<(dynamic, Int, Int) -> Unit>()(session, width, height)
     }
 
-    fun sessionTick(session: dynamic, dtSecs: Float): Boolean {
-        if (session == null) return false
+    /**
+     * @return null 成功；非空为错误文案（须 fireError / drain）。
+     */
+    fun sessionTick(session: dynamic, dtSecs: Float): String? {
+        if (session == null) return "HolmRuntimeSession missing"
         return try {
             js(
                 """
                 (function(s, dt) {
-                  if (!s || typeof s.tick !== 'function') return false;
+                  if (!s || typeof s.tick !== 'function') {
+                    throw new Error('tick missing');
+                  }
                   s.tick(dt);
-                  return true;
+                  return null;
                 })
                 """,
-            ).unsafeCast<(dynamic, Float) -> Boolean>()(session, dtSecs)
+            ).unsafeCast<(dynamic, Float) -> String?>()(session, dtSecs)
         } catch (t: Throwable) {
-            false
+            t.message?.takeIf { it.isNotBlank() } ?: t.toString()
         }
     }
 

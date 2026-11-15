@@ -19,6 +19,9 @@
 - [ ] DualTrack 性能对比须标注端与分辨率策略；iOS Lite 1x 点像素；模拟器 GLES raymarch fps 不作真机结论｜2026-11-14｜自评：已达标（ios-lite-gles 审查观察；待批晋升）
 - [ ] 同窗 DualTrack（wgpu↔EGL）落地后，README/runbook 不得残留 `LITE_PENDING` 当现行；切轨占窗释放须真机证｜2026-11-15｜自评：未达标（ohos-lite-adr0011 P1-doc-drift + device-verify）
 - [ ] C++ 内嵌 Shadertoy wrap 与 Kotlin SoT 双源时，changelog 须写同步义务｜2026-11-15｜自评：已达标（ohos-lite-adr0011；待批晋升）
+- [ ] Demo 仅换 fragmentShader 时不应清空 onReady/backend 展示；切 executor 与切片元语义不同｜2026-11-15｜自评：未达标（demo-acd-samples P2）
+- [ ] Runtime 错误桥：`emit`+`Result`/`throw` 与宿主 `drain` 只能选一侧 fire，避免同一次失败双发 onError｜2026-11-15｜自评：未达标（wgpu-error-to-business P2-duplicate-onerror）
+- [ ] H5 Runtime 主线程回退须与 Worker 同契约透传 tick/lastError/drain，禁止只接 Worker 路径｜2026-11-15｜自评：未达标（wgpu-error-to-business P1-plan-soft-drift）
 
 ## 已晋升
 

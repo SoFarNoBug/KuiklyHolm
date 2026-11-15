@@ -241,3 +241,64 @@ pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeBack
         .map(|s| s.into_raw())
         .unwrap_or(std::ptr::null_mut())
 }
+
+#[no_mangle]
+pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeLastErrorCode(
+    env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+) -> jstring {
+    let (code, _) = unsafe { from_handle(handle) }
+        .map(|s| s.core.last_error())
+        .unwrap_or_default();
+    env.new_string(code)
+        .map(|s| s.into_raw())
+        .unwrap_or(std::ptr::null_mut())
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeLastErrorMessage(
+    env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+) -> jstring {
+    let (_, msg) = unsafe { from_handle(handle) }
+        .map(|s| s.core.last_error())
+        .unwrap_or_default();
+    env.new_string(msg)
+        .map(|s| s.into_raw())
+        .unwrap_or(std::ptr::null_mut())
+}
+
+/// 返回 String[]：code, message, code, message, …
+#[no_mangle]
+pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeDrainErrors<'local>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    handle: jlong,
+) -> jni::sys::jobjectArray {
+    let empty = || {
+        env.new_object_array(0, "java/lang/String", JObject::null())
+            .map(|a| a.into_raw())
+            .unwrap_or(std::ptr::null_mut())
+    };
+    let Some(s) = (unsafe { from_handle(handle) }) else {
+        return empty();
+    };
+    let errs = s.core.drain_errors();
+    let len = (errs.len() * 2) as i32;
+    let Ok(arr) = env.new_object_array(len, "java/lang/String", JObject::null()) else {
+        return empty();
+    };
+    for (i, (code, msg)) in errs.into_iter().enumerate() {
+        let Ok(jc) = env.new_string(&code) else {
+            continue;
+        };
+        let Ok(jm) = env.new_string(&msg) else {
+            continue;
+        };
+        let _ = env.set_object_array_element(&arr, (i * 2) as i32, jc);
+        let _ = env.set_object_array_element(&arr, (i * 2 + 1) as i32, jm);
+    }
+    arr.into_raw()
+}

@@ -40,7 +40,7 @@ import kotlinx.coroutines.delay
 /**
  * @CreateDate: 2026/11/12
  * @Author: jlj
- * @Description: Demo 主推：示例1（霓虹隧道）+ gl/wgpu 双轨切轨与 JSONL 采集。
+ * @Description: Demo 主推：多样本 chip（隧道 + IQ SDF 原语）+ gl/wgpu 双轨与 JSONL 采集。
  */
 @Page("holm_runtime_m0", supportInLocal = true)
 internal class HolmRuntimeM0Pager : BasePager() {
@@ -72,12 +72,11 @@ private fun HolmRuntimeM0Screen() {
     var collecting by remember { mutableStateOf(false) }
     var runId by remember { mutableStateOf(0) }
     var sampleIndex by remember { mutableStateOf(0) }
+    var sample by remember { mutableStateOf(DemoSample.TUNNEL) }
+    // SHADER_/WGPU_ 失败后必须 false，否则 Attr 持续 playing=true 会把泵拉起来播 ClearTri
+    var surfacePlaying by remember { mutableStateOf(true) }
     val scene = NeonTunnelShaders.SCENE_CUSTOM
-    val fragmentShader = if (HolmExecutor.isRuntime(executor)) {
-        NeonTunnelShaders.RUNTIME_FS
-    } else {
-        NeonTunnelShaders.LITE_BODY
-    }
+    val fragmentShader = sample.fragmentFor(executor)
 
     // runId 变一次 = 新一轮 10s；到期自动停并打 END（给人看的页面不堆 JSON）
     LaunchedEffect(runId, collecting) {
@@ -96,7 +95,7 @@ private fun HolmRuntimeM0Screen() {
             .padding(top = (statusBarHeight + 16).dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
     ) {
         Text(
-            text = "Holm · 示例1 / 双轨",
+            text = "Holm · 示例 / 双轨",
             fontSize = 20.sp,
             lineHeight = 20.sp,
             fontWeight = FontWeight.Bold,
@@ -104,7 +103,7 @@ private fun HolmRuntimeM0Screen() {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "executor=$executor | scene=$scene | maxFps=$maxFps | $perfText | ${islandSize.width}x${islandSize.height} | $backendText",
+            text = "executor=$executor | sample=${sample.id} | scene=$scene | maxFps=$maxFps | $perfText | ${islandSize.width}x${islandSize.height} | $backendText",
             fontSize = 13.sp,
             lineHeight = 13.sp,
             color = DemoTheme.TextSecondary,
@@ -123,13 +122,33 @@ private fun HolmRuntimeM0Screen() {
             executor = executor,
             onSelect = { next ->
                 executor = next
+                surfacePlaying = true
+                errorText = ""
                 // 等 onReady 前勿粘旧 backend（审查 P1-doc-drift）
                 backendId = ""
                 backendText = "waiting onReady…"
             },
         )
         Spacer(modifier = Modifier.height(8.dp))
-        RuntimeExampleRow()
+        RuntimeExampleRow(
+            sample = sample,
+            onSelect = { next ->
+                // 仅换 fragmentShader 不会再 onReady；勿清 backend（审查 P2）
+                // 换样本须清 sticky 红字，否则「故意失败」残留挡下一档
+                errorText = ""
+                surfacePlaying = true
+                sample = next
+            },
+        )
+        if (sample == DemoSample.IQ_PRIMITIVES) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = IqPrimitivesShaders.UI_CREDIT,
+                fontSize = 11.sp,
+                lineHeight = 12.sp,
+                color = DemoTheme.TextSecondary,
+            )
+        }
         Spacer(modifier = Modifier.height(8.dp))
         RuntimeMaxFpsRow(value = maxFps, onSelect = { maxFps = it })
         Spacer(modifier = Modifier.height(8.dp))
@@ -146,8 +165,8 @@ private fun HolmRuntimeM0Screen() {
                     collecting = true
                     println(
                         "[holm-perf] BEGIN runId=$runId executor=$executor scene=$scene " +
-                            "maxFps=$maxFps example=1 backend=$backendId " +
-                            "${islandSize.width}x${islandSize.height}",
+                            "maxFps=$maxFps example=${sample.jsonExample} sample=${sample.id} " +
+                            "backend=$backendId ${islandSize.width}x${islandSize.height}",
                     )
                 }
             },
@@ -165,7 +184,7 @@ private fun HolmRuntimeM0Screen() {
             HolmSurface(
                 scene = scene,
                 modifier = Modifier.fillMaxSize(),
-                playing = true,
+                playing = surfacePlaying,
                 maxFps = maxFps,
                 executor = executor,
                 fragmentShader = fragmentShader,
@@ -175,14 +194,33 @@ private fun HolmRuntimeM0Screen() {
                     backendText = "onReady backend=${ready.backend} quality=${ready.quality}"
                 },
                 onError = { err ->
-                    errorText = "onError ${err.code}: ${err.message}"
+                    val code = err.code
+                    // 成功换档后迟到的 SHADER_* 回调勿盖住新样本
+                    if ((code == "SHADER_CUSTOM" || code == "SHADER_COMPILE") &&
+                        sample != DemoSample.BAD_COMPILE
+                    ) {
+                        return@HolmSurface
+                    }
+                    errorText = "onError $code: ${err.message}"
+                    // SHADER_WRAP 是切轨/空片元过渡噪声，勿停泵；真正编不过才停
+                    if (code == "SHADER_CUSTOM" || code == "SHADER_COMPILE" ||
+                        code.startsWith("WGPU_") || code == "TICK" || code == "SURFACE"
+                    ) {
+                        surfacePlaying = false
+                    }
                 },
                 onPerf = { perf ->
                     val ms = ((perf.frameMs * 10f).toInt() / 10f)
                     perfText = "fps=${perf.fps.toInt()} (${ms}ms)"
-                    // 泵恢复出帧后清残留 error（审查 P2-sticky-error）
+                    // 泵恢复出帧后清残留 error；SHADER_*/WGPU_* 须业务可见，不被 fps 冲掉
                     if (errorText.isNotEmpty() && perf.fps > 0.01f) {
-                        errorText = ""
+                        val sticky = errorText.contains("SHADER_") ||
+                            errorText.contains("WGPU_") ||
+                            errorText.contains("TICK") ||
+                            errorText.contains("SURFACE")
+                        if (!sticky) {
+                            errorText = ""
+                        }
                     }
                     if (collecting) {
                         sampleIndex += 1
@@ -194,7 +232,8 @@ private fun HolmRuntimeM0Screen() {
                             append("\"executor\":\"").append(executor).append("\",")
                             append("\"backend\":\"").append(escapeJson(backendId)).append("\",")
                             append("\"maxFps\":").append(maxFps).append(',')
-                            append("\"example\":1,")
+                            append("\"example\":").append(sample.jsonExample).append(',')
+                            append("\"sample\":\"").append(sample.id).append("\",")
                             append("\"fps\":").append(perf.fps).append(',')
                             append("\"frameMs\":").append(perf.frameMs).append(',')
                             append("\"width\":").append(islandSize.width).append(',')
@@ -260,7 +299,11 @@ private fun RuntimeExecutorRow(
 }
 
 @Composable
-private fun RuntimeExampleRow() {
+private fun RuntimeExampleRow(
+    sample: DemoSample,
+    onSelect: (DemoSample) -> Unit,
+) {
+    val items = DemoSampleCatalog.ALL
     Row(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = "示例",
@@ -269,13 +312,29 @@ private fun RuntimeExampleRow() {
             color = DemoTheme.TextSecondary,
             modifier = Modifier
                 .padding(end = 8.dp)
-                .align(Alignment.CenterVertically),
+                .align(Alignment.Top),
         )
-        RuntimeChip(
-            label = "示例1",
-            active = true,
-            onClick = { },
-        )
+        // 每行最多 3 chip，避免窄屏挤出（样本增多仍分行）
+        Column(modifier = Modifier.weight(1f)) {
+            items.chunked(3).forEachIndexed { rowIndex, rowItems ->
+                if (rowIndex > 0) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                }
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    rowItems.forEachIndexed { i, item ->
+                        if (i > 0) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+                        RuntimeChip(
+                            label = item.label,
+                            active = sample == item,
+                            compact = true,
+                            onClick = { onSelect(item) },
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -314,13 +373,16 @@ private fun RuntimeChip(
     label: String,
     active: Boolean,
     onClick: () -> Unit,
+    compact: Boolean = false,
 ) {
+    val hPad = if (compact) 10.dp else 12.dp
+    val vPad = if (compact) 6.dp else 8.dp
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
             .background(if (active) DemoTheme.Primary else DemoTheme.Surface)
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = hPad, vertical = vPad),
     ) {
         Text(
             text = label,

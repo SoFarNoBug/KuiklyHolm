@@ -84,6 +84,31 @@ object HolmRuntimeNative {
         return runCatching { nativeSetCustomFs(handle, fs) }.getOrDefault(false)
     }
 
+    fun lastErrorCode(handle: Long): String {
+        if (handle == 0L) return ""
+        return runCatching { nativeLastErrorCode(handle) }.getOrDefault("")
+    }
+
+    fun lastErrorMessage(handle: Long): String {
+        if (handle == 0L) return ""
+        return runCatching { nativeLastErrorMessage(handle) }.getOrDefault("")
+    }
+
+    /**
+     * 取出 pending 错误（含 uncaptured）；交替为 code, message, code, message…
+     */
+    fun drainErrors(handle: Long): List<Pair<String, String>> {
+        if (handle == 0L) return emptyList()
+        val flat = runCatching { nativeDrainErrors(handle) }.getOrNull() ?: return emptyList()
+        val out = ArrayList<Pair<String, String>>(flat.size / 2)
+        var i = 0
+        while (i + 1 < flat.size) {
+            out.add(flat[i] to flat[i + 1])
+            i += 2
+        }
+        return out
+    }
+
     fun setLiquid(handle: Long, boost: Float, bend: Float) {
         if (handle == 0L) return
         runCatching { nativeSetLiquid(handle, boost, bend) }
@@ -115,4 +140,7 @@ object HolmRuntimeNative {
     private external fun nativeSetPlaying(handle: Long, playing: Boolean)
     private external fun nativeTick(handle: Long, dtSecs: Float): Boolean
     private external fun nativeBackendId(handle: Long): String
+    private external fun nativeLastErrorCode(handle: Long): String
+    private external fun nativeLastErrorMessage(handle: Long): String
+    private external fun nativeDrainErrors(handle: Long): Array<String>
 }

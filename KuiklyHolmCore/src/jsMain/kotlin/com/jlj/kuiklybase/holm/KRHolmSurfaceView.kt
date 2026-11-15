@@ -403,19 +403,46 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
 
     private fun applyRuntimeShaders(session: dynamic) {
         val custom = _fragmentShader.trim()
+        // 切换样本/轨：先卸上一档，再装新；失败停 ClearTri
+        HolmRuntimeNative.sessionSetCustomFs(session, "")
         if (custom.isNotEmpty()) {
             if (!HolmShaderResolve.looksLikeWgslFragment(custom)) {
-                // 仍持 GLSL 正文时跳过，等 Attr 换成 WGSL
+                // 仍持 GLSL 正文时跳过，等 Attr 换成 WGSL（已卸旧 custom）
+                HolmRuntimeNative.sessionSetScene(session, _scene)
+                flushRuntimeSessionErrors(session)
                 return
             }
-            val ok = HolmRuntimeNative.sessionSetCustomFs(session, custom)
-            if (!ok) {
-                fireError("SHADER_CUSTOM", "Runtime setCustomFs failed")
+            val err = HolmRuntimeNative.sessionSetCustomFs(session, custom)
+            val drained = flushRuntimeSessionErrors(session)
+            if (err != null) {
+                // wasm 已 present_clear_only + playing=false；主线程泵对齐停
+                HolmRuntimeNative.sessionSetPlaying(session, false)
+                _playing = false
+                postPlaying(false)
+                if (drained == 0) {
+                    fireError("SHADER_CUSTOM", err)
+                }
+            } else {
+                clearPendingError()
             }
         } else {
-            HolmRuntimeNative.sessionSetCustomFs(session, "")
             HolmRuntimeNative.sessionSetScene(session, _scene)
+            flushRuntimeSessionErrors(session)
+            clearPendingError()
         }
+    }
+
+    /** @return 已投递条数 */
+    private fun flushRuntimeSessionErrors(session: dynamic): Int {
+        if (session == null) return 0
+        val errs = HolmRuntimeNative.sessionDrainErrors(session)
+        if (errs.isEmpty()) return 0
+        for (item in errs) {
+            val code = (item.code as? String)?.ifBlank { null } ?: "WGPU_VALIDATION"
+            val message = (item.message as? String) ?: ""
+            fireError(code, message)
+        }
+        return errs.size
     }
 
     private fun postResize(w: Int, h: Int) {
@@ -686,12 +713,19 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
             if (minFrameMs <= 0.0 || _runtimeAccMs >= minFrameMs) {
                 val dtSecs = (_runtimeAccMs / 1000.0).toFloat()
                 _runtimeAccMs = 0.0
-                val ok = HolmRuntimeNative.sessionTick(_runtimeSession, dtSecs)
-                if (!ok) {
+                val session = _runtimeSession
+                val tickErr = HolmRuntimeNative.sessionTick(session, dtSecs)
+                val drained = flushRuntimeSessionErrors(session)
+                if (tickErr != null) {
                     _backend = HolmExecutor.BACKEND_WGPU_BLOCKED
                     if (!_runtimeBlockedNotified) {
                         _runtimeBlockedNotified = true
-                        fireError(HolmExecutor.ERROR_BLOCKED, "holm-runtime tick failed")
+                        if (drained == 0) {
+                            fireError(
+                                "TICK",
+                                tickErr.ifBlank { "holm-runtime tick failed" },
+                            )
+                        }
                     }
                     stopRuntimeLoop()
                     return@frame

@@ -145,19 +145,26 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
             }
             val ok = HolmRuntimeNative.tick(handle, dtSecs)
             if (!ok) {
+                // 只走 drain（Rust 已 emit）；空则回落 lastError，避免双发
+                val drained = flushRuntimeErrors(handle)
+                if (drained == 0) {
+                    val code = HolmRuntimeNative.lastErrorCode(handle).ifBlank { "TICK" }
+                    val detail = HolmRuntimeNative.lastErrorMessage(handle)
+                        .ifBlank { "DualTrack B BLOCKED: holm_runtime tick failed. No silent GLES stand-in." }
+                    post {
+                        if (!_runtimeBlockedNotified) {
+                            _runtimeBlockedNotified = true
+                            fireError(code, detail)
+                        }
+                    }
+                } else if (!_runtimeBlockedNotified) {
+                    _runtimeBlockedNotified = true
+                }
                 HolmRuntimeNative.markPresentable(false)
                 destroyRuntimeSessionOnRenderThread()
-                post {
-                    if (!_runtimeBlockedNotified) {
-                        _runtimeBlockedNotified = true
-                        fireError(
-                            HolmExecutor.ERROR_BLOCKED,
-                            "DualTrack B BLOCKED: holm_runtime tick failed. No silent GLES stand-in.",
-                        )
-                    }
-                }
                 return
             }
+            flushRuntimeErrors(handle)
             if (!HolmRuntimeNative.isM0Presentable()) {
                 HolmRuntimeNative.markPresentable(true)
                 _runtimeBackendId = HolmRuntimeNative.backendId(handle)
@@ -521,11 +528,14 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
         }
     }
 
-    /** 对齐 H5：非空 WGSL 正文 → setCustomFs；否则清 custom 并 setScene。 */
+    /** 对齐 H5：先卸上一档 custom，再装新；失败则 ClearTri，不残留旧特效。 */
     private fun applyRuntimeShaders(handle: Long) {
         val custom = _fragmentShader.trim()
+        // 切换样本/轨：先停掉上一档
+        HolmRuntimeNative.setCustomFs(handle, "")
         if (custom.isNotEmpty()) {
             if (!HolmShaderResolve.looksLikeWgslFragment(custom)) {
+                HolmRuntimeNative.setScene(handle, _scene)
                 post {
                     fireError(
                         "SHADER_CUSTOM",
@@ -535,15 +545,34 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
                 return
             }
             val ok = HolmRuntimeNative.setCustomFs(handle, custom)
+            // 失败已 emit 进 pending：只 drain 一次，勿再读 lastError 双发
+            val drained = flushRuntimeErrors(handle)
             if (!ok) {
-                post {
-                    fireError("SHADER_CUSTOM", "Runtime setCustomFs failed")
+                // native 已清屏停泵；宿主对齐，避免 Choreographer 继续空转 ClearTri
+                HolmRuntimeNative.setPlaying(handle, false)
+                _playing = false
+                if (drained == 0) {
+                    post {
+                        fireError("SHADER_CUSTOM", "Runtime setCustomFs failed")
+                    }
                 }
             }
         } else {
-            HolmRuntimeNative.setCustomFs(handle, "")
             HolmRuntimeNative.setScene(handle, _scene)
         }
+    }
+
+    /** @return 已投递的错误条数 */
+    private fun flushRuntimeErrors(handle: Long): Int {
+        if (handle == 0L) return 0
+        val errs = HolmRuntimeNative.drainErrors(handle)
+        if (errs.isEmpty()) return 0
+        post {
+            for ((code, message) in errs) {
+                fireError(code.ifBlank { "WGPU_VALIDATION" }, message)
+            }
+        }
+        return errs.size
     }
 
     private fun scheduleRuntimePump() {
@@ -863,19 +892,29 @@ private class HolmGlesRenderer : GLSurfaceView.Renderer {
         _quad?.position(0)
     }
 
+    private fun dropLiteProgram() {
+        if (_program != 0) {
+            GLES20.glDeleteProgram(_program)
+            _program = 0
+        }
+    }
+
     private fun rebuildProgram() {
         val vertSrc = HolmShaderResolve.vertex(_vertexSrc)
         val fragSrc = try {
             HolmShaderResolve.fragment(_scene, _fragmentBody)
         } catch (t: Throwable) {
             _shaderFailed = true
+            dropLiteProgram()
             onError?.invoke("SHADER_WRAP", t.message ?: "wrap failed")
             return
         }
         val vert = compile(GLES20.GL_VERTEX_SHADER, vertSrc)
         val frag = compile(GLES20.GL_FRAGMENT_SHADER, fragSrc)
         if (vert == 0 || frag == 0) {
+            // 切换样本失败：卸掉上一档，深蓝清屏（勿继续播旧特效）
             _shaderFailed = true
+            dropLiteProgram()
             return
         }
         val program = GLES20.glCreateProgram()
@@ -888,11 +927,10 @@ private class HolmGlesRenderer : GLSurfaceView.Renderer {
             _shaderFailed = true
             onError?.invoke("SHADER_LINK", GLES20.glGetProgramInfoLog(program) ?: "link failed")
             GLES20.glDeleteProgram(program)
+            dropLiteProgram()
             return
         }
-        if (_program != 0) {
-            GLES20.glDeleteProgram(_program)
-        }
+        dropLiteProgram()
         _program = program
         _shaderFailed = false
         _posLoc = GLES20.glGetAttribLocation(_program, "a_position")

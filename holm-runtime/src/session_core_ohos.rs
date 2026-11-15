@@ -1,5 +1,9 @@
 //! Ohos Runtime Session 核心（wgpu 30 + VK_OHOS_surface）；API 与 session_core（wgpu 23）语义对齐。
 
+use crate::error_bridge::{
+    classify_wgpu_error, install_uncaptured_handler, validate_wgsl_module, ErrorSink,
+    CODE_SHADER_CUSTOM, CODE_SURFACE,
+};
 use crate::shaders;
 
 #[repr(C)]
@@ -56,6 +60,7 @@ pub struct HolmRuntimeSessionCore {
     pub playing: bool,
     pub time: f32,
     pub backend_id: &'static str,
+    pub error_sink: ErrorSink,
 }
 
 impl HolmRuntimeSessionCore {
@@ -95,6 +100,9 @@ impl HolmRuntimeSessionCore {
             })
             .await
             .map_err(|e| format!("request_device: {e}"))?;
+
+        let error_sink = ErrorSink::new();
+        install_uncaptured_handler(&device, error_sink.clone());
 
         let caps = surface.get_capabilities(&adapter);
         let format = caps
@@ -203,6 +211,7 @@ impl HolmRuntimeSessionCore {
             playing: true,
             time: 0.0,
             backend_id,
+            error_sink,
         })
     }
 
@@ -214,11 +223,15 @@ impl HolmRuntimeSessionCore {
         fs: &str,
     ) -> Result<wgpu::RenderPipeline, String> {
         let src = shaders::module_source(fs);
+        validate_wgsl_module(&src)?;
+
+        device.push_error_scope(wgpu::ErrorFilter::Validation);
+
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some(label),
             source: wgpu::ShaderSource::Wgsl(src.into()),
         });
-        Ok(device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        let pipe = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some(label),
             layout: Some(pipe_layout),
             vertex: wgpu::VertexState {
@@ -242,7 +255,15 @@ impl HolmRuntimeSessionCore {
             multisample: wgpu::MultisampleState::default(),
             multiview_mask: None,
             cache: None,
-        }))
+        });
+
+        device.poll(wgpu::Maintain::Wait);
+        if let Some(err) = pollster::block_on(device.pop_error_scope()) {
+            let (code, msg) = classify_wgpu_error(&err);
+            return Err(format!("{code}: {msg}"));
+        }
+
+        Ok(pipe)
     }
 
     pub fn set_scene(&mut self, scene: &str) {
@@ -264,16 +285,76 @@ impl HolmRuntimeSessionCore {
             }
             return Ok(());
         }
-        let pipe = Self::build_pipe(
+        match Self::build_pipe(
             &self.device,
             &self.pipe_layout,
             self.config.format,
             "holm-custom",
             trimmed,
-        )?;
-        self.pipe_custom = Some(pipe);
-        self.scene = SceneKind::Custom;
+        ) {
+            Ok(pipe) => {
+                self.pipe_custom = Some(pipe);
+                self.scene = SceneKind::Custom;
+                Ok(())
+            }
+            Err(e) => {
+                // 切换样本失败：卸掉上一档；清一帧暗色并停泵（勿残留旧特效，勿 ClearTri 假动画）
+                self.pipe_custom = None;
+                self.scene = SceneKind::ClearTri;
+                self.error_sink.emit(CODE_SHADER_CUSTOM, &e);
+                let _ = self.present_clear_only();
+                self.playing = false;
+                Err(e)
+            }
+        }
+    }
+
+    /// 仅 Clear 呈一帧（不画三角）；供 setCustomFs 失败后抹掉上一特效。
+    fn present_clear_only(&mut self) -> Result<(), String> {
+        let frame = self
+            .surface
+            .get_current_texture()
+            .map_err(|e| format!("get_current_texture: {e}"))?;
+        let view = frame
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("holm-clear-only"),
+            });
+        {
+            let _pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("holm-clear-only-pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: 0.05,
+                            g: 0.06,
+                            b: 0.1,
+                            a: 1.0,
+                        }),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+        }
+        self.queue.submit(Some(encoder.finish()));
+        frame.present();
         Ok(())
+    }
+
+    pub fn last_error(&self) -> (String, String) {
+        self.error_sink.last()
+    }
+
+    pub fn drain_errors(&self) -> Vec<(String, String)> {
+        self.error_sink.drain()
     }
 
     pub fn set_liquid(&mut self, boost: f32, bend: f32) {
@@ -317,7 +398,9 @@ impl HolmRuntimeSessionCore {
                 t
             }
             other => {
-                return Err(format!("get_current_texture: {other:?}"));
+                let msg = format!("get_current_texture: {other:?}");
+                self.error_sink.emit(CODE_SURFACE, &msg);
+                return Err(msg);
             }
         };
         let view = frame

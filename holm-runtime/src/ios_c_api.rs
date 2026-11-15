@@ -178,3 +178,53 @@ pub extern "C" fn holm_runtime_session_backend_id(
         Err(_) => 0,
     }
 }
+
+fn copy_utf8(s: &str, out_buf: *mut c_char, out_len: u32) -> u32 {
+    if out_buf.is_null() || out_len == 0 {
+        return 0;
+    }
+    let bytes = s.as_bytes();
+    let max = (out_len as usize).saturating_sub(1);
+    let n = bytes.len().min(max);
+    unsafe {
+        ptr::copy_nonoverlapping(bytes.as_ptr(), out_buf as *mut u8, n);
+        *out_buf.add(n) = 0;
+    }
+    n as u32
+}
+
+#[no_mangle]
+pub extern "C" fn holm_runtime_session_last_error_code(
+    handle: u64,
+    out_buf: *mut c_char,
+    out_len: u32,
+) -> u32 {
+    let result = catch_unwind(AssertUnwindSafe(|| {
+        let (code, _) = unsafe { from_handle(handle) }
+            .map(|s| s.core.last_error())
+            .unwrap_or_default();
+        copy_utf8(&code, out_buf, out_len)
+    }));
+    match result {
+        Ok(v) => v,
+        Err(_) => 0,
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn holm_runtime_session_last_error_message(
+    handle: u64,
+    out_buf: *mut c_char,
+    out_len: u32,
+) -> u32 {
+    let result = catch_unwind(AssertUnwindSafe(|| {
+        let (_, msg) = unsafe { from_handle(handle) }
+            .map(|s| s.core.last_error())
+            .unwrap_or_default();
+        copy_utf8(&msg, out_buf, out_len)
+    }));
+    match result {
+        Ok(v) => v,
+        Err(_) => 0,
+    }
+}

@@ -243,7 +243,13 @@ static NSString *const kHolmBackendGlesIos = @"gles2-ios";
             return;
         }
         if (!holm_runtime_session_set_custom_fs(_sessionHandle, custom.UTF8String)) {
-            [self holm_fireError:@"SHADER_CUSTOM" message:@"Runtime setCustomFs failed"];
+            char codeBuf[64] = {0};
+            char msgBuf[512] = {0};
+            holm_runtime_session_last_error_code(_sessionHandle, codeBuf, sizeof(codeBuf));
+            holm_runtime_session_last_error_message(_sessionHandle, msgBuf, sizeof(msgBuf));
+            NSString *code = codeBuf[0] ? [NSString stringWithUTF8String:codeBuf] : @"SHADER_CUSTOM";
+            NSString *msg = msgBuf[0] ? [NSString stringWithUTF8String:msgBuf] : @"Runtime setCustomFs failed";
+            [self holm_fireError:code message:msg];
         }
     } else {
         holm_runtime_session_set_custom_fs(_sessionHandle, "");
@@ -530,7 +536,15 @@ static NSString *const kHolmBackendGlesIos = @"gles2-ios";
         if (!holm_runtime_session_tick(_sessionHandle, dt)) {
             if (!_blockedNotified) {
                 _blockedNotified = YES;
-                [self holm_fireBlocked:@"holm_runtime tick failed. No silent GLES stand-in."];
+                char codeBuf[64] = {0};
+                char msgBuf[512] = {0};
+                holm_runtime_session_last_error_code(_sessionHandle, codeBuf, sizeof(codeBuf));
+                holm_runtime_session_last_error_message(_sessionHandle, msgBuf, sizeof(msgBuf));
+                NSString *code = codeBuf[0] ? [NSString stringWithUTF8String:codeBuf] : @"TICK";
+                NSString *msg = msgBuf[0]
+                    ? [NSString stringWithUTF8String:msgBuf]
+                    : @"holm_runtime tick failed. No silent GLES stand-in.";
+                [self holm_fireError:code message:msg];
             }
             [self holm_stopDisplayLink];
             return;

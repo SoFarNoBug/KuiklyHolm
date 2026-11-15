@@ -69,6 +69,24 @@ object HolmRuntimePumpSource {
       send({ type: "error", code: code, message: String(message || "") });
     }
 
+    /** @return 已投递条数；失败路径只走 drain，避免与 throw 双发 */
+    function flushSessionErrors() {
+      if (!session || typeof session.drainErrors !== "function") return 0;
+      try {
+        var pending = session.drainErrors();
+        if (!pending || !pending.length) return 0;
+        for (var i = 0; i < pending.length; i++) {
+          var item = pending[i] || {};
+          var code = item.code || "WGPU_VALIDATION";
+          var message = item.message || "";
+          emitError(code, message);
+        }
+        return pending.length;
+      } catch (_) {
+        return 0;
+      }
+    }
+
     function tickPerf(nowMs) {
       if (!reportPerf) return;
       if (!fpsWindowMs) {
@@ -124,9 +142,12 @@ object HolmRuntimePumpSource {
         lastNow = now;
         try {
           session.tick(dt);
+          flushSessionErrors();
           tickPerf(now);
         } catch (e) {
-          emitError("TICK", (e && e.message) ? e.message : String(e));
+          if (!flushSessionErrors()) {
+            emitError("TICK", (e && e.message) ? e.message : String(e));
+          }
           stop();
           return;
         }
@@ -209,13 +230,25 @@ object HolmRuntimePumpSource {
             if (!s) return;
             session = s;
             try {
+              if (typeof session.setCustomFs === "function") session.setCustomFs("");
               if (customFs && typeof session.setCustomFs === "function") {
                 session.setCustomFs(customFs);
               } else if (typeof session.setScene === "function") {
                 session.setScene(scene);
               }
+              if (session && typeof session.drainErrors === "function") {
+                try { session.drainErrors(); } catch (_) {}
+              }
             } catch (e) {
-              emitError("SHADER_CUSTOM", (e && e.message) ? e.message : String(e));
+              if (!flushSessionErrors()) {
+                emitError("SHADER_CUSTOM", (e && e.message) ? e.message : String(e));
+              }
+              // setCustomFs 失败：wasm 已停 playing；泵侧同步停，避免 ClearTri 空转
+              playing = false;
+              stop();
+              try {
+                if (session && typeof session.setPlaying === "function") session.setPlaying(false);
+              } catch (_) {}
             }
             if (typeof session.setLiquid === "function") session.setLiquid(liquidBoost, liquidBend);
             if (typeof session.setPlaying === "function") session.setPlaying(!!playing);
@@ -264,14 +297,26 @@ object HolmRuntimePumpSource {
         if (typeof msg.customFs === "string") customFs = msg.customFs;
         if (!session) return;
         try {
+          // 切换样本：先卸上一档，再装新；失败不残留旧特效
+          if (typeof session.setCustomFs === "function") session.setCustomFs("");
           if (customFs && typeof session.setCustomFs === "function") {
             session.setCustomFs(customFs);
-          } else {
-            if (typeof session.setCustomFs === "function") session.setCustomFs("");
-            if (typeof session.setScene === "function") session.setScene(scene);
+          } else if (typeof session.setScene === "function") {
+            session.setScene(scene);
+          }
+          // 成功换档：丢掉上一失败 pending，避免迟到 error 盖住新特效
+          if (session && typeof session.drainErrors === "function") {
+            try { session.drainErrors(); } catch (_) {}
           }
         } catch (e) {
-          emitError("SHADER_CUSTOM", (e && e.message) ? e.message : String(e));
+          if (!flushSessionErrors()) {
+            emitError("SHADER_CUSTOM", (e && e.message) ? e.message : String(e));
+          }
+          playing = false;
+          stop();
+          try {
+            if (session && typeof session.setPlaying === "function") session.setPlaying(false);
+          } catch (_) {}
         }
       },
       playing: function (msg) {

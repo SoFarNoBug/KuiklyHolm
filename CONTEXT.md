@@ -75,12 +75,12 @@ _Avoid_：`LITE_PENDING` 冒充完成；用 GLES 冒充 wgpu；另挂第二 XCom
 | 根工程 | `KuiklyHolmUI` |
 | 库 | `:KuiklyHolmCore`（对应未来 holm-core+后端暂合居） |
 | Runtime | `holm-runtime`（对应未来 holm-wgpu 产物） |
-| Demo | `:holmDemo` · 主推 `holm_runtime_m0` 隧道 |
+| Demo | `:holmDemo` · 主推 `holm_runtime_m0` 双轨 + 多样本 chip（隧道 + IQ SDF 原语） |
 
 ## 当前状态
 
 - 身份：ADR 0007；目标拆包：ADR 0008（文档已定，Gradle 未拆）
-- Demo：Home 仅「示例1 / 双轨」；官方五席源码已删
+- Demo：Home「示例 / 双轨」；页内 chip 切隧道 / IQ SDF 原语陈列（MIT · Quilez）；官方五席源码已删
 - iOS：ADR 0009 Runtime Metal + Lite GLES 子树均已落地（`gles2-ios` / `wgpu-m0*`）
 - 鸿蒙：ADR 0010 Runtime + ADR 0011 Lite（同 XC EGL，`gles2-ohos`）；真机隧道/互切待勾
 - 后单：真机验收双轨；真拆三依赖、Runtime 产物与源同步门禁、`holm_api` 规范对齐

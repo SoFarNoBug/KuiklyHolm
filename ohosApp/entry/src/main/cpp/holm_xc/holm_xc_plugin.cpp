@@ -240,7 +240,13 @@ void ApplyRuntimeShaders(HolmXcIsland &island)
         return;
     }
     if (holm_runtime_session_set_custom_fs(island.sessionHandle, trimmed.c_str()) == 0) {
-        FireError(island, "SHADER_CUSTOM", "Runtime setCustomFs failed");
+        char codeBuf[64] = {0};
+        char msgBuf[512] = {0};
+        holm_runtime_session_last_error_code(island.sessionHandle, codeBuf, sizeof(codeBuf));
+        holm_runtime_session_last_error_message(island.sessionHandle, msgBuf, sizeof(msgBuf));
+        const char *code = codeBuf[0] ? codeBuf : "SHADER_CUSTOM";
+        const char *msg = msgBuf[0] ? msgBuf : "Runtime setCustomFs failed";
+        FireError(island, code, msg);
     }
 }
 
@@ -328,7 +334,13 @@ void OnFramePump(OH_NativeXComponent *component, uint64_t timestamp, uint64_t /*
         if (!holm_runtime_session_tick(island.sessionHandle, static_cast<float>(dt))) {
             if (!island.blockedNotified) {
                 island.blockedNotified = true;
-                FireError(island, "BLOCKED", "holm_runtime tick failed");
+                char codeBuf[64] = {0};
+                char msgBuf[512] = {0};
+                holm_runtime_session_last_error_code(island.sessionHandle, codeBuf, sizeof(codeBuf));
+                holm_runtime_session_last_error_message(island.sessionHandle, msgBuf, sizeof(msgBuf));
+                const char *code = codeBuf[0] ? codeBuf : "TICK";
+                const char *msg = msgBuf[0] ? msgBuf : "holm_runtime tick failed";
+                FireError(island, code, msg);
             }
             return;
         }
@@ -439,8 +451,16 @@ void StartRuntimeIfNeeded(HolmXcIsland &island, void *window)
     const char *backend = backendBuf[0] != '\0' ? backendBuf : "wgpu-m0";
 
     if (!holm_runtime_session_tick(island.sessionHandle, 1.f / 60.f)) {
+        char codeBuf[64] = {0};
+        char msgBuf[512] = {0};
+        holm_runtime_session_last_error_code(island.sessionHandle, codeBuf, sizeof(codeBuf));
+        holm_runtime_session_last_error_message(island.sessionHandle, msgBuf, sizeof(msgBuf));
+        const char *code = codeBuf[0] ? codeBuf : "TICK";
+        const char *msg = msgBuf[0]
+            ? msgBuf
+            : "holm_runtime tick failed after create. No silent GLES stand-in.";
         DestroyRuntimeSession(island);
-        FireError(island, "BLOCKED", "holm_runtime tick failed after create. No silent GLES stand-in.");
+        FireError(island, code, msg);
         island.blockedNotified = true;
         return;
     }
