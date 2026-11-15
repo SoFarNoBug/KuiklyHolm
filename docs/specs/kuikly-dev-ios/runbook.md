@@ -1,30 +1,38 @@
 ﻿# runbook · kuikly-dev-ios
 
-> DualTrack A：Lite iOS `KRHolmSurface`（OpenGLES2）。本机若无 macOS / Xcode，无法在此跑模拟器；代码与工程已落盘，验收在 Mac 上勾。
+> ADR 0009：iOS Runtime（`CAMetalLayer` + C Session）+ Lite GLES（`CAEAGLLayer` 子 View + Shadertoy）。
 
 ## 结论
 
-- 原生类：`iosApp/iosApp/KuiklyExpand/Views/KRHolmSurface.{h,m}`  
-- **类名 = viewName** `KRHolmSurface`（Kuikly iOS 约定）  
-- 本波 scene：`frost` **逐字同源**；`liquid_approx` **骨架同源**（端侧允许精简，非强制逐字同步 common）  
-- Attr：`scene` / `playing` / `liquidBoost` / `liquidBend` + `onReady` / `onError`
+- 原生类：`KRHolmSurface` 容器 + `KRHolmMetalHostView` + `KRHolmGlesHostView`
+- **类名 = viewName** `KRHolmSurface`
+- Runtime：`holm-runtime` xcframework → `holm_runtime_session_*`；`onReady.backend=wgpu-m0*`
+- Lite：GLES2 Shadertoy；`onReady.backend=gles2-ios`；空片元 → `FRAGMENT_REQUIRED`
+- Attr：`executor` / `fragmentShader` / `scene` / `playing` / `maxFps` / knobs + `onReady` / `onError` / `onPerf`
 
 ## 前置
 
 | 项 | 约定 |
 |---|---|
 | macOS + Xcode | 必填（模拟器或真机） |
-| CocoaPods | 工程既有 `Pods` / OpenKuiklyIOSRender |
-| JDK | 打 KMP 框架时用 17 |
+| Rust | `rustup` + targets `aarch64-apple-ios` / `aarch64-apple-ios-sim`（本波无 Intel sim x86_64；工程已 `EXCLUDED_ARCHS`） |
+| CocoaPods | `OpenKuiklyIOSRender` + `holmDemo` |
+| JDK | 打 KMP framework 时用 17 |
 
 ## 起服（Mac）
 
 ```bash
-cd iosApp
-pod install   # 若尚未
+# 1) Runtime 原生库（改 Rust 后必重跑；Xcode 不自动编）
+cd holm-runtime
+./build-ios.sh
+# → dist/ios/HolmRuntime.xcframework
+
+# 2) Pods + 打开工程
+cd ../iosApp
+pod install
 open iosApp.xcworkspace
-# 选 Simulator → Run
-# Demo 打开 page_name=holm_spike，切霜化/液态
+# 选 Simulator / 真机 → Run
+# Home →「示例1 / 双轨」(holm_runtime_m0)；默认 Runtime 隧道；可切 Lite
 ```
 
 Kotlin 侧若需先编 framework：
@@ -33,18 +41,21 @@ Kotlin 侧若需先编 framework：
 ./gradlew :holmDemo:linkDebugFrameworkIosSimulatorArm64
 ```
 
-（具体 target 以本机架构为准。）
+（真机用 `iosArm64`；具体 target 以本机架构为准。）
 
 ## 验收勾选
 
-- [ ] 模拟器可见 frost  
-- [ ] 切换 liquid_approx 画面变化  
-- [ ] onReady backend=`gles2-ios`  
-- [ ] 旋转/resize 不崩  
-- [ ] 二次进入页不崩  
+- [ ] 模拟器 Runtime 隧道可见；`onReady backend=wgpu-m0*`
+- [ ] 切 Lite → 隧道；`onReady backend=gles2-ios`（**无** `LITE_PENDING`）
+- [ ] 切回 Runtime → 隧道恢复；backend 回 wgpu
+- [ ] Lite / Runtime 下 `maxFps` 30/60/0 可感知或采集 fps 合理
+- [ ] 旋转 / resize / 二次进页不崩
+- [ ] 真机 arm64 同左
+- [ ]（负向）Lite 空 `fragmentShader` → 深蓝 + `FRAGMENT_REQUIRED`
+- [ ]（负向）未跑 `build-ios.sh` → 链接失败；create/tick 失败 → `BLOCKED`（勿 GLES 冒充 Runtime）
 
 ## 已知限制
 
-- glow / gradient_bg / fullscreen_warp **本波不强制** iOS  
-- shader 字符串在 `.m` 内嵌；`frost` 改 common 后须同步 ObjC；`liquid_approx` 允许端侧精简，重大数学变更再对齐  
-- Windows CI **无法**跑本端；对比表「本机验证」填 Mac 结果或 PARTIAL
+- ObjC Shadertoy wrap 与 Kotlin `HolmShadertoyShell` 须同文；改壳双端同单
+- xcframework **不**入库（`holm-runtime/dist/` gitignore）；本机脚本生成
+- Windows CI **无法**跑本端

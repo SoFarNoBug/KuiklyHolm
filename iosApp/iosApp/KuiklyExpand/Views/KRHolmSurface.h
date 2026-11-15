@@ -4,8 +4,9 @@
 NS_ASSUME_NONNULL_BEGIN
 
 /**
- * Lite iOS KRHolmSurface — OpenGLES2。
- * 官方五席已移除；本波未接宿主 fragmentShader Attr，无片元时清屏 + onError。
+ * KRHolmSurface — 容器岛（ADR 0009 + Lite GLES）。
+ * Runtime：子 View + CAMetalLayer → holm_runtime_session_*（主线程 CADisplayLink 外泵）。
+ * Lite：子 View + CAEAGLLayer GLES2 Shadertoy；onReady.backend=gles2-ios。
  * 类名必须与 viewName=KRHolmSurface 一致。
  */
 @interface KRHolmSurface : UIView <KuiklyRenderViewExportProtocol>

@@ -1,11 +1,15 @@
-//! Holm Runtime — DualTrack B · wgpu Session（H5 wasm + Android JNI）。
+//! Holm Runtime — DualTrack B · wgpu Session（H5 wasm + Android JNI + iOS/Ohos C ABI）。
 
 #![allow(dead_code)]
 
 #[cfg(feature = "wgpu_backend")]
 mod shaders;
 
-#[cfg(feature = "wgpu_backend")]
+#[cfg(all(feature = "wgpu_backend", not(target_env = "ohos")))]
+mod session_core;
+
+#[cfg(all(feature = "wgpu_backend", target_env = "ohos"))]
+#[path = "session_core_ohos.rs"]
 mod session_core;
 
 #[cfg(all(target_arch = "wasm32", feature = "wgpu_backend"))]
@@ -16,6 +20,12 @@ pub use session::HolmRuntimeSession;
 
 #[cfg(all(target_os = "android", feature = "wgpu_backend"))]
 mod android_jni;
+
+#[cfg(all(target_os = "ios", feature = "wgpu_backend"))]
+mod ios_c_api;
+
+#[cfg(all(target_env = "ohos", feature = "wgpu_backend"))]
+mod ohos_c_api;
 
 pub const BACKEND_ID: &str = "wgpu-m0";
 
@@ -46,7 +56,7 @@ pub extern "C" fn holm_runtime_has_wgpu() -> u32 {
     has_wgpu_inner()
 }
 
-/// 遗留 stub：通面请走 Android JNI Session / H5 HolmRuntimeSession。
+/// 遗留 stub：通面请走 Android JNI / iOS C Session / H5 HolmRuntimeSession。
 #[cfg(not(target_arch = "wasm32"))]
 #[no_mangle]
 pub extern "C" fn holm_runtime_m0_clear(_width: u32, _height: u32) -> i32 {

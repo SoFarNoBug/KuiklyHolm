@@ -17,6 +17,8 @@
 | **fragmentShader / Shadertoy 薄壳** | 宿主喂片元（ADR 0005） |
 | **setCustomFs** | Runtime 热换 WGSL 片元 |
 | **Android Runtime Session** | arm64 `.so` + SurfaceView 外泵（ADR 0006） |
+| **iOS Runtime Session** | xcframework + 容器内 `CAMetalLayer` + ObjC 主线程外泵 + C ABI（ADR 0009）；先于 iOS Lite |
+| **鸿蒙 Runtime Session** | `libholm_runtime.so` + `libholm_xc.so`（XComponent）+ C ABI（ADR 0010）；先于鸿蒙 Lite |
 | **急拆** | 毁 Surface 前立刻 destroy Session |
 | **[holm-perf]** | Demo JSONL 采集前缀 |
 | **示例消费者** | 如 ParticleEngine——非身份绑定 |

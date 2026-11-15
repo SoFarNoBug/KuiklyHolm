@@ -1,9 +1,11 @@
 package com.jlj.kuiklybase.holm
 
+import kotlin.concurrent.Volatile
+
 /**
  * @CreateDate: 2026/11/12
  * @Author: jlj
- * @Description: iOS 宿主初始化占位。Lite 渲染由 iosApp `KRHolmSurface`（GLES2）承担；viewName=KRHolmSurface。
+ * @Description: iOS 宿主初始化占位。Runtime=Metal C Session；Lite=GLES2 Shadertoy（iosApp KRHolmSurface）；viewName=KRHolmSurface。
  */
 object HolmIos {
     @Volatile
@@ -15,6 +17,6 @@ object HolmIos {
 
     fun cacheDirOrNull(): String? = _cacheDir
 
-    /** 官方五席已删；iOS 壳须宿主片元（本波暂未接 fragmentShader Attr，空则清屏+error）。 */
+    /** 官方五席已删；Lite/Runtime 均由宿主 fragmentShader（GLSL / WGSL）提供。 */
     val dualTrackScenes: List<String> = emptyList()
 }

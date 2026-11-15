@@ -17,10 +17,8 @@ version = mavenVersion
 
 kotlin {
     androidTarget {
-        compilations.all {
-            kotlinOptions {
-                jvmTarget = "1.8"
-            }
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
         }
         publishLibraryVariants("release")
     }
@@ -57,13 +55,10 @@ kotlin {
 }
 
 android {
+    // Ohos 壳走 AGP 7.4.2；勿用 AGP 8+ compileSdk { release() }
     namespace = "com.jlj.kuiklybase.holm"
-    compileSdk {
-        version = release(37) {
-            minorApiLevel = 0
-        }
-    }
-    buildToolsVersion = "36.0.0"
+    compileSdk = 34
+    buildToolsVersion = "34.0.0"
     defaultConfig {
         minSdk = 21
     }
