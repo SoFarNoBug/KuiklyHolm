@@ -16,6 +16,9 @@
 | **五席（已删源码）** | 历史 frost/glow/…；官方实现已移除；Demo 主推隧道示例1 |
 | **fragmentShader / Shadertoy 薄壳** | 宿主喂片元（ADR 0005） |
 | **setCustomFs** | Runtime 热换 WGSL 片元 |
+| **包壳耗时 / wrapMs** | 片元装载中补壳墙钟；Runtime 恒 0（ADR 0012） |
+| **编译耗时 / compileMs** | Lite compile+link 或 Runtime pipeline 墙钟（ADR 0012） |
+| **onShaderCompiled** | 每次装载尝试结束回传 ok + 双耗时 + executor；可与 onError 双发 |
 | **Android Runtime Session** | arm64 `.so` + SurfaceView 外泵（ADR 0006） |
 | **iOS Runtime Session** | xcframework + 容器内 `CAMetalLayer` + ObjC 主线程外泵 + C ABI（ADR 0009）；先于 iOS Lite |
 | **鸿蒙 Runtime Session** | `libholm_runtime.so` + `libholm_xc.so`（XComponent）+ C ABI（ADR 0010） |

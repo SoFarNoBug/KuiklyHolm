@@ -8,6 +8,7 @@
 #include "holm_xc_shadertoy.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cstring>
 
 namespace {
@@ -213,8 +214,16 @@ bool HolmXcLiteGlResize(HolmXcLiteGl &gl, uint32_t width, uint32_t height, std::
 }
 
 bool HolmXcLiteGlSetFragmentBody(HolmXcLiteGl &gl, const std::string &body, std::string *errCode,
-                                 std::string *errMsg)
+                                 std::string *errMsg, double *outWrapMs, double *outCompileMs)
 {
+    auto setMs = [](double *slot, double v) {
+        if (slot != nullptr) {
+            *slot = v;
+        }
+    };
+    setMs(outWrapMs, 0.0);
+    setMs(outCompileMs, 0.0);
+
     std::string trimmed = TrimCopy(body);
     if (trimmed.empty()) {
         SetErr(errCode, errMsg, "FRAGMENT_REQUIRED", "fragmentShader required (Shadertoy body)");
@@ -228,11 +237,17 @@ bool HolmXcLiteGlSetFragmentBody(HolmXcLiteGl &gl, const std::string &body, std:
         return false;
     }
 
+    using Clock = std::chrono::steady_clock;
+    auto wrapT0 = Clock::now();
     std::string fragSrc = HolmXcShadertoy::WrapFragment(trimmed);
     const char *vertSrc = HolmXcShadertoy::Gles2Vertex();
+    setMs(outWrapMs, std::chrono::duration<double, std::milli>(Clock::now() - wrapT0).count());
+
+    auto compileT0 = Clock::now();
     GLuint vert = CompileShader(GL_VERTEX_SHADER, vertSrc, errCode, errMsg);
     GLuint frag = CompileShader(GL_FRAGMENT_SHADER, fragSrc.c_str(), errCode, errMsg);
     if (vert == 0 || frag == 0) {
+        setMs(outCompileMs, std::chrono::duration<double, std::milli>(Clock::now() - compileT0).count());
         if (vert != 0) {
             glDeleteShader(vert);
         }
@@ -262,9 +277,11 @@ bool HolmXcLiteGlSetFragmentBody(HolmXcLiteGl &gl, const std::string &body, std:
             }
         }
         glDeleteProgram(program);
+        setMs(outCompileMs, std::chrono::duration<double, std::milli>(Clock::now() - compileT0).count());
         SetErr(errCode, errMsg, "SHADER_LINK", log.c_str());
         return false;
     }
+    setMs(outCompileMs, std::chrono::duration<double, std::milli>(Clock::now() - compileT0).count());
 
     if (gl.program != 0) {
         glDeleteProgram(gl.program);

@@ -17,3 +17,4 @@
 | [0009](./0009-ios-runtime-cametallayer-objc-session.md) | iOS Runtime · CAMetalLayer + ObjC 外泵 Session |
 | [0010](./0010-ohos-runtime-xcomponent-session.md) | 鸿蒙 Runtime · XComponent + 外泵 Session |
 | [0011](./0011-ohos-lite-egl-xcomponent.md) | 鸿蒙 Lite · 同 XComponent + EGL/GLES |
+| [0012](./0012-on-shader-compiled-timing.md) | **onShaderCompiled** · 片元装载双耗时回调 |

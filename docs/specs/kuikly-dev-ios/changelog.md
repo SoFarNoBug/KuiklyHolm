@@ -1,5 +1,11 @@
 # changelog · kuikly-dev-ios
 
+## 2026-11-16（onShaderCompiled）
+
+- [ADD] Lite/Runtime 装载结束 `onShaderCompiled`（wrapMs/compileMs；ADR 0012）
+- 本单无真机验证
+- 轻量治理：规范自检见会话实现回报；gate 跳过（纯业务）
+
 ## 2026-11-14（关 P2-objc-shadertoy-drift）
 
 - [MODIFY] `KRHolmGlesHostView`：wrap/vert 改调 `HolmShadertoyShell` / `HolmBuiltinShaders`（holmDemo）；删 ObjC 内嵌信封

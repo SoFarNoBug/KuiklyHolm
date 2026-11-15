@@ -178,17 +178,23 @@
     [EAGLContext setCurrentContext:_glContext];
     NSString *fragSrc = nil;
     NSString *vertSrc = nil;
+    CFAbsoluteTime wrapT0 = CFAbsoluteTimeGetCurrent();
     @try {
         fragSrc = [HolmDemoHolmShadertoyShell.shared wrapFragmentBody:trimmed];
         vertSrc = HolmDemoHolmBuiltinShaders.shared.gles2Vertex;
     } @catch (NSException *ex) {
+        float wrapMs = (float)((CFAbsoluteTimeGetCurrent() - wrapT0) * 1000.0);
         [self holm_emitError:@"SHADER_WRAP" message:ex.reason ?: @"wrap failed"];
+        [self holm_emitCompiled:NO wrapMs:wrapMs compileMs:0.f];
         return NO;
     }
+    float wrapMs = (float)((CFAbsoluteTimeGetCurrent() - wrapT0) * 1000.0);
     if (fragSrc.length == 0 || vertSrc.length == 0) {
         [self holm_emitError:@"SHADER_WRAP" message:@"empty wrap/vert from holmDemo"];
+        [self holm_emitCompiled:NO wrapMs:wrapMs compileMs:0.f];
         return NO;
     }
+    CFAbsoluteTime compileT0 = CFAbsoluteTimeGetCurrent();
     GLuint vert = [self holm_compileShader:GL_VERTEX_SHADER source:vertSrc];
     GLuint frag = [self holm_compileShader:GL_FRAGMENT_SHADER source:fragSrc];
     if (vert == 0 || frag == 0) {
@@ -198,6 +204,8 @@
         if (frag) {
             glDeleteShader(frag);
         }
+        float compileMs = (float)((CFAbsoluteTimeGetCurrent() - compileT0) * 1000.0);
+        [self holm_emitCompiled:NO wrapMs:wrapMs compileMs:compileMs];
         return NO;
     }
     GLuint program = glCreateProgram();
@@ -218,9 +226,12 @@
             log = [[NSString alloc] initWithData:buf encoding:NSUTF8StringEncoding] ?: log;
         }
         glDeleteProgram(program);
+        float compileMs = (float)((CFAbsoluteTimeGetCurrent() - compileT0) * 1000.0);
         [self holm_emitError:@"SHADER_LINK" message:log];
+        [self holm_emitCompiled:NO wrapMs:wrapMs compileMs:compileMs];
         return NO;
     }
+    float compileMs = (float)((CFAbsoluteTimeGetCurrent() - compileT0) * 1000.0);
     if (_program) {
         glDeleteProgram(_program);
     }
@@ -231,6 +242,7 @@
     _resolutionLoc = glGetUniformLocation(_program, "u_resolution");
     _liquidBoostLoc = glGetUniformLocation(_program, "u_liquidBoost");
     _liquidBendLoc = glGetUniformLocation(_program, "u_liquidBend");
+    [self holm_emitCompiled:YES wrapMs:wrapMs compileMs:compileMs];
     return YES;
 }
 
@@ -305,6 +317,12 @@
 - (void)holm_emitError:(NSString *)code message:(NSString *)message {
     if (_onError) {
         _onError(code ?: @"", message ?: @"");
+    }
+}
+
+- (void)holm_emitCompiled:(BOOL)ok wrapMs:(float)wrapMs compileMs:(float)compileMs {
+    if (_onShaderCompiled) {
+        _onShaderCompiled(ok, wrapMs, compileMs);
     }
 }
 

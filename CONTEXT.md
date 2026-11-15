@@ -34,6 +34,18 @@ _Avoid_：仅靠 classpath 静默默选
 Demo 当前主推的宿主片元示例（霓虹隧道）。
 _Avoid_：官方五席产品目录
 
+**包壳耗时**：
+本次片元装载中，把宿主正文补成可编译源码所花的时间（Lite 的 Shadertoy 薄壳等）。
+_Avoid_：和编译耗时混成一个数；把首帧绘制算进来
+
+**编译耗时**：
+本次片元装载中，驱动编译/链接或 Runtime 建 pipeline 所花的时间。
+_Avoid_：和包壳耗时混成一个数；把首帧绘制算进来
+
+**onShaderCompiled**：
+岛上每次片元装载尝试结束（含未进入包壳/编译的拒绝、以及 Surface/上下文恢复触发的重编）向业务回传成败与包壳/编译耗时的独立事件；与 `onError` 可双发。
+_Avoid_：onShaderReady；塞进 onReady / onPerf；用缺省回调表示「尝试已结束」；仅业务改 Attr 才回调
+
 **五席（已删源码）**：
 历史 frost/glow/liquid_approx/gradient_bg/fullscreen_warp；官方实现已从 Core/runtime/iOS/Demo 移除。
 _Avoid_：官方特效完成态 / scene=frost 出画

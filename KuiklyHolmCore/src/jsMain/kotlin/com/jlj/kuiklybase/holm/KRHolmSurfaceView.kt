@@ -45,6 +45,8 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
     private var _onReady: KuiklyRenderCallback? = null
     private var _onError: KuiklyRenderCallback? = null
     private var _onPerf: KuiklyRenderCallback? = null
+    private var _onShaderCompiled: KuiklyRenderCallback? = null
+    private var _lastLiteWrapMs: Float = 0f
     private var _readyFired: Boolean = false
     private var _backend: String = HolmExecutor.BACKEND_WEBGL
     private var _started: Boolean = false
@@ -79,6 +81,8 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                     // 切轨过渡：错方言先只存值，等 executor 落地再喂泵
                     if (fragmentMatchesCurrentExecutor(_fragmentShader)) {
                         postScene()
+                    } else {
+                        fireShaderCompiled(false, 0f, 0f, _executor)
                     }
                 }
                 true
@@ -153,6 +157,10 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
             HolmSurfaceEvent.ON_PERF -> {
                 _onPerf = propValue.unsafeCast<KuiklyRenderCallback>()
                 postRuntimePerfInterest(true)
+                true
+            }
+            HolmSurfaceEvent.ON_SHADER_COMPILED -> {
+                _onShaderCompiled = propValue.unsafeCast<KuiklyRenderCallback>()
                 true
             }
             else -> super.setProp(propKey, propValue)
@@ -321,6 +329,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
         o.type = "init"
         o.vert = HolmShaderResolve.vertex(_vertexShader)
         o.frag = resolveLiteFragmentOrEmpty()
+        o.wrapMs = _lastLiteWrapMs.toDouble()
         o.scene = _scene
         o.liquidBoost = _liquidBoost.toDouble()
         o.liquidBend = _liquidBend.toDouble()
@@ -382,15 +391,26 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
         msg.scene = _scene
         msg.vert = HolmShaderResolve.vertex(_vertexShader)
         msg.frag = resolveLiteFragmentOrEmpty()
+        msg.wrapMs = _lastLiteWrapMs.toDouble()
         dispatch(msg)
     }
 
     /** wrap 失败：返回空串，泵侧 rebuild 失败并保留上次程序（无官方席回退）。 */
     private fun resolveLiteFragmentOrEmpty(): String {
+        val t0 = js("typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()")
+            .unsafeCast<Double>()
         return try {
-            HolmShaderResolve.fragment(_scene, _fragmentShader)
+            val frag = HolmShaderResolve.fragment(_scene, _fragmentShader)
+            val t1 = js("typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()")
+                .unsafeCast<Double>()
+            _lastLiteWrapMs = (t1 - t0).toFloat()
+            frag
         } catch (t: Throwable) {
+            val t1 = js("typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()")
+                .unsafeCast<Double>()
+            _lastLiteWrapMs = (t1 - t0).toFloat()
             fireError("SHADER_WRAP", t.message ?: "wrap failed")
+            fireShaderCompiled(false, _lastLiteWrapMs, 0f, HolmExecutor.LITE)
             ""
         }
     }
@@ -410,9 +430,15 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                 // 仍持 GLSL 正文时跳过，等 Attr 换成 WGSL（已卸旧 custom）
                 HolmRuntimeNative.sessionSetScene(session, _scene)
                 flushRuntimeSessionErrors(session)
+                fireShaderCompiled(false, 0f, 0f, HolmExecutor.RUNTIME)
                 return
             }
+            val t0 = js("typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()")
+                .unsafeCast<Double>()
             val err = HolmRuntimeNative.sessionSetCustomFs(session, custom)
+            val t1 = js("typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()")
+                .unsafeCast<Double>()
+            val compileMs = (t1 - t0).toFloat()
             val drained = flushRuntimeSessionErrors(session)
             if (err != null) {
                 // wasm 已 present_clear_only + playing=false；主线程泵对齐停
@@ -422,13 +448,17 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                 if (drained == 0) {
                     fireError("SHADER_CUSTOM", err)
                 }
+                fireShaderCompiled(false, 0f, compileMs, HolmExecutor.RUNTIME)
             } else {
                 clearPendingError()
+                fireShaderCompiled(true, 0f, compileMs, HolmExecutor.RUNTIME)
             }
         } else {
             HolmRuntimeNative.sessionSetScene(session, _scene)
             flushRuntimeSessionErrors(session)
             clearPendingError()
+            // 空片元 ClearTri：ok=false，对齐 Lite 拒绝语义（审查 P2）
+            fireShaderCompiled(false, 0f, 0f, HolmExecutor.RUNTIME)
         }
     }
 
@@ -556,6 +586,20 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                 val fps = (data.fps as? Number)?.toFloat() ?: 0f
                 val frameMs = (data.frameMs as? Number)?.toFloat() ?: 0f
                 firePerf(fps, frameMs)
+            }
+            "shaderCompiled" -> {
+                val okRaw = data.ok
+                val ok = when (okRaw) {
+                    is Boolean -> okRaw
+                    is Number -> okRaw.toInt() != 0
+                    else -> false
+                }
+                val wrapMs = (data.wrapMs as? Number)?.toFloat() ?: 0f
+                val compileMs = (data.compileMs as? Number)?.toFloat() ?: 0f
+                val executor = (data.executor as? Any)?.toString()
+                    ?.ifBlank { null }
+                    ?: _executor
+                fireShaderCompiled(ok, wrapMs, compileMs, executor)
             }
         }
     }
@@ -1104,6 +1148,18 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
             mapOf(
                 "fps" to fps,
                 "frameMs" to frameMs,
+            ),
+        )
+    }
+
+    private fun fireShaderCompiled(ok: Boolean, wrapMs: Float, compileMs: Float, executor: String) {
+        val callback = _onShaderCompiled ?: return
+        callback.invoke(
+            mapOf(
+                "ok" to ok,
+                "wrapMs" to wrapMs,
+                "compileMs" to compileMs,
+                "executor" to executor,
             ),
         )
     }

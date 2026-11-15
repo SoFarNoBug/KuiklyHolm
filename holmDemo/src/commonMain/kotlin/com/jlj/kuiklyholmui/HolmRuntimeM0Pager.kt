@@ -66,6 +66,7 @@ private fun HolmRuntimeM0Screen() {
     var backendId by remember { mutableStateOf("") }
     var errorText by remember { mutableStateOf("") }
     var perfText by remember { mutableStateOf("fps=—") }
+    var compileText by remember { mutableStateOf("compile=—") }
     var executor by remember { mutableStateOf(HolmExecutor.RUNTIME) }
     var maxFps by remember { mutableStateOf(HolmSurfaceAttr.DEFAULT_MAX_FPS) }
     var islandSize by remember { mutableStateOf(IntSize(1, 1)) }
@@ -103,7 +104,7 @@ private fun HolmRuntimeM0Screen() {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "executor=$executor | sample=${sample.id} | scene=$scene | maxFps=$maxFps | $perfText | ${islandSize.width}x${islandSize.height} | $backendText",
+            text = "executor=$executor | sample=${sample.id} | scene=$scene | maxFps=$maxFps | $perfText | $compileText | ${islandSize.width}x${islandSize.height} | $backendText",
             fontSize = 13.sp,
             lineHeight = 13.sp,
             color = DemoTheme.TextSecondary,
@@ -208,6 +209,13 @@ private fun HolmRuntimeM0Screen() {
                     ) {
                         surfacePlaying = false
                     }
+                },
+                onShaderCompiled = { compiled ->
+                    val wrap = ((compiled.wrapMs * 10f).toInt() / 10f)
+                    val compile = ((compiled.compileMs * 10f).toInt() / 10f)
+                    val okLabel = if (compiled.ok) "ok" else "fail"
+                    compileText =
+                        "compile $okLabel wrap=${wrap}ms compile=${compile}ms (${compiled.executor})"
                 },
                 onPerf = { perf ->
                     val ms = ((perf.frameMs * 10f).toInt() / 10f)

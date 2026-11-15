@@ -3,6 +3,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 typedef void (^KRHolmGlesErrorBlock)(NSString *code, NSString *message);
+typedef void (^KRHolmGlesCompiledBlock)(BOOL ok, float wrapMs, float compileMs);
 
 /**
  * Lite 子 View：layerClass = CAEAGLLayer；GLES2 片元外泵。
@@ -11,6 +12,7 @@ typedef void (^KRHolmGlesErrorBlock)(NSString *code, NSString *message);
 @interface KRHolmGlesHostView : UIView
 
 @property (nonatomic, copy, nullable) KRHolmGlesErrorBlock onError;
+@property (nonatomic, copy, nullable) KRHolmGlesCompiledBlock onShaderCompiled;
 @property (nonatomic, readonly) BOOL hasProgram;
 @property (nonatomic, readonly) CGSize drawablePixelSize;
 

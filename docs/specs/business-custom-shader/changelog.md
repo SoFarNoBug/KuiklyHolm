@@ -1,5 +1,22 @@
 # changelog · business-custom-shader
 
+## 2026-11-16（审查整改 · onShaderCompiled P2）
+
+- [MODIFY] H5 Runtime Worker：`setCustomFs` 失败保留 `compileMs`（关 P2-h5-runtime-fail-compileMs-zero）
+- [MODIFY] Ohos Lite：`!liteGl.ready` 仍 `FireShaderCompiled(ok=false)`（关 P2-ohos-lite-not-ready-silent）
+- [MODIFY] 四端 Runtime 空片元回调改为 `ok=false`（关 P2-runtime-empty-ok-true）
+- 本单无真机验证（H5 联调勾表）
+- 轻量治理：规范自检见会话实现回报；gate 跳过（纯业务）
+
+## 2026-11-16（onShaderCompiled 双耗时）
+
+- [ADD] `HolmSurface` 事件 `onShaderCompiled`：`ok` / `wrapMs` / `compileMs` / `executor`；成败都报；失败先 `onError` 再本事件
+- [ADD] 四端 Lite+Runtime 装载尝试结束回调（含拒绝零耗时、Surface 恢复重编）；Runtime `wrapMs=0`
+- [ADD] Demo `holm_runtime_m0` 状态行展示最近一次耗时
+- [ADD] ADR [0012](../../adr/0012-on-shader-compiled-timing.md)
+- 本单无真机验证（编译门禁 + Demo 状态行自测）
+- 轻量治理：规范自检见会话实现回报；gate 跳过（纯业务）
+
 ## 2026-11-13（采集改控制台）
 
 - [MODIFY] Demo `holm_runtime_m0`：去掉页面 JSONL /「清空 JSON」；`println("[holm-perf] …")` 静默打控制台（H5→console）；仍 10s 自动停

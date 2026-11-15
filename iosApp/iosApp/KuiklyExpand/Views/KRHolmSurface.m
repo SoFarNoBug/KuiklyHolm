@@ -52,6 +52,7 @@ static NSString *const kHolmBackendGlesIos = @"gles2-ios";
 @property (nonatomic, copy, nullable) KuiklyRenderCallback css_onReady;
 @property (nonatomic, copy, nullable) KuiklyRenderCallback css_onError;
 @property (nonatomic, copy, nullable) KuiklyRenderCallback css_onPerf;
+@property (nonatomic, copy, nullable) KuiklyRenderCallback css_onShaderCompiled;
 - (void)holm_onTick:(CADisplayLink *)link;
 @end
 
@@ -217,6 +218,10 @@ static NSString *const kHolmBackendGlesIos = @"gles2-ios";
     _css_onPerf = [css_onPerf copy];
 }
 
+- (void)setCss_onShaderCompiled:(KuiklyRenderCallback)css_onShaderCompiled {
+    _css_onShaderCompiled = [css_onShaderCompiled copy];
+}
+
 #pragma mark - Executor
 
 - (BOOL)holm_isRuntime {
@@ -240,9 +245,13 @@ static NSString *const kHolmBackendGlesIos = @"gles2-ios";
     if (custom.length > 0) {
         if (![self holm_looksLikeWgslFragment:custom]) {
             // 热切 Lite 途中的 GLSL：忽略，不 panic、不误报红字
+            [self holm_fireShaderCompiled:NO wrapMs:0.f compileMs:0.f executor:kHolmExecutorRuntime];
             return;
         }
-        if (!holm_runtime_session_set_custom_fs(_sessionHandle, custom.UTF8String)) {
+        CFAbsoluteTime t0 = CFAbsoluteTimeGetCurrent();
+        BOOL ok = holm_runtime_session_set_custom_fs(_sessionHandle, custom.UTF8String);
+        float compileMs = (float)((CFAbsoluteTimeGetCurrent() - t0) * 1000.0);
+        if (!ok) {
             char codeBuf[64] = {0};
             char msgBuf[512] = {0};
             holm_runtime_session_last_error_code(_sessionHandle, codeBuf, sizeof(codeBuf));
@@ -250,12 +259,17 @@ static NSString *const kHolmBackendGlesIos = @"gles2-ios";
             NSString *code = codeBuf[0] ? [NSString stringWithUTF8String:codeBuf] : @"SHADER_CUSTOM";
             NSString *msg = msgBuf[0] ? [NSString stringWithUTF8String:msgBuf] : @"Runtime setCustomFs failed";
             [self holm_fireError:code message:msg];
+            [self holm_fireShaderCompiled:NO wrapMs:0.f compileMs:compileMs executor:kHolmExecutorRuntime];
+        } else {
+            [self holm_fireShaderCompiled:YES wrapMs:0.f compileMs:compileMs executor:kHolmExecutorRuntime];
         }
     } else {
         holm_runtime_session_set_custom_fs(_sessionHandle, "");
         if (_scene.length) {
             holm_runtime_session_set_scene(_sessionHandle, _scene.UTF8String);
         }
+        // 空片元 ClearTri：ok=false，对齐 Lite 拒绝语义（审查 P2）
+        [self holm_fireShaderCompiled:NO wrapMs:0.f compileMs:0.f executor:kHolmExecutorRuntime];
     }
 }
 
@@ -267,10 +281,12 @@ static NSString *const kHolmBackendGlesIos = @"gles2-ios";
     if (custom.length == 0) {
         [self holm_fireError:@"FRAGMENT_REQUIRED"
                      message:@"fragmentShader required (official scenes removed on iOS)"];
+        [self holm_fireShaderCompiled:NO wrapMs:0.f compileMs:0.f executor:kHolmExecutorLite];
         return;
     }
     if ([self holm_looksLikeWgslFragment:custom]) {
         // 热切 Runtime 途中的 WGSL：忽略，等 executor=runtime
+        [self holm_fireShaderCompiled:NO wrapMs:0.f compileMs:0.f executor:kHolmExecutorLite];
         return;
     }
     [_glesHost holm_setFragmentBody:custom];
@@ -311,6 +327,9 @@ static NSString *const kHolmBackendGlesIos = @"gles2-ios";
     if (!_glesHost) {
         _glesHost = [[KRHolmGlesHostView alloc] initWithFrame:self.bounds];
         _glesHost.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        [self addSubview:_glesHost];
+    }
+    {
         __weak typeof(self) weakSelf = self;
         _glesHost.onError = ^(NSString *code, NSString *message) {
             __strong typeof(weakSelf) strongSelf = weakSelf;
@@ -318,7 +337,15 @@ static NSString *const kHolmBackendGlesIos = @"gles2-ios";
                 [strongSelf holm_fireError:code message:message];
             }
         };
-        [self addSubview:_glesHost];
+        _glesHost.onShaderCompiled = ^(BOOL ok, float wrapMs, float compileMs) {
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (strongSelf) {
+                [strongSelf holm_fireShaderCompiled:ok
+                                            wrapMs:wrapMs
+                                         compileMs:compileMs
+                                          executor:kHolmExecutorLite];
+            }
+        };
     }
     if (![_glesHost holm_setupGL]) {
         return;
@@ -330,12 +357,14 @@ static NSString *const kHolmBackendGlesIos = @"gles2-ios";
         self.backgroundColor = [UIColor colorWithRed:0.02 green:0.08 blue:0.28 alpha:1];
         [self holm_fireError:@"FRAGMENT_REQUIRED"
                      message:@"fragmentShader required (official scenes removed on iOS)"];
+        [self holm_fireShaderCompiled:NO wrapMs:0.f compileMs:0.f executor:kHolmExecutorLite];
         [self holm_startDisplayLink];
         return;
     }
     if ([self holm_looksLikeWgslFragment:custom]) {
         [self holm_fireError:@"SHADER_CUSTOM"
                      message:@"Lite fragmentShader must be GLSL Shadertoy body (WGSL ignored)"];
+        [self holm_fireShaderCompiled:NO wrapMs:0.f compileMs:0.f executor:kHolmExecutorLite];
         [self holm_startDisplayLink];
         return;
     }
@@ -401,15 +430,16 @@ static NSString *const kHolmBackendGlesIos = @"gles2-ios";
     _lastSessionH = h;
     holm_runtime_session_set_liquid(_sessionHandle, _liquidBoost, _liquidBend);
     holm_runtime_session_set_playing(_sessionHandle, _playing ? 1u : 0u);
-    [self holm_applyRuntimeShaders];
     if (_fragmentShader.length > 0 &&
         ![self holm_looksLikeWgslFragment:_fragmentShader] &&
         [self holm_isRuntime]) {
         [self holm_teardownRuntime];
         [self holm_fireError:@"SHADER_CUSTOM"
                      message:@"Runtime fragmentShader must be WGSL (non-WGSL custom ignored)"];
+        [self holm_fireShaderCompiled:NO wrapMs:0.f compileMs:0.f executor:kHolmExecutorRuntime];
         return;
     }
+    [self holm_applyRuntimeShaders];
 
     char backendBuf[64] = {0};
     holm_runtime_session_backend_id(_sessionHandle, backendBuf, sizeof(backendBuf));
@@ -614,6 +644,21 @@ static NSString *const kHolmBackendGlesIos = @"gles2-ios";
         return;
     }
     _css_onError(@{ @"code": _pendingErrorCode, @"message": _pendingErrorMessage });
+}
+
+- (void)holm_fireShaderCompiled:(BOOL)ok
+                        wrapMs:(float)wrapMs
+                     compileMs:(float)compileMs
+                      executor:(NSString *)executor {
+    if (!_css_onShaderCompiled) {
+        return;
+    }
+    _css_onShaderCompiled(@{
+        @"ok": @(ok),
+        @"wrapMs": @(wrapMs),
+        @"compileMs": @(compileMs),
+        @"executor": executor ?: @"",
+    });
 }
 
 @end

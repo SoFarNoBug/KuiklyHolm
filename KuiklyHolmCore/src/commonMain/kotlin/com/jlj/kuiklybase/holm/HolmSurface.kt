@@ -128,7 +128,7 @@ class HolmSurfaceAttr : ComposeAttr() {
 /**
  * @CreateDate: 2026/11/12
  * @Author: jlj
- * @Description: HolmSurface Event（onReady / onError / onPerf）。
+ * @Description: HolmSurface Event（onReady / onError / onPerf / onShaderCompiled）。
  */
 class HolmSurfaceEvent : ComposeEvent() {
     fun onReady(handler: (ReadyParams) -> Unit) {
@@ -149,10 +149,17 @@ class HolmSurfaceEvent : ComposeEvent() {
         }
     }
 
+    fun onShaderCompiled(handler: (ShaderCompiledParams) -> Unit) {
+        register(ON_SHADER_COMPILED) {
+            handler(ShaderCompiledParams.decode(it))
+        }
+    }
+
     companion object {
         const val ON_READY: String = "onReady"
         const val ON_ERROR: String = "onError"
         const val ON_PERF: String = "onPerf"
+        const val ON_SHADER_COMPILED: String = "onShaderCompiled"
     }
 }
 
@@ -205,6 +212,36 @@ data class PerfParams(
     }
 }
 
+/**
+ * 每次片元装载尝试结束（成败皆可）；ADR 0012。
+ * Runtime 的 [wrapMs] 恒为 0；未跑到的步骤填 0。
+ */
+data class ShaderCompiledParams(
+    val ok: Boolean,
+    val wrapMs: Float,
+    val compileMs: Float,
+    val executor: String,
+) {
+    companion object {
+        fun decode(params: Any?): ShaderCompiledParams {
+            val obj = params.toHolmJson()
+            val okRaw = obj.opt("ok")
+            val ok = when (okRaw) {
+                is Boolean -> okRaw
+                is Number -> okRaw.toInt() != 0
+                is String -> okRaw == "1" || okRaw.equals("true", ignoreCase = true)
+                else -> obj.optBoolean("ok", false)
+            }
+            return ShaderCompiledParams(
+                ok = ok,
+                wrapMs = obj.optDouble("wrapMs", 0.0).toFloat(),
+                compileMs = obj.optDouble("compileMs", 0.0).toFloat(),
+                executor = obj.optString("executor", ""),
+            )
+        }
+    }
+}
+
 /** H5 回调常为 Map；Android 多为 JSONObject；兼容 JSON 字符串。 */
 private fun Any?.toHolmJson(): JSONObject = when (this) {
     is JSONObject -> this
@@ -244,6 +281,7 @@ fun HolmSurface(
     onReady: ((ReadyParams) -> Unit)? = null,
     onError: ((ErrorParams) -> Unit)? = null,
     onPerf: ((PerfParams) -> Unit)? = null,
+    onShaderCompiled: ((ShaderCompiledParams) -> Unit)? = null,
 ) {
     MakeKuiklyComposeNode<HolmSurfaceView>(
         factory = { HolmSurfaceView() },
@@ -265,6 +303,7 @@ fun HolmSurface(
             val readyHandler = onReady
             val errorHandler = onError
             val perfHandler = onPerf
+            val compiledHandler = onShaderCompiled
             view.getViewEvent().run {
                 if (readyHandler != null) {
                     onReady(readyHandler)
@@ -274,6 +313,9 @@ fun HolmSurface(
                 }
                 if (perfHandler != null) {
                     onPerf(perfHandler)
+                }
+                if (compiledHandler != null) {
+                    onShaderCompiled(compiledHandler)
                 }
             }
         },

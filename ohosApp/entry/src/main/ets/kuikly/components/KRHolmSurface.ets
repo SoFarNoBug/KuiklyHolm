@@ -18,6 +18,7 @@ const PROP_LIQUID_BEND = 'liquidBend';
 const PROP_ON_READY = 'onReady';
 const PROP_ON_ERROR = 'onError';
 const PROP_ON_PERF = 'onPerf';
+const PROP_ON_SHADER_COMPILED = 'onShaderCompiled';
 
 const EXECUTOR_RUNTIME = 'runtime';
 const EXECUTOR_LITE = 'lite';
@@ -41,6 +42,7 @@ export class KRHolmSurface extends KuiklyRenderBaseView {
   cssOnReady: KuiklyRenderCallback | null = null;
   cssOnError: KuiklyRenderCallback | null = null;
   cssOnPerf: KuiklyRenderCallback | null = null;
+  cssOnShaderCompiled: KuiklyRenderCallback | null = null;
   private nativeBound: boolean = false;
 
   constructor() {
@@ -109,6 +111,11 @@ export class KRHolmSurface extends KuiklyRenderBaseView {
       }
       case PROP_ON_PERF: {
         this.cssOnPerf = propValue as KuiklyRenderCallback;
+        this.pushCallbacks();
+        return true;
+      }
+      case PROP_ON_SHADER_COMPILED: {
+        this.cssOnShaderCompiled = propValue as KuiklyRenderCallback;
         this.pushCallbacks();
         return true;
       }
@@ -222,6 +229,11 @@ export class KRHolmSurface extends KuiklyRenderBaseView {
         (payload: object) => {
           if (self.cssOnPerf) {
             self.cssOnPerf(payload as KRAny);
+          }
+        },
+        (payload: object) => {
+          if (self.cssOnShaderCompiled) {
+            self.cssOnShaderCompiled(payload as KRAny);
           }
         }
       );

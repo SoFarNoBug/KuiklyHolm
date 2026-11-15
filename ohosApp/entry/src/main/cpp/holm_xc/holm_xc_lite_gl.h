@@ -45,8 +45,10 @@ void HolmXcLiteGlDestroy(HolmXcLiteGl &gl);
 bool HolmXcLiteGlResize(HolmXcLiteGl &gl, uint32_t width, uint32_t height, std::string *errCode,
                         std::string *errMsg);
 
+/** outWrapMs / outCompileMs 可空；单位毫秒。 */
 bool HolmXcLiteGlSetFragmentBody(HolmXcLiteGl &gl, const std::string &body, std::string *errCode,
-                                 std::string *errMsg);
+                                 std::string *errMsg, double *outWrapMs = nullptr,
+                                 double *outCompileMs = nullptr);
 
 void HolmXcLiteGlSetLiquid(HolmXcLiteGl &gl, float boost, float bend);
 

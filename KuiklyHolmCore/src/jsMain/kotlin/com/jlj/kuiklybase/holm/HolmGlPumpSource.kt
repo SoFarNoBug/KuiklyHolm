@@ -95,6 +95,16 @@ object HolmGlPumpSource {
       send({ type: "error", code: code, message: message });
     }
 
+    function emitShaderCompiled(ok, wrapMs, compileMs) {
+      send({
+        type: "shaderCompiled",
+        ok: !!ok,
+        wrapMs: typeof wrapMs === "number" ? wrapMs : 0,
+        compileMs: typeof compileMs === "number" ? compileMs : 0,
+        executor: "lite"
+      });
+    }
+
     function emitReadyOnce() {
       if (readyEmitted) return;
       readyEmitted = true;
@@ -145,18 +155,29 @@ object HolmGlPumpSource {
       program = null;
     }
 
-    function rebuild() {
-      if (!gl || !vertSrc || !fragSrc) return false;
+    function nowMs() {
+      return (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+    }
+
+    function rebuild(wrapMs) {
+      var wrap = typeof wrapMs === "number" ? wrapMs : 0;
+      if (!gl || !vertSrc || !fragSrc) {
+        // 空 frag 多半是 Kotlin wrap 失败已报 onShaderCompiled；此处不重复发
+        return false;
+      }
+      var t0 = nowMs();
       var vs = compile(gl.VERTEX_SHADER, vertSrc);
       var fs = compile(gl.FRAGMENT_SHADER, fragSrc);
       if (!vs || !fs) {
         // 切换样本失败：卸掉上一档，深蓝清屏（勿继续播旧特效）
         dropProgram();
+        emitShaderCompiled(false, wrap, nowMs() - t0);
         return false;
       }
       var prog = gl.createProgram();
       if (!prog) {
         dropProgram();
+        emitShaderCompiled(false, wrap, nowMs() - t0);
         return false;
       }
       gl.attachShader(prog, vs);
@@ -166,6 +187,7 @@ object HolmGlPumpSource {
         emitError("SHADER_LINK", gl.getProgramInfoLog(prog) || "link failed");
         try { gl.deleteProgram(prog); } catch (_) {}
         dropProgram();
+        emitShaderCompiled(false, wrap, nowMs() - t0);
         return false;
       }
       dropProgram();
@@ -185,6 +207,7 @@ object HolmGlPumpSource {
       dirtyLiquidBend = true;
       dirtyWarpAmount = true;
       dirtyScrollSpeed = true;
+      emitShaderCompiled(true, wrap, nowMs() - t0);
       return true;
     }
 
@@ -321,7 +344,7 @@ object HolmGlPumpSource {
         }
         ensureBuffer();
         applySize(msg.w, msg.h);
-        if (!rebuild()) {
+        if (!rebuild(typeof msg.wrapMs === "number" ? msg.wrapMs : 0)) {
           shaderFailed = true;
           return;
         }
@@ -367,7 +390,7 @@ object HolmGlPumpSource {
         if (typeof msg.frag === "string") fragSrc = msg.frag;
         if (typeof msg.vert === "string") vertSrc = msg.vert;
         if (msg.scene) scene = msg.scene;
-        if (!rebuild()) {
+        if (!rebuild(typeof msg.wrapMs === "number" ? msg.wrapMs : 0)) {
           shaderFailed = true;
           return;
         }

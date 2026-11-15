@@ -11,6 +11,7 @@ export const setCallbacks: (
   id: string,
   onReady?: (payload: object) => void,
   onError?: (payload: object) => void,
-  onPerf?: (payload: object) => void
+  onPerf?: (payload: object) => void,
+  onShaderCompiled?: (payload: object) => void
 ) => void;
 export const destroyIsland: (id: string) => void;

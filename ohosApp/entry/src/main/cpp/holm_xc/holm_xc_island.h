@@ -45,6 +45,7 @@ struct HolmXcIsland {
     napi_ref onReadyRef = nullptr;
     napi_ref onErrorRef = nullptr;
     napi_ref onPerfRef = nullptr;
+    napi_ref onShaderCompiledRef = nullptr;
 };
 
 inline std::mutex &HolmXcMutex()

@@ -1,5 +1,12 @@
 # dualtrack-lite-vs-standard · changelog
 
+## 2026-11-16（onShaderCompiled 双耗时 · 四端）
+
+- [ADD] 双轨装载结束事件 `onShaderCompiled`（ADR 0012）；Lite wrap/compile 分计；Runtime `wrapMs=0`
+- [MODIFY] Demo 状态行展示最近一次 `wrapMs`/`compileMs`
+- 本单无真机验证（编译门禁）
+- 轻量治理：规范自检见会话实现回报；gate 跳过（纯业务）
+
 ## 2026-11-16（Android · Runtime→Lite GLES 句柄失效蓝屏）
 
 - [MODIFY] `KRHolmSurfaceView` / `HolmGlesRenderer`：`markContextLost()`；切 Runtime pause 前与切回 Lite 前作废 `_program`/`_surfaceReady`（关 same-check 误跳过 → `_program==0` 深蓝清屏；换样本才恢复）

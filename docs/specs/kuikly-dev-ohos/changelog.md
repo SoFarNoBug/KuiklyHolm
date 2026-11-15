@@ -1,5 +1,11 @@
 # changelog · kuikly-dev-ohos
 
+## 2026-11-16（onShaderCompiled）
+
+- [ADD] `FireShaderCompiled` + ETS 回调；Lite/Runtime 双耗时（ADR 0012）
+- 本单无真机验证
+- 轻量治理：规范自检见会话实现回报；gate 跳过（纯业务）
+
 ## 2026-11-15（审查整改 ohos-lite-adr0011）
 
 - [MODIFY] `holm-runtime/README`：去掉鸿蒙 Lite=`LITE_PENDING`；对齐 ADR 0011 / `gles2-ohos`

@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -174,6 +175,31 @@ void FirePerf(HolmXcIsland &island, double fps)
     FireJsObject(island.env, island.onPerfRef, obj);
 }
 
+void FireShaderCompiled(HolmXcIsland &island, bool ok, double wrapMs, double compileMs,
+                        const char *executor)
+{
+    if (island.env == nullptr || island.onShaderCompiledRef == nullptr) {
+        return;
+    }
+    napi_value obj = nullptr;
+    if (!NapiOk(napi_create_object(island.env, &obj))) {
+        return;
+    }
+    napi_value okV = nullptr;
+    napi_value wrapV = nullptr;
+    napi_value compileV = nullptr;
+    napi_value execV = nullptr;
+    napi_get_boolean(island.env, ok, &okV);
+    napi_create_double(island.env, wrapMs, &wrapV);
+    napi_create_double(island.env, compileMs, &compileV);
+    napi_create_string_utf8(island.env, executor != nullptr ? executor : "", NAPI_AUTO_LENGTH, &execV);
+    napi_set_named_property(island.env, obj, "ok", okV);
+    napi_set_named_property(island.env, obj, "wrapMs", wrapV);
+    napi_set_named_property(island.env, obj, "compileMs", compileV);
+    napi_set_named_property(island.env, obj, "executor", execV);
+    FireJsObject(island.env, island.onShaderCompiledRef, obj);
+}
+
 bool IsRuntime(const HolmXcIsland &island)
 {
     return island.executor == kExecutorRuntime;
@@ -234,12 +260,19 @@ void ApplyRuntimeShaders(HolmXcIsland &island)
         if (!island.scene.empty()) {
             holm_runtime_session_set_scene(island.sessionHandle, island.scene.c_str());
         }
+        // 空片元 ClearTri：ok=false，对齐 Lite 拒绝语义（审查 P2）
+        FireShaderCompiled(island, false, 0.0, 0.0, kExecutorRuntime);
         return;
     }
     if (!LooksLikeWgsl(trimmed)) {
+        FireShaderCompiled(island, false, 0.0, 0.0, kExecutorRuntime);
         return;
     }
-    if (holm_runtime_session_set_custom_fs(island.sessionHandle, trimmed.c_str()) == 0) {
+    using Clock = std::chrono::steady_clock;
+    auto t0 = Clock::now();
+    int ok = holm_runtime_session_set_custom_fs(island.sessionHandle, trimmed.c_str());
+    double compileMs = std::chrono::duration<double, std::milli>(Clock::now() - t0).count();
+    if (ok == 0) {
         char codeBuf[64] = {0};
         char msgBuf[512] = {0};
         holm_runtime_session_last_error_code(island.sessionHandle, codeBuf, sizeof(codeBuf));
@@ -247,6 +280,9 @@ void ApplyRuntimeShaders(HolmXcIsland &island)
         const char *code = codeBuf[0] ? codeBuf : "SHADER_CUSTOM";
         const char *msg = msgBuf[0] ? msgBuf : "Runtime setCustomFs failed";
         FireError(island, code, msg);
+        FireShaderCompiled(island, false, 0.0, compileMs, kExecutorRuntime);
+    } else {
+        FireShaderCompiled(island, true, 0.0, compileMs, kExecutorRuntime);
     }
 }
 
@@ -257,11 +293,14 @@ void ApplyRuntimeShaders(HolmXcIsland &island)
 bool ApplyLiteShaders(HolmXcIsland &island, bool reportDialectError)
 {
     if (!island.liteGl.ready) {
+        // Surface 未就绪也结束本次尝试，避免业务干等（审查 P2）
+        FireShaderCompiled(island, false, 0.0, 0.0, kExecutorLite);
         return false;
     }
     std::string trimmed = TrimCopy(island.fragmentShader);
     if (trimmed.empty()) {
         FireError(island, "FRAGMENT_REQUIRED", "fragmentShader required (Shadertoy body)");
+        FireShaderCompiled(island, false, 0.0, 0.0, kExecutorLite);
         return false;
     }
     if (LooksLikeWgsl(trimmed)) {
@@ -269,15 +308,20 @@ bool ApplyLiteShaders(HolmXcIsland &island, bool reportDialectError)
             FireError(island, "SHADER_DIALECT",
                       "Lite fragmentShader must be GLSL Shadertoy body (WGSL ignored)");
         }
+        FireShaderCompiled(island, false, 0.0, 0.0, kExecutorLite);
         return false;
     }
     std::string errCode;
     std::string errMsg;
-    if (!HolmXcLiteGlSetFragmentBody(island.liteGl, trimmed, &errCode, &errMsg)) {
+    double wrapMs = 0.0;
+    double compileMs = 0.0;
+    if (!HolmXcLiteGlSetFragmentBody(island.liteGl, trimmed, &errCode, &errMsg, &wrapMs, &compileMs)) {
         FireError(island, errCode.c_str(), errMsg.c_str());
+        FireShaderCompiled(island, false, wrapMs, compileMs, kExecutorLite);
         return false;
     }
     HolmXcLiteGlSetLiquid(island.liteGl, island.liquidBoost, island.liquidBend);
+    FireShaderCompiled(island, true, wrapMs, compileMs, kExecutorLite);
     return true;
 }
 
@@ -761,8 +805,8 @@ napi_value NapiSetLiquid(napi_env env, napi_callback_info info)
 
 napi_value NapiSetCallbacks(napi_env env, napi_callback_info info)
 {
-    size_t argc = 4;
-    napi_value args[4] = {nullptr};
+    size_t argc = 5;
+    napi_value args[5] = {nullptr};
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
     std::lock_guard<std::mutex> lock(HolmXcMutex());
     HolmXcIsland *island = IslandFromArg0(env, info, 1);
@@ -788,6 +832,7 @@ napi_value NapiSetCallbacks(napi_env env, napi_callback_info info)
     replaceRef(island->onReadyRef, 1);
     replaceRef(island->onErrorRef, 2);
     replaceRef(island->onPerfRef, 3);
+    replaceRef(island->onShaderCompiledRef, 4);
     island->env = env;
     return undefined;
 }
@@ -811,6 +856,9 @@ napi_value NapiDestroyIsland(napi_env env, napi_callback_info info)
         }
         if (it->second.onPerfRef) {
             napi_delete_reference(env, it->second.onPerfRef);
+        }
+        if (it->second.onShaderCompiledRef) {
+            napi_delete_reference(env, it->second.onShaderCompiledRef);
         }
         HolmXcIslands().erase(it);
     }

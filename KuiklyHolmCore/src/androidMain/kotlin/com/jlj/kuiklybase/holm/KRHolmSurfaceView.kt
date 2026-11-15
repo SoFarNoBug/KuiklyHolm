@@ -49,6 +49,7 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
     private var _onReady: KuiklyRenderCallback? = null
     private var _onError: KuiklyRenderCallback? = null
     private var _onPerf: KuiklyRenderCallback? = null
+    private var _onShaderCompiled: KuiklyRenderCallback? = null
     private var _readyFired: Boolean = false
     private var _surfaceAlive: Boolean = false
     private var _appliedSurfaceFps: Float = -1f
@@ -211,6 +212,9 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
         _renderer.onPerf = { fps, frameMs ->
             post { firePerf(fps, frameMs) }
         }
+        _renderer.onShaderCompiled = { ok, wrapMs, compileMs ->
+            post { fireShaderCompiled(ok, wrapMs, compileMs, HolmExecutor.LITE) }
+        }
 
         ensureRenderThread()
     }
@@ -240,11 +244,15 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
                     if (HolmExecutor.isRuntime(_executor)) {
                         if (HolmShaderResolve.looksLikeWgslFragment(next)) {
                             postRuntime { applyRuntimeShaders(it) }
+                        } else {
+                            post { fireShaderCompiled(false, 0f, 0f, HolmExecutor.RUNTIME) }
                         }
                     } else if (!HolmShaderResolve.looksLikeWgslFragment(next)) {
                         _glView.queueEvent {
                             _renderer.setShaders(_scene, _fragmentShader, _vertexShader)
                         }
+                    } else {
+                        post { fireShaderCompiled(false, 0f, 0f, HolmExecutor.LITE) }
                     }
                 }
                 true
@@ -360,6 +368,10 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
             }
             HolmSurfaceEvent.ON_PERF -> {
                 _onPerf = propValue as? KuiklyRenderCallback
+                true
+            }
+            HolmSurfaceEvent.ON_SHADER_COMPILED -> {
+                _onShaderCompiled = propValue as? KuiklyRenderCallback
                 true
             }
             else -> super.setProp(propKey, propValue)
@@ -555,10 +567,13 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
                         "SHADER_CUSTOM",
                         "Runtime fragmentShader must be WGSL (non-WGSL custom ignored)",
                     )
+                    fireShaderCompiled(false, 0f, 0f, HolmExecutor.RUNTIME)
                 }
                 return
             }
+            val t0 = System.nanoTime()
             val ok = HolmRuntimeNative.setCustomFs(handle, custom)
+            val compileMs = (System.nanoTime() - t0) / 1_000_000f
             // 失败已 emit 进 pending：只 drain 一次，勿再读 lastError 双发
             val drained = flushRuntimeErrors(handle)
             if (!ok) {
@@ -568,11 +583,18 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
                 if (drained == 0) {
                     post {
                         fireError("SHADER_CUSTOM", "Runtime setCustomFs failed")
+                        fireShaderCompiled(false, 0f, compileMs, HolmExecutor.RUNTIME)
                     }
+                } else {
+                    post { fireShaderCompiled(false, 0f, compileMs, HolmExecutor.RUNTIME) }
                 }
+            } else {
+                post { fireShaderCompiled(true, 0f, compileMs, HolmExecutor.RUNTIME) }
             }
         } else {
             HolmRuntimeNative.setScene(handle, _scene)
+            // 空片元 ClearTri：ok=false，对齐 Lite 拒绝语义（审查 P2）
+            post { fireShaderCompiled(false, 0f, 0f, HolmExecutor.RUNTIME) }
         }
     }
 
@@ -730,6 +752,15 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
         _onPerf?.invoke(payload)
     }
 
+    private fun fireShaderCompiled(ok: Boolean, wrapMs: Float, compileMs: Float, executor: String) {
+        val payload = JSONObject()
+            .put("ok", ok)
+            .put("wrapMs", wrapMs.toDouble())
+            .put("compileMs", compileMs.toDouble())
+            .put("executor", executor)
+        _onShaderCompiled?.invoke(payload)
+    }
+
     companion object {
         const val VIEW_NAME: String = HolmSurfaceView.VIEW_NAME
         private const val UNLIMITED_SURFACE_FPS: Float = 120f
@@ -741,6 +772,8 @@ private class HolmGlesRenderer : GLSurfaceView.Renderer {
     var onReady: (() -> Unit)? = null
     var onError: ((String, String) -> Unit)? = null
     var onPerf: ((Float, Float) -> Unit)? = null
+    /** ok, wrapMs, compileMs — 调用方 post 到 UI 并填 executor=lite */
+    var onShaderCompiled: ((Boolean, Float, Float) -> Unit)? = null
 
     private var _program: Int = 0
     private var _timeLoc: Int = -1
@@ -926,20 +959,27 @@ private class HolmGlesRenderer : GLSurfaceView.Renderer {
 
     private fun rebuildProgram() {
         val vertSrc = HolmShaderResolve.vertex(_vertexSrc)
+        val wrapT0 = System.nanoTime()
         val fragSrc = try {
             HolmShaderResolve.fragment(_scene, _fragmentBody)
         } catch (t: Throwable) {
+            val wrapMs = (System.nanoTime() - wrapT0) / 1_000_000f
             _shaderFailed = true
             dropLiteProgram()
             onError?.invoke("SHADER_WRAP", t.message ?: "wrap failed")
+            onShaderCompiled?.invoke(false, wrapMs, 0f)
             return
         }
+        val wrapMs = (System.nanoTime() - wrapT0) / 1_000_000f
+        val compileT0 = System.nanoTime()
         val vert = compile(GLES20.GL_VERTEX_SHADER, vertSrc)
         val frag = compile(GLES20.GL_FRAGMENT_SHADER, fragSrc)
         if (vert == 0 || frag == 0) {
+            val compileMs = (System.nanoTime() - compileT0) / 1_000_000f
             // 切换样本失败：卸掉上一档，深蓝清屏（勿继续播旧特效）
             _shaderFailed = true
             dropLiteProgram()
+            onShaderCompiled?.invoke(false, wrapMs, compileMs)
             return
         }
         val program = GLES20.glCreateProgram()
@@ -949,12 +989,15 @@ private class HolmGlesRenderer : GLSurfaceView.Renderer {
         val link = IntArray(1)
         GLES20.glGetProgramiv(program, GLES20.GL_LINK_STATUS, link, 0)
         if (link[0] == 0) {
+            val compileMs = (System.nanoTime() - compileT0) / 1_000_000f
             _shaderFailed = true
             onError?.invoke("SHADER_LINK", GLES20.glGetProgramInfoLog(program) ?: "link failed")
             GLES20.glDeleteProgram(program)
             dropLiteProgram()
+            onShaderCompiled?.invoke(false, wrapMs, compileMs)
             return
         }
+        val compileMs = (System.nanoTime() - compileT0) / 1_000_000f
         dropLiteProgram()
         _program = program
         _shaderFailed = false
@@ -965,6 +1008,7 @@ private class HolmGlesRenderer : GLSurfaceView.Renderer {
         _liquidBendLoc = GLES20.glGetUniformLocation(_program, "u_liquidBend")
         _warpAmountLoc = GLES20.glGetUniformLocation(_program, "u_warpAmount")
         _scrollSpeedLoc = GLES20.glGetUniformLocation(_program, "u_scrollSpeed")
+        onShaderCompiled?.invoke(true, wrapMs, compileMs)
     }
 
     private fun compile(type: Int, source: String): Int {
