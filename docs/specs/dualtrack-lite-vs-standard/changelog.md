@@ -1,5 +1,34 @@
 # dualtrack-lite-vs-standard · changelog
 
+## 2026-11-16（Android · Runtime→Lite GLES 句柄失效蓝屏）
+
+- [MODIFY] `KRHolmSurfaceView` / `HolmGlesRenderer`：`markContextLost()`；切 Runtime pause 前与切回 Lite 前作废 `_program`/`_surfaceReady`（关 same-check 误跳过 → `_program==0` 深蓝清屏；换样本才恢复）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：EGL pause 后句柄过期｜待批 0
+- 真机验证表：本单无真机验证表（码农自测 Runtime 海洋→Lite 截屏）
+- 自测：程序化海洋 Runtime→Lite 立即出浪；Lite→Runtime→Lite 不粘蓝屏
+
+## 2026-11-15（Android · Runtime→Lite 切轨蓝屏）
+
+- [MODIFY] `KRHolmSurfaceView`（Android）：片元只喂当前轨方言（错方言只存）；切 Lite 时 `queueEvent setShaders` 强制重编（关 Runtime 海洋→Lite 岛蓝屏）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：双轨热切方言竞态｜待批 0
+- 真机验证表：`docs/reviews/device-check-list/demo-procedural-ocean.md`（续跑 #4）
+- 自测：Runtime 程序化海洋 → Lite → 岛立即出画；互切 2 次
+
+## 2026-11-15（程序化海洋 · Lite 对齐 Runtime 迭代）
+
+- [MODIFY] `ProceduralOceanShaders` Lite：`ITERATIONS_RAYMARCH/NORMAL/STEPS` → 12/24/64（与 Runtime 同档；关审查 `P2-lite-runtime-wave-iters`）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：审查回执行对齐双轨｜待批 0
+- 真机验证表：`docs/reviews/device-check-list/demo-procedural-ocean.md`
+- 自测：installDebug →「程序化海洋」Lite/Runtime 出画对比
+
+## 2026-11-15（Demo · 程序化海洋 MIT）
+
+- [ADD] `DemoSample.PROCEDURAL_OCEAN`（「程序化海洋」）+ `ProceduralOceanShaders` Lite/Runtime；作者 afl_ext · shadertoy.com/view/MdXyzX · MIT
+- [MODIFY] `HolmRuntimeM0Pager`：`uiCredit()` 通用出处行（IQ / 海洋）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：口令加 MIT 样本｜待批 0
+- 本单无真机验证
+- 自测：`holm_runtime_m0` →「程序化海洋」Lite/Runtime 出画；可见出处小字；故意失败仍可用
+
 ## 2026-11-15（Android Runtime · DisplayHandle）
 
 - [MODIFY] `android_jni`：wgpu 30 `create_surface` 补 `AndroidDisplayHandle`——`InstanceDescriptor::new_with_display_handle` + `SurfaceTargetUnsafe::from_display_and_window`（关真机 `MissingDisplayHandle`）

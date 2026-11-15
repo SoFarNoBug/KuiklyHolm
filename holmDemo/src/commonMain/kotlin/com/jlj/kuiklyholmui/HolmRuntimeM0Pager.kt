@@ -40,7 +40,7 @@ import kotlinx.coroutines.delay
 /**
  * @CreateDate: 2026/11/12
  * @Author: jlj
- * @Description: Demo 主推：多样本 chip（隧道 + IQ SDF 原语）+ gl/wgpu 双轨与 JSONL 采集。
+ * @Description: Demo 主推：多样本 chip（隧道 / IQ / 程序化海洋）+ gl/wgpu 双轨与 JSONL 采集。
  */
 @Page("holm_runtime_m0", supportInLocal = true)
 internal class HolmRuntimeM0Pager : BasePager() {
@@ -140,10 +140,10 @@ private fun HolmRuntimeM0Screen() {
                 sample = next
             },
         )
-        if (sample == DemoSample.IQ_PRIMITIVES) {
+        sample.uiCredit()?.let { credit ->
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = IqPrimitivesShaders.UI_CREDIT,
+                text = credit,
                 fontSize = 11.sp,
                 lineHeight = 12.sp,
                 color = DemoTheme.TextSecondary,

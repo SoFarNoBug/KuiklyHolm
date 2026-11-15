@@ -235,9 +235,13 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
                 val next = propValue.toString()
                 if (next != _fragmentShader) {
                     _fragmentShader = next
+                    // 双轨热切时 Compose 先写源码再写 executor：只把「当前轨方言」交给活跃后端，
+                    // 错方言只入库，勿 SHADER_* / 蓝屏；进轨时 applyExecutorMode 会重装。
                     if (HolmExecutor.isRuntime(_executor)) {
-                        postRuntime { applyRuntimeShaders(it) }
-                    } else {
+                        if (HolmShaderResolve.looksLikeWgslFragment(next)) {
+                            postRuntime { applyRuntimeShaders(it) }
+                        }
+                    } else if (!HolmShaderResolve.looksLikeWgslFragment(next)) {
                         _glView.queueEvent {
                             _renderer.setShaders(_scene, _fragmentShader, _vertexShader)
                         }
@@ -433,6 +437,8 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
     private fun applyExecutorMode() {
         if (HolmExecutor.isRuntime(_executor)) {
             // 切 Runtime：停 Lite GLES，挂 SurfaceView；create 在 surfaceCreated
+            // onPause 会丢 EGL；先失效 program，避免切回 Lite 时 same-check 误跳过重编 → 蓝屏
+            _renderer.markContextLost()
             _glView.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
             _glView.onPause()
             _glView.visibility = View.GONE
@@ -466,15 +472,23 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
                 )
             }
         } else {
-            // 切 Lite：急拆 Session，还原 GLSurfaceView
+            // 切 Lite：急拆 Session，还原 GLSurfaceView，并强制用当前片元重编（Runtime 期未喂 GLES）
             eagerDestroyRuntimeSession(waitMs = 800L)
             HolmRuntimeNative.markPresentable(false)
             _runtimeView.visibility = View.GONE
             background = null
+            // 丢弃可能过期的 program / surfaceReady（pause 后 same-check 会误判已就绪）
+            _renderer.markContextLost()
             _glView.visibility = View.VISIBLE
             clearPendingError()
             _glView.onResume()
             applyPlayingRenderMode()
+            val scene = _scene
+            val frag = _fragmentShader
+            val vert = _vertexShader
+            _glView.queueEvent {
+                _renderer.setShaders(scene, frag, vert)
+            }
             // Surface 可能已在：不依赖 onSurfaceCreated 再发 onReady（防 backend 粘 wgpu）
             if (!_readyFired) {
                 _readyFired = true
@@ -772,6 +786,17 @@ private class HolmGlesRenderer : GLSurfaceView.Renderer {
         if (_surfaceReady) {
             rebuildProgram()
         }
+    }
+
+    /**
+     * EGL / GLSurfaceView 上下文已丢或即将丢：作废 program 句柄，保留源码。
+     * 可在 UI 线程调用（不碰 GLES）；下次 setShaders / onSurfaceCreated 必重编。
+     */
+    fun markContextLost() {
+        _program = 0
+        _surfaceReady = false
+        _shaderFailed = false
+        _ready = false
     }
 
     fun setLiquidBoost(value: Float) {
