@@ -1,5 +1,19 @@
 # dualtrack-lite-vs-standard · changelog
 
+## 2026-11-16（holm-runtime release · opt-level=s）
+
+- [MODIFY] `Cargo.toml` `[profile.release]`：追加 `opt-level = "s"`（在 lto/strip/cg1 真机通过后）
+- 自测：`.so` **4682072 → 4157912 B**（≈4.47→3.97 MiB；相对原始 8332752 ≈ −50%）
+- 真机验证：**通过**（V2545A）→「电缆巢」Runtime≈70fps → Lite → Runtime；无 BLOCKED / SHADER_*
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：包体继续压体积｜待批 0
+
+## 2026-11-16（holm-runtime release 包体瘦身）
+
+- [MODIFY] `holm-runtime/Cargo.toml`：`[profile.release] lto=true` + `codegen-units=1` + `strip=true`（暂不加 `opt-level="s"`）
+- 自测：`cargo ndk -t arm64-v8a … --release` → `libholm_runtime.so` **8332752 → 4682072 B**（≈7.95→4.47 MiB，约 −44%）
+- 真机验证：**通过**（V2545A · installDebug）→「电缆巢」Runtime `wgpu-m0` ≈60fps → Lite `gles2` → Runtime；无 BLOCKED / SHADER_*；出画正常
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：包体符号/LTO 个案｜待批 0
+
 ## 2026-11-16（Demo · 电缆巢 CC0）
 
 - [ADD] `DemoSample.CABLE_NEST`（「电缆巢」）+ `CableNestShaders` Lite/Runtime；作者 mrange · shadertoy.com · CC0

@@ -31,6 +31,7 @@ cd holm-runtime
 cd holm-runtime
 .\build-android.ps1
 # → androidApp/src/main/jniLibs/arm64-v8a/libholm_runtime.so
+# release：opt-level=s + lto + strip + codegen-units=1（见 Cargo.toml）；arm64 .so ≈ 4.0 MiB 量级
 ```
 
 改 Runtime Rust 后须先跑脚本；Gradle **不**自动编 Rust。缺 `.so` → Demo `onError(BLOCKED)`，不静默 GLES。

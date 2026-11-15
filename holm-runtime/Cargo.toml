@@ -45,3 +45,10 @@ pollster = "0.4"
 wgpu = { version = "30.0.2", default-features = false, features = ["wgsl", "vulkan"] }
 raw-window-handle = "0.6"
 pollster = "0.4"
+
+# 包体瘦身（Android .so / wasm / xcframework 共用）
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
