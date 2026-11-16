@@ -1,7 +1,7 @@
 //! iOS C Session ABI（ADR 0009）：CAMetalLayer → wgpu Metal Surface；宿主外泵 tick。
 //! 所有对外 C 入口 `catch_unwind`：非法 WGSL 等 panic 不得穿 FFI 把进程 abort。
 
-use crate::session_core::HolmRuntimeSessionCore;
+use crate::holm_fullscreen::HolmRuntimeSessionCore;
 use std::ffi::{c_char, CStr};
 use std::os::raw::c_void;
 use std::panic::{catch_unwind, AssertUnwindSafe};

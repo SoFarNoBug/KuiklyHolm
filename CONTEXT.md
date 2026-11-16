@@ -99,14 +99,14 @@ _Avoid_：`LITE_PENDING` 冒充完成；用 GLES 冒充 wgpu；另挂第二 XCom
 | --- | --- |
 | 根工程 | `KuiklyHolmUI` |
 | 库 | `:KuiklyHolmCore`（对应未来 holm-core+后端暂合居） |
-| Runtime | `holm-runtime`（抽芯目标 → `kmp_wgpu_native` + `kmp-wgpu`；`holm-wgpu` 为其上薄适配） |
+| Runtime | `holm-runtime/`（= `kmp_wgpu_native`；产物名兼容）；Kotlin `:kmp-wgpu` + `:kmp-wgpu-surface`；Holm 适配 `HolmFullscreenPass` |
 | Demo | `:holmDemo` · 主推 `holm_runtime_m0` 双轨 + 多样本 chip（隧道 / IQ / 程序化海洋 / 电缆巢） |
 
 ## 当前状态
 
 - 身份：ADR 0007；目标拆包：ADR 0008（文档已定，Gradle 未拆）
-- 下沉原语：ADR 0013（`kmp-wgpu`；文档已定，抽芯未开工）
+- 下沉原语：ADR 0013 v1（`:kmp-wgpu` / `:kmp-wgpu-surface`；Android+H5 Holm Runtime 已迁；iOS/Ohos 仍旧 C ABI；Compute→v1.1）
 - Demo：Home「示例 / 双轨」；页内 chip 切隧道 / IQ（MIT · Quilez）/ 程序化海洋（MIT · afl_ext）/ 电缆巢（CC0 · mrange）；官方五席源码已删
 - iOS：ADR 0009 Runtime Metal + Lite GLES 子树均已落地（`gles2-ios` / `wgpu-m0*`）
 - 鸿蒙：ADR 0010 Runtime + ADR 0011 Lite（同 XC EGL，`gles2-ohos`）；真机隧道/互切待勾
-- 后单：真机验收双轨；`kmp-wgpu` 抽芯（v1 Android+H5 Present；v1.1 Compute+回读）；真拆三依赖、产物同步门禁、`holm_api` 规范对齐
+- 后单：真机验收双轨（so 已按新 JNI 重编）；v1.1 Compute+回读；真拆 holm 三依赖、独立仓、`holm_api` 对齐

@@ -1,5 +1,27 @@
 # dualtrack-lite-vs-standard · changelog
 
+## 2026-11-16（kmp-wgpu v1 · 修审查 P0/P1）
+
+- [FIX] H5 `Device.sessionTick` / 装载路径：成败只信 wasm throw/`Result`，不再用 sticky `lastErrorCode` 否决成功帧（review P0-silent-fail）
+- [MODIFY] `sessionSetCustomFs`/`setScene`/`liquid`/`playing` 迁出 `kmp-wgpu` DeviceSession → Holm 适配（review P1-plan-soft-drift）
+- [FIX] Android `abiVersion()` 调 `nativeAbiVersion`
+- 自测：`:kmp-wgpu` / `:KuiklyHolmCore` Android+JS compile；本单无真机验证
+- 真机验证表：见 `docs/reviews/device-check-list/kmp-wgpu-extract-v1.md`（修后待勾）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：审查打回项整改｜待批 0
+
+## 2026-11-16（kmp-wgpu 抽芯 v1 · 方案 B）
+
+- [ADD] `:kmp-wgpu` / `:kmp-wgpu-surface`（Kotlin 近 wgpu 类型壳；粗粒度 Session 能力块；无逐 draw FFI）
+- [MODIFY] `holm-runtime`：`session_core` → `holm_fullscreen`；增 `primitives`；Cargo 叙事 `kmp_wgpu_native`；产物名仍 `holm_runtime`
+- [MODIFY] Android JNI 类 → `com.jlj.kmp.wgpu.AndroidWgpuPlatform`；增 `build-android.sh`（macOS）
+- [MODIFY] `HolmRuntimeNative`（Android/H5）门面改走 surface + Device；增 `HolmFullscreenPass`
+- [MODIFY] 已重编 `androidApp/.../libholm_runtime.so`（arm64 · ~4.0 MiB · 含新 JNI）
+- [NOTE] iOS / Ohos C ABI 未迁；Compute+回读 → v1.1；未物理拆 holm-core/gl/wgpu；H5 wasm 符号未改（仍 `HolmRuntimeSession`）
+- 自测：`:kmp-wgpu` / `:kmp-wgpu-surface` / `:KuiklyHolmCore` Android+JS compile 通过；`cargo ndk` 重编 so 成功；本单无真机验证
+- 真机验证表：本单无真机验证（装包验收另单）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan ADR 0013 抽芯｜待批 0
+- carried-over: DeviceSession 仍暴露 sessionSetCustomFs 等过渡粗块｜不修理由：v1 Holm 适配必需；README 已标明非长期公共面
+
 ## 2026-11-16（renderScale 可配置缓冲）
 
 - [ADD] `HolmSurfaceAttr.renderScale` / Compose 参数：相对**平台基线**，默认 `1`；夹紧 `(0,1]`；与 `maxFps` 正交

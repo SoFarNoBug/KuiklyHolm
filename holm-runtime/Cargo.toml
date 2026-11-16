@@ -1,8 +1,9 @@
 [package]
+# ADR 0013：长期身份 kmp_wgpu_native；lib 名暂留 holm_runtime 以兼容产物路径。
 name = "holm_runtime"
 version = "0.0.1"
 edition = "2021"
-description = "Holm Standard M0 spike · Rust + wgpu Session (H5 wasm + Android + iOS + Ohos)"
+description = "kmp_wgpu_native (ADR 0013) · wgpu primitives + Holm fullscreen; ship as holm_runtime for ABI compat"
 license = "MIT"
 publish = false
 

@@ -27,6 +27,8 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "KuiklyHolmUI"
+include(":kmp-wgpu")
+include(":kmp-wgpu-surface")
 include(":KuiklyHolmCore")
 include(":androidApp")
 include(":holmDemo")

@@ -8,6 +8,7 @@
 
 ## 候选
 
+- [ ] 跨 FFI 包装 `Result`/throw 时禁止再用 sticky `lastError*` 二次否决成功路径；`drain` 若不清 last，宿主不得把 last 当帧成败｜2026-11-16｜自评：未达标（kmp-wgpu-extract-v1 P0）
 - [ ] DualTrack 性能对比须标注 `renderScale` 与端基线（物理/点/CSS），避免跨端数字误读｜2026-11-16｜自评：未达标（renderscale device-verify）
 - [ ] 原生桥 `onError`/`onReady`：若 Attr 侧可能在回调注册前 fire，须像 onReady 一样支持「已发生则重放」，避免 Compose Attr→Event 顺序丢错 ｜2026-11-12｜自评：未达标（dualtrack P1-concurrency）
 - [ ] DualTrack/expand View：`executor` 热切后须按当前轨重发 `onReady`（含 backend），不得依赖「Surface 已创建则不再 onSurfaceCreated」｜2026-11-14｜自评：未达标（android-runtime-dualtrack P1-doc-drift）

@@ -1,7 +1,10 @@
-# holm-runtime · DualTrack B（Standard / Lite3 近似）
+# holm-runtime · kmp_wgpu_native（ADR 0013）
 
-> **状态（2026-11-15）**：H5 wasm + Android JNI Session 已通；iOS C Session + xcframework 见 ADR 0009；鸿蒙 Runtime 见 ADR 0010；鸿蒙 Lite EGL 见 ADR 0011。  
-> 尖刺默认：**Rust + wgpu 30.0.2**（全端统一；禁止静默换非 wgpu 栈）。`naga` 同步 30.0.2；单一 `session_core.rs`。
+> **长期身份**：`kmp_wgpu_native`（Kotlin 脸：`:kmp-wgpu` / `:kmp-wgpu-surface`）。  
+> **产物文件名**暂仍 `libholm_runtime.so` / `holm_runtime*.wasm` / xcframework（兼容脚本与 App）。  
+> **内部**：`primitives` 原语边界 + `holm_fullscreen`（Holm 全屏 Pass）；Android JNI 进 `AndroidWgpuPlatform`（方案 B 粗粒度能力块）。  
+> **状态**：H5 wasm + Android JNI 已通；iOS C Session 见 ADR 0009；鸿蒙见 ADR 0010/0011。  
+> 尖刺默认：**Rust + wgpu 30.0.2**；禁止静默换非 wgpu 栈。
 
 ## 范围
 
@@ -31,10 +34,16 @@ cd holm-runtime
 cd holm-runtime
 .\build-android.ps1
 # → androidApp/src/main/jniLibs/arm64-v8a/libholm_runtime.so
-# release：opt-level=s + lto + strip + codegen-units=1（见 Cargo.toml）；arm64 .so ≈ 4.0 MiB 量级
 ```
 
-改 Runtime Rust 后须先跑脚本；Gradle **不**自动编 Rust。缺 `.so` → Demo `onError(BLOCKED)`，不静默 GLES。
+```bash
+# macOS / Linux 等价
+./build-android.sh
+```
+
+- release：`opt-level=s` + lto + strip + codegen-units=1（见 Cargo.toml）；arm64 `.so` ≈ 4.0 MiB  
+- JNI 类：**`com.jlj.kmp.wgpu.AndroidWgpuPlatform`**（kmp-wgpu v1；勿再链 `HolmRuntimeNative` native）  
+- 改 Runtime Rust 后须先跑脚本；Gradle **不**自动编 Rust。缺 `.so` → Demo `onError(BLOCKED)`，不静默 GLES。
 
 ## iOS 解锁
 

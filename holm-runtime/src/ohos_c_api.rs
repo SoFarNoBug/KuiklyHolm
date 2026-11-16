@@ -1,7 +1,7 @@
 //! Ohos C Session ABI（ADR 0010）：OHNativeWindow → wgpu Vulkan Surface；宿主 OnFrame 外泵 tick。
 //! 所有对外 C 入口 `catch_unwind`：非法 WGSL 等 panic 不得穿 FFI 把进程 abort。
 
-use crate::session_core::HolmRuntimeSessionCore;
+use crate::holm_fullscreen::HolmRuntimeSessionCore;
 use raw_window_handle::{
     DisplayHandle, HandleError, HasDisplayHandle, HasWindowHandle, OhosDisplayHandle,
     OhosNdkWindowHandle, RawDisplayHandle, RawWindowHandle, WindowHandle,

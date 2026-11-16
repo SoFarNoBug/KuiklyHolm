@@ -1,44 +1,37 @@
 package com.jlj.kuiklybase.holm
 
 import android.view.Surface
+import com.jlj.kmp.wgpu.Device
+import com.jlj.kmp.wgpu.WgpuRuntime
+import com.jlj.kmp.wgpu.androidPlatform
+import com.jlj.kmp.wgpu.sessionBackendId
+import com.jlj.kmp.wgpu.sessionDrainErrors
+import com.jlj.kmp.wgpu.sessionLastErrorCode
+import com.jlj.kmp.wgpu.sessionLastErrorMessage
+import com.jlj.kmp.wgpu.sessionResize
+import com.jlj.kmp.wgpu.sessionTick
+import com.jlj.kmp.wgpu.surface.AndroidSurfaces
 
 /**
  * @CreateDate: 2026/11/12
  * @Author: jlj
- * @Description: Android holm_runtime JNI Session；缺 .so / create 失败 → BLOCKED，不静默 GLES。
+ * @Description: Android Runtime 门面 → kmp-wgpu-surface；Holm 语义经 AndroidWgpuPlatform。
  */
 object HolmRuntimeNative {
     @Volatile
-    private var _libraryLoaded: Boolean? = null
-
-    @Volatile
     private var _presentable: Boolean = false
 
-    /** 尝试加载 `libholm_runtime.so`；失败不抛，返回 false。 */
-    fun isLibraryLoaded(): Boolean {
-        val cached = _libraryLoaded
-        if (cached != null) return cached
-        val ok = runCatching {
-            System.loadLibrary("holm_runtime")
-            true
-        }.getOrDefault(false)
-        _libraryLoaded = ok
-        return ok
-    }
+    fun isLibraryLoaded(): Boolean = WgpuRuntime.isLibraryLoaded()
 
-    /**
-     * M0 已可呈现：库已载且至少一次 Session create+tick 成功。
-     */
     fun isM0Presentable(): Boolean = isLibraryLoaded() && _presentable
 
-    /** 可宣称 `backend=wgpu-m0` 的充要条件。 */
     fun isAvailable(): Boolean = isLibraryLoaded() && isM0Presentable()
 
     fun blockedMessage(): String {
         return if (!isLibraryLoaded()) {
             "DualTrack B BLOCKED: libholm_runtime.so missing (run holm-runtime/build-android.ps1). No silent non-wgpu stack."
         } else if (!_presentable) {
-            val detail = runCatching { nativeLastCreateError() }.getOrDefault("").trim()
+            val detail = lastCreateError().trim()
             if (detail.isNotEmpty()) {
                 "DualTrack B BLOCKED: Session/Surface create failed: $detail. No silent GLES stand-in."
             } else {
@@ -49,11 +42,7 @@ object HolmRuntimeNative {
         }
     }
 
-    /** 最近一次 nativeCreate 失败原因（空=无失败或已成功）。 */
-    fun lastCreateError(): String {
-        if (!isLibraryLoaded()) return ""
-        return runCatching { nativeLastCreateError() }.getOrDefault("")
-    }
+    fun lastCreateError(): String = AndroidSurfaces.lastCreateError()
 
     fun markPresentable(ok: Boolean) {
         _presentable = ok
@@ -61,98 +50,73 @@ object HolmRuntimeNative {
 
     fun abiVersion(): Int {
         if (!isLibraryLoaded()) return 0
-        return runCatching { nativeAbiVersion() }.getOrDefault(0)
+        return runCatching { androidPlatform().abiVersion() }.getOrDefault(0)
     }
 
-    fun hasWgpu(): Int {
-        if (!isLibraryLoaded()) return 0
-        return runCatching { nativeHasWgpu() }.getOrDefault(0)
-    }
+    fun hasWgpu(): Int = if (WgpuRuntime.isAvailable()) 1 else 0
 
-    /** 返回 Session 句柄；0 表示失败。 */
     fun createSession(surface: Surface, width: Int, height: Int): Long {
-        if (!isLibraryLoaded()) return 0L
-        return runCatching { nativeCreate(surface, width, height) }.getOrDefault(0L)
+        val gpu = AndroidSurfaces.create(surface, width, height) ?: return 0L
+        return gpu.device.handle
+    }
+
+    fun createFullscreenPass(surface: Surface, width: Int, height: Int): HolmFullscreenPass? {
+        val gpu = AndroidSurfaces.create(surface, width, height) ?: return null
+        return HolmFullscreenPass(gpu)
     }
 
     fun destroySession(handle: Long) {
-        if (handle == 0L || !isLibraryLoaded()) return
-        runCatching { nativeDestroy(handle) }
+        if (handle == 0L) return
+        Device.wrap(handle, androidPlatform()).destroy()
     }
 
     fun resize(handle: Long, width: Int, height: Int) {
         if (handle == 0L) return
-        runCatching { nativeResize(handle, width, height) }
+        Device.wrap(handle, androidPlatform()).sessionResize(width, height)
     }
 
     fun setScene(handle: Long, scene: String) {
         if (handle == 0L) return
-        runCatching { nativeSetScene(handle, scene) }
+        androidPlatform().setScene(handle, scene)
     }
 
     fun setCustomFs(handle: Long, fs: String): Boolean {
         if (handle == 0L) return false
-        return runCatching { nativeSetCustomFs(handle, fs) }.getOrDefault(false)
+        return androidPlatform().setCustomFs(handle, fs)
     }
 
     fun lastErrorCode(handle: Long): String {
         if (handle == 0L) return ""
-        return runCatching { nativeLastErrorCode(handle) }.getOrDefault("")
+        return Device.wrap(handle, androidPlatform()).sessionLastErrorCode()
     }
 
     fun lastErrorMessage(handle: Long): String {
         if (handle == 0L) return ""
-        return runCatching { nativeLastErrorMessage(handle) }.getOrDefault("")
+        return Device.wrap(handle, androidPlatform()).sessionLastErrorMessage()
     }
 
-    /**
-     * 取出 pending 错误（含 uncaptured）；交替为 code, message, code, message…
-     */
     fun drainErrors(handle: Long): List<Pair<String, String>> {
         if (handle == 0L) return emptyList()
-        val flat = runCatching { nativeDrainErrors(handle) }.getOrNull() ?: return emptyList()
-        val out = ArrayList<Pair<String, String>>(flat.size / 2)
-        var i = 0
-        while (i + 1 < flat.size) {
-            out.add(flat[i] to flat[i + 1])
-            i += 2
-        }
-        return out
+        return Device.wrap(handle, androidPlatform()).sessionDrainErrors()
     }
 
     fun setLiquid(handle: Long, boost: Float, bend: Float) {
         if (handle == 0L) return
-        runCatching { nativeSetLiquid(handle, boost, bend) }
+        androidPlatform().setLiquid(handle, boost, bend)
     }
 
     fun setPlaying(handle: Long, playing: Boolean) {
         if (handle == 0L) return
-        runCatching { nativeSetPlaying(handle, playing) }
+        androidPlatform().setPlaying(handle, playing)
     }
 
     fun tick(handle: Long, dtSecs: Float): Boolean {
         if (handle == 0L) return false
-        return runCatching { nativeTick(handle, dtSecs) }.getOrDefault(false)
+        return Device.wrap(handle, androidPlatform()).sessionTick(dtSecs)
     }
 
     fun backendId(handle: Long): String {
         if (handle == 0L) return HolmExecutor.BACKEND_WGPU_BLOCKED
-        return runCatching { nativeBackendId(handle) }.getOrDefault(HolmExecutor.BACKEND_WGPU_M0)
+        return Device.wrap(handle, androidPlatform()).sessionBackendId()
     }
-
-    private external fun nativeAbiVersion(): Int
-    private external fun nativeHasWgpu(): Int
-    private external fun nativeCreate(surface: Surface, width: Int, height: Int): Long
-    private external fun nativeLastCreateError(): String
-    private external fun nativeDestroy(handle: Long)
-    private external fun nativeResize(handle: Long, width: Int, height: Int)
-    private external fun nativeSetScene(handle: Long, scene: String)
-    private external fun nativeSetCustomFs(handle: Long, fs: String): Boolean
-    private external fun nativeSetLiquid(handle: Long, boost: Float, bend: Float)
-    private external fun nativeSetPlaying(handle: Long, playing: Boolean)
-    private external fun nativeTick(handle: Long, dtSecs: Float): Boolean
-    private external fun nativeBackendId(handle: Long): String
-    private external fun nativeLastErrorCode(handle: Long): String
-    private external fun nativeLastErrorMessage(handle: Long): String
-    private external fun nativeDrainErrors(handle: Long): Array<String>
 }

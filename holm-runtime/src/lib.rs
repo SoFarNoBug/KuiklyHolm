@@ -1,4 +1,9 @@
-//! Holm Runtime — DualTrack B · wgpu Session（H5 wasm + Android JNI + iOS/Ohos C ABI）。
+//! Holm Runtime / **kmp_wgpu_native**（ADR 0013）— DualTrack B · wgpu。
+//!
+//! 长期对外原语身份：`kmp_wgpu_native`；本 crate 产物文件名暂仍 `holm_runtime`
+//!（`.so` / wasm / xcframework）以兼容既有脚本与 App。
+//! 内部：[`primitives`] 原语边界 + [`holm_fullscreen`] Holm 全屏 Pass；
+//! 旧 ABI（JNI / C Session / wasm Session）薄封装其上。
 
 #![allow(dead_code)]
 
@@ -9,7 +14,10 @@ mod shaders;
 mod error_bridge;
 
 #[cfg(feature = "wgpu_backend")]
-mod session_core;
+mod primitives;
+
+#[cfg(feature = "wgpu_backend")]
+mod holm_fullscreen;
 
 #[cfg(all(target_arch = "wasm32", feature = "wgpu_backend"))]
 mod session;

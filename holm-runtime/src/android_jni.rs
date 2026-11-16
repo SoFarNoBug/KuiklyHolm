@@ -1,6 +1,6 @@
 //! Android JNI：从 `android.view.Surface` 建 Session，供 Kotlin 外泵 tick。
 
-use crate::session_core::HolmRuntimeSessionCore;
+use crate::holm_fullscreen::HolmRuntimeSessionCore;
 use jni::objects::{JClass, JObject, JString, JValue};
 use jni::sys::{jboolean, jfloat, jint, jlong, jstring, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
@@ -102,7 +102,7 @@ fn release_window(ptr: *mut ndk_sys::ANativeWindow) {
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeAbiVersion(
+pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeAbiVersion(
     _env: JNIEnv,
     _class: JClass,
 ) -> jint {
@@ -110,7 +110,7 @@ pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeAbiV
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeHasWgpu(
+pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeHasWgpu(
     _env: JNIEnv,
     _class: JClass,
 ) -> jint {
@@ -118,7 +118,7 @@ pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeHasW
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeCreate(
+pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeCreate(
     mut env: JNIEnv,
     _class: JClass,
     surface: JObject,
@@ -188,7 +188,7 @@ pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeCrea
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeLastCreateError(
+pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeLastCreateError(
     env: JNIEnv,
     _class: JClass,
 ) -> jstring {
@@ -202,7 +202,7 @@ pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeLast
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeDestroy(
+pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeDestroy(
     _env: JNIEnv,
     _class: JClass,
     handle: jlong,
@@ -217,7 +217,7 @@ pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeDest
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeResize(
+pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeResize(
     _env: JNIEnv,
     _class: JClass,
     handle: jlong,
@@ -230,7 +230,7 @@ pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeResi
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeSetScene(
+pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeSetScene(
     mut env: JNIEnv,
     _class: JClass,
     handle: jlong,
@@ -246,7 +246,7 @@ pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeSetS
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeSetCustomFs(
+pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeSetCustomFs(
     mut env: JNIEnv,
     _class: JClass,
     handle: jlong,
@@ -265,7 +265,7 @@ pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeSetC
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeSetLiquid(
+pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeSetLiquid(
     _env: JNIEnv,
     _class: JClass,
     handle: jlong,
@@ -278,7 +278,7 @@ pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeSetL
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeSetPlaying(
+pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeSetPlaying(
     _env: JNIEnv,
     _class: JClass,
     handle: jlong,
@@ -290,7 +290,7 @@ pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeSetP
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeTick(
+pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeTick(
     _env: JNIEnv,
     _class: JClass,
     handle: jlong,
@@ -306,7 +306,7 @@ pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeTick
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeBackendId(
+pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeBackendId(
     env: JNIEnv,
     _class: JClass,
     handle: jlong,
@@ -320,7 +320,7 @@ pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeBack
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeLastErrorCode(
+pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeLastErrorCode(
     env: JNIEnv,
     _class: JClass,
     handle: jlong,
@@ -334,7 +334,7 @@ pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeLast
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeLastErrorMessage(
+pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeLastErrorMessage(
     env: JNIEnv,
     _class: JClass,
     handle: jlong,
@@ -349,7 +349,7 @@ pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeLast
 
 /// 返回 String[]：code, message, code, message, …
 #[no_mangle]
-pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmRuntimeNative_nativeDrainErrors<'local>(
+pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeDrainErrors<'local>(
     mut env: JNIEnv<'local>,
     _class: JClass<'local>,
     handle: jlong,

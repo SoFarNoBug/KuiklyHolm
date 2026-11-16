@@ -1,55 +1,36 @@
 package com.jlj.kuiklybase.holm
 
+import com.jlj.kmp.wgpu.Device
+import com.jlj.kmp.wgpu.WgpuRuntime
+import com.jlj.kmp.wgpu.isLoadPending as kmpIsLoadPending
+import com.jlj.kmp.wgpu.jsPlatform
+import com.jlj.kmp.wgpu.sessionBackendId
+import com.jlj.kmp.wgpu.sessionLastErrorCode
+import com.jlj.kmp.wgpu.sessionLastErrorMessage
+import com.jlj.kmp.wgpu.sessionResize
+import com.jlj.kmp.wgpu.sessionTick
+import com.jlj.kmp.wgpu.surface.JsSurfaces
 import org.w3c.dom.HTMLCanvasElement
 
 /**
  * @CreateDate: 2026/11/12
  * @Author: jlj
- * @Description: H5 holm-runtime wasm 探测与 Session 泵帧；index.html 预载 window.__holmRuntime。
+ * @Description: H5 Runtime 门面 → kmp-wgpu-surface；Holm 语义直调 wasm（成败只信 throw）。
  */
 object HolmRuntimeNative {
-    fun isLibraryLoaded(): Boolean {
-        return js(
-            "typeof window !== 'undefined' && !!window.__holmRuntime && window.__holmRuntime.ready === true",
-        ).unsafeCast<Boolean>()
-    }
+    fun isLibraryLoaded(): Boolean = WgpuRuntime.isLibraryLoaded()
 
-    fun isLoadPending(): Boolean {
-        return js(
-            """
-            (typeof window !== 'undefined' && !!window.__holmRuntime
-              && window.__holmRuntime.ready !== true
-              && !window.__holmRuntime.error)
-            """,
-        ).unsafeCast<Boolean>()
-    }
+    fun isLoadPending(): Boolean = kmpIsLoadPending()
 
-    fun isM0Presentable(): Boolean {
-        if (!isLibraryLoaded()) return false
-        return js(
-            "typeof window.__holmRuntime.hasWgpu === 'function' && window.__holmRuntime.hasWgpu() === 1",
-        ).unsafeCast<Boolean>()
-    }
+    fun isM0Presentable(): Boolean = WgpuRuntime.isAvailable()
 
-    fun isAvailable(): Boolean = isLibraryLoaded() && isM0Presentable()
+    fun isAvailable(): Boolean = WgpuRuntime.isAvailable()
 
     fun blockedMessage(): String {
-        val loadErr = js(
-            "typeof window !== 'undefined' && window.__holmRuntime && window.__holmRuntime.error",
-        ).unsafeCast<String?>()
-        return if (!loadErr.isNullOrBlank()) {
-            "DualTrack B BLOCKED: holm-runtime wasm load failed: $loadErr"
-        } else if (!isLibraryLoaded()) {
-            "DualTrack B BLOCKED: holm-runtime wasm not loaded (build holm-runtime/build-wasm.ps1). No silent non-wgpu stack."
-        } else {
-            "DualTrack B BLOCKED: holm-runtime wasm loaded but has_wgpu=0. No silent GLES stand-in."
-        }
+        val msg = WgpuRuntime.blockedMessage()
+        return msg.replace("kmp-wgpu BLOCKED:", "DualTrack B BLOCKED:")
     }
 
-    /**
-     * 创建泵帧 Session；成功回调 (session, backendId)。
-     * [width]/[height] 为 backing store（已含 renderScale；基线=CSS px）。
-     */
     fun createSession(
         canvas: HTMLCanvasElement,
         width: Int,
@@ -57,51 +38,34 @@ object HolmRuntimeNative {
         onSuccess: (session: dynamic, backend: String) -> Unit,
         onError: (message: String) -> Unit,
     ) {
-        if (!isAvailable()) {
-            onError(blockedMessage())
-            return
-        }
-        val ok = { session: dynamic, backend: String -> onSuccess(session, backend) }
-        val err = { message: String -> onError(message) }
-        val w = width.coerceAtLeast(1)
-        val h = height.coerceAtLeast(1)
-        js(
-            """
-            (function(canvas, w, h, ok, err) {
-              var rt = window.__holmRuntime;
-              if (!rt || typeof rt.createSession !== 'function') {
-                err('holm-runtime createSession missing');
-                return;
-              }
-              // 基线 CSS px；调用方已乘 renderScale（默认 1=不降采样）
-              canvas.width = Math.max(1, w | 0);
-              canvas.height = Math.max(1, h | 0);
-              Promise.resolve(rt.createSession(canvas)).then(
-                function(session) {
-                  var backend = 'wgpu-m0';
-                  try {
-                    if (session && typeof session.backendId === 'function') {
-                      backend = String(session.backendId() || backend);
-                    }
-                  } catch (e) {}
-                  ok(session, backend);
-                },
-                function(e) {
-                  var msg = (e && e.message) ? e.message : String(e);
-                  err(msg);
-                }
-              );
-            })
-            """,
-        ).unsafeCast<
-            (
-                HTMLCanvasElement,
-                Int,
-                Int,
-                (dynamic, String) -> Unit,
-                (String) -> Unit,
-            ) -> Unit,
-            >()(canvas, w, h, ok, err)
+        JsSurfaces.create(
+            canvas = canvas,
+            width = width,
+            height = height,
+            onSuccess = { gpu ->
+                val session = gpu.device.handle
+                val backend = gpu.device.sessionBackendId()
+                onSuccess(session.asDynamic(), backend)
+            },
+            onError = onError,
+        )
+    }
+
+    fun createFullscreenPass(
+        canvas: HTMLCanvasElement,
+        width: Int,
+        height: Int,
+        onSuccess: (HolmFullscreenPass) -> Unit,
+        onError: (String) -> Unit,
+    ) {
+        JsSurfaces.create(canvas, width, height, onSuccess = { gpu ->
+            onSuccess(HolmFullscreenPass(gpu))
+        }, onError = onError)
+    }
+
+    private fun deviceOf(session: dynamic): Device? {
+        if (session == null) return null
+        return Device.wrap(session as Any, jsPlatform())
     }
 
     fun sessionSetScene(session: dynamic, scene: String) {
@@ -112,8 +76,8 @@ object HolmRuntimeNative {
     }
 
     /**
-     * 设置自定义 WGSL 片元（空串清除）。
      * @return null 成功；非空为错误文案（须 fireError SHADER_CUSTOM）。
+     * 成败只信 wasm throw，不用 sticky lastError。
      */
     fun sessionSetCustomFs(session: dynamic, wgslFs: String): String? {
         if (session == null) return "HolmRuntimeSession missing"
@@ -134,7 +98,6 @@ object HolmRuntimeNative {
         }
     }
 
-    /** 取出 Session pending 错误（含 uncaptured）；每项 `{code, message}`。 */
     fun sessionDrainErrors(session: dynamic): Array<dynamic> {
         if (session == null) return emptyArray()
         return try {
@@ -167,44 +130,25 @@ object HolmRuntimeNative {
     }
 
     fun sessionResize(session: dynamic, width: Int, height: Int) {
-        if (session == null) return
-        js(
-            "(function(s, w, h){ if (s && typeof s.resize === 'function') s.resize(w >>> 0, h >>> 0); })",
-        ).unsafeCast<(dynamic, Int, Int) -> Unit>()(session, width, height)
+        deviceOf(session)?.sessionResize(width, height)
     }
 
     /**
-     * @return null 成功；非空为错误文案（须 fireError / drain）。
+     * @return null 成功；非空为错误文案。成败只信 throw。
      */
     fun sessionTick(session: dynamic, dtSecs: Float): String? {
-        if (session == null) return "HolmRuntimeSession missing"
-        return try {
-            js(
-                """
-                (function(s, dt) {
-                  if (!s || typeof s.tick !== 'function') {
-                    throw new Error('tick missing');
-                  }
-                  s.tick(dt);
-                  return null;
-                })
-                """,
-            ).unsafeCast<(dynamic, Float) -> String?>()(session, dtSecs)
-        } catch (t: Throwable) {
-            t.message?.takeIf { it.isNotBlank() } ?: t.toString()
+        val device = deviceOf(session) ?: return "HolmRuntimeSession missing"
+        return if (device.sessionTick(dtSecs)) {
+            null
+        } else {
+            // tick 失败（throw→false）；可读 last 作文案，但不因 sticky last 单独否决成功帧
+            device.sessionLastErrorMessage()
+                .ifBlank { device.sessionLastErrorCode() }
+                .ifBlank { "tick failed" }
         }
     }
 
     fun sessionDestroy(session: dynamic) {
-        if (session == null) return
-        js(
-            """
-            (function(s) {
-              try {
-                if (s && typeof s.destroy === 'function') s.destroy();
-              } catch (e) {}
-            })
-            """,
-        ).unsafeCast<(dynamic) -> Unit>()(session)
+        deviceOf(session)?.destroy()
     }
 }

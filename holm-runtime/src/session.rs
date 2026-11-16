@@ -1,6 +1,6 @@
-//! H5 wasm 泵帧 Session：包装 [`crate::session_core`]；HtmlCanvas / OffscreenCanvas。
+//! H5 wasm 泵帧 Session：包装 [`crate::holm_fullscreen`]；HtmlCanvas / OffscreenCanvas。
 
-use crate::session_core::HolmRuntimeSessionCore;
+use crate::holm_fullscreen::HolmRuntimeSessionCore;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::{HtmlCanvasElement, OffscreenCanvas};

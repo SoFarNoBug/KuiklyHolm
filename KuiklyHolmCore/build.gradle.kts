@@ -52,11 +52,15 @@ kotlin {
         val androidMain by getting {
             dependencies {
                 compileOnly("com.tencent.kuikly-open:core-render-android:${Version.getKuiklyVersion()}")
+                implementation(project(":kmp-wgpu"))
+                implementation(project(":kmp-wgpu-surface"))
             }
         }
         val jsMain by getting {
             dependencies {
                 implementation("com.tencent.kuikly-open.core-render-web:base:${Version.getKuiklyVersion()}")
+                implementation(project(":kmp-wgpu"))
+                implementation(project(":kmp-wgpu-surface"))
             }
         }
         val iosX64Main by getting

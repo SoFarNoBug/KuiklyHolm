@@ -1,4 +1,8 @@
-//! 共享 Runtime Session 核心（H5 wasm / Android / iOS / Ohos · wgpu 30）。
+//! Holm 全屏 Pass（`holm_fullscreen`）— 非 kmp-wgpu 产品 API。
+//!
+//! 持有 wgpu Device/Queue/Surface（见 [`crate::primitives`]），并叠加
+//! ClearTri / `set_custom_fs` / liquid / playing / tick。旧 Session ABI 与
+//! Kotlin `HolmFullscreenPass` 适配层复用本模块；通用原语脸在 `:kmp-wgpu`。
 
 use crate::error_bridge::{
     install_uncaptured_handler, validate_wgsl_module, ErrorSink, CODE_SHADER_CUSTOM, CODE_SURFACE,
