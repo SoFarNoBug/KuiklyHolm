@@ -6,6 +6,21 @@ use std::ffi::{c_char, CStr};
 use std::os::raw::c_void;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::ptr;
+use std::sync::Mutex;
+
+static LAST_CREATE_ERROR: Mutex<String> = Mutex::new(String::new());
+
+fn set_last_create_error(msg: impl Into<String>) {
+    if let Ok(mut g) = LAST_CREATE_ERROR.lock() {
+        *g = msg.into();
+    }
+}
+
+fn clear_last_create_error() {
+    if let Ok(mut g) = LAST_CREATE_ERROR.lock() {
+        g.clear();
+    }
+}
 
 struct NativeSession {
     core: HolmRuntimeSessionCore,
@@ -30,6 +45,7 @@ pub extern "C" fn holm_runtime_session_create_metal(
     height: u32,
 ) -> u64 {
     if metal_layer.is_null() {
+        set_last_create_error("metal_layer is null");
         return 0;
     }
     let w = width.max(1);
@@ -50,8 +66,34 @@ pub extern "C" fn holm_runtime_session_create_metal(
     }));
 
     match result {
-        Ok(Ok(core)) => box_session(NativeSession { core }),
-        _ => 0,
+        Ok(Ok(core)) => {
+            clear_last_create_error();
+            box_session(NativeSession { core })
+        }
+        Ok(Err(e)) => {
+            set_last_create_error(e);
+            0
+        }
+        Err(panic) => {
+            set_last_create_error(format!("create_metal panic: {panic:?}"));
+            0
+        }
+    }
+}
+
+/// Last create_metal failure reason (NUL-terminated UTF-8). Empty if last create succeeded.
+#[no_mangle]
+pub extern "C" fn holm_runtime_last_create_error(out_buf: *mut c_char, out_len: u32) -> u32 {
+    let result = catch_unwind(AssertUnwindSafe(|| {
+        let msg = LAST_CREATE_ERROR
+            .lock()
+            .map(|g| g.clone())
+            .unwrap_or_default();
+        copy_utf8(&msg, out_buf, out_len)
+    }));
+    match result {
+        Ok(v) => v,
+        Err(_) => 0,
     }
 }
 

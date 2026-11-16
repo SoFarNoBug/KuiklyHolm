@@ -1,6 +1,5 @@
 #import "KRHolmMetalHostView.h"
 #import <Metal/Metal.h>
-#import <Metal/Metal.h>
 
 /**
  * @CreateDate: 2026/11/14
@@ -28,6 +27,11 @@
         self.opaque = YES;
         self.contentScaleFactor = UIScreen.mainScreen.nativeScale;
         CAMetalLayer *layer = self.metalLayer;
+        // wgpu CoreAnimationLayer 要求 layer.device 非空；缺省 device 会导致 create_metal 失败。
+        id<MTLDevice> device = MTLCreateSystemDefaultDevice();
+        if (device) {
+            layer.device = device;
+        }
         layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
         layer.framebufferOnly = YES;
         layer.contentsScale = self.contentScaleFactor;

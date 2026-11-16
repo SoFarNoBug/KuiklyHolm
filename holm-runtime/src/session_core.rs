@@ -84,10 +84,18 @@ impl HolmRuntimeSessionCore {
 
         let backend_id = backend_label(adapter.get_info().backend);
 
+        // using_resolution 只收纹理尺寸；弱 Metal（如 Duo sim）可能
+        // max_inter_stage_shader_variables=15 < Limits::default() 的 16。
+        // or_worse_values_from 把请求钳到 adapter 能力，避免 request_device 拒创。
+        let adapter_limits = adapter.limits();
         let required_limits = if downlevel_limits {
-            wgpu::Limits::downlevel_webgl2_defaults().using_resolution(adapter.limits())
+            wgpu::Limits::downlevel_webgl2_defaults()
+                .using_resolution(adapter_limits.clone())
+                .or_worse_values_from(&adapter_limits)
         } else {
-            wgpu::Limits::default().using_resolution(adapter.limits())
+            wgpu::Limits::default()
+                .using_resolution(adapter_limits.clone())
+                .or_worse_values_from(&adapter_limits)
         };
 
         let (device, queue) = adapter

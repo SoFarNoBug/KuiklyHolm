@@ -1,5 +1,13 @@
 # changelog · kuikly-dev-ios
 
+## 2026-11-16（Runtime create_metal device + 错误透传）
+
+- [MODIFY] `KRHolmMetalHostView`：`CAMetalLayer.device = MTLCreateSystemDefaultDevice()`（wgpu CoreAnimationLayer 硬依赖）
+- [MODIFY] `ios_c_api`：`create_metal` 失败写入 `holm_runtime_last_create_error`；宿主 `onError` 带真实原因
+- [MODIFY] `KRHolmSurface`：device nil / create 失败均透出细节，仍 `BLOCKED` 不冒充 GLES
+- [MODIFY] `session_core`：`required_limits.or_worse_values_from(adapter)`（Duo sim inter_stage 15&lt;16）
+- 轻量治理：门禁 跳过｜三问 否/否/否｜理由：速速改 Duo Runtime BLOCKED｜待批 0
+
 ## 2026-11-16（renderScale）
 
 - [ADD] `setCss_renderScale:`；Lite `contentScaleFactor=renderScale`（基线仍 1× 点）；Runtime `drawableSize=points×nativeScale×renderScale`

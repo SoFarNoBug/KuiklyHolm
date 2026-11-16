@@ -448,10 +448,20 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
         return;
     }
 
+    if (_metalHost.metalLayer.device == nil) {
+        [self holm_teardownRuntime];
+        [self holm_fireBlocked:@"CAMetalLayer.device is nil (MTLCreateSystemDefaultDevice failed). No silent GLES stand-in."];
+        return;
+    }
+
     uint64_t handle = holm_runtime_session_create_metal((__bridge void *)_metalHost.metalLayer, w, h);
     if (handle == 0) {
+        char errBuf[512] = {0};
+        holm_runtime_last_create_error(errBuf, (uint32_t)sizeof(errBuf));
+        NSString *detail = errBuf[0] ? [NSString stringWithUTF8String:errBuf] : @"(no detail)";
         [self holm_teardownRuntime];
-        [self holm_fireBlocked:@"holm_runtime_session_create_metal failed. No silent GLES stand-in."];
+        [self holm_fireBlocked:[NSString stringWithFormat:
+            @"holm_runtime_session_create_metal failed: %@. No silent GLES stand-in.", detail]];
         return;
     }
     _sessionHandle = handle;
