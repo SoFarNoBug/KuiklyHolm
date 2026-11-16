@@ -46,7 +46,12 @@ kotlin {
                 compileOnly("com.tencent.kuikly-open:core-render-android:${Version.getKuiklyOhosVersion()}")
             }
         }
-        val ohosArm64Main by getting
+        val ohosArm64Main by getting {
+            dependencies {
+                api(project(":holm-renderer-gl"))
+                api(project(":holm-renderer-wgpu"))
+            }
+        }
     }
 }
 

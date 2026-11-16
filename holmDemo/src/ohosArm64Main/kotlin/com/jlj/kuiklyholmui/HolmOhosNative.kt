@@ -1,6 +1,9 @@
 package com.jlj.kuiklyholmui
 
+import com.jlj.kuiklybase.holm.GlBackendProvider
 import com.jlj.kuiklybase.holm.HolmOhos
+import com.jlj.kuiklybase.holm.HolmProviders
+import com.jlj.kuiklybase.holm.WgpuBackendProvider
 import kotlin.experimental.ExperimentalNativeApi
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.CPointer
@@ -14,10 +17,15 @@ import kotlinx.cinterop.value
 
 /**
  * NAPI 入口（须在 shared 产物模块导出）。
- * 目录注入 + 遗留 magnifier stub（壳仍链符号，Holm 无像素放大镜）。
+ * 显式 register Provider（ADR 0008）+ 目录注入 + 遗留 magnifier stub。
  */
 object HolmOhosNative {
     fun configure(resfileDir: String, cacheDir: String) {
+        HolmProviders.register(GlBackendProvider)
+        HolmProviders.register(WgpuBackendProvider)
+        if (HolmProviders.defaultIdOrNull().isNullOrBlank()) {
+            HolmProviders.setDefault(GlBackendProvider.ID)
+        }
         HolmOhos.init(resfileDir, cacheDir)
     }
 }
@@ -30,7 +38,7 @@ fun holmSetOhosDirs(resfileDir: CPointer<ByteVar>?, cacheDir: CPointer<ByteVar>?
     if (res.isEmpty() && cache.isEmpty()) {
         return
     }
-    HolmOhos.init(res, cache)
+    HolmOhosNative.configure(res, cache)
 }
 
 @OptIn(ExperimentalForeignApi::class, ExperimentalNativeApi::class)
@@ -39,7 +47,7 @@ fun holmSetResfileDir(dir: CPointer<ByteVar>?) {
     if (dir == null) {
         return
     }
-    HolmOhos.init(dir.toKString())
+    HolmOhosNative.configure(dir.toKString(), dir.toKString())
 }
 
 /** 遗留 NAPI 符号：Holm 无放大镜像素，恒返回 0。 */

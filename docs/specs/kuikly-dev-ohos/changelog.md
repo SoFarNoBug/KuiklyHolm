@@ -1,5 +1,24 @@
 # changelog · kuikly-dev-ohos
 
+## 2026-11-16（审查整改 · holm-ohos-android-align 可修项）
+
+- [NOTE] `P2-kmp-wgpu-holm-setters`：Ohos 已与 iOS 同构 — set* 在 `HolmSessionBindings`，**不**挂 `OhosWgpuPlatform`；残余同模块边界可接受（对标 iOS r2 已关）
+- [NOTE] `P2-lite-needs-bridge`：Lite start 亦 `EnsureBridgeResolved`+`requireProvider` 为故意（无 Provider / 无 libshared 不静默 GLES）；冷启依赖 Demo 先加载 shared
+- [NOTE] `P2-provider-negative-hard`：默认 Demo 负向难触发；真机表 #8 / runbook 标可选特制宿主
+- [NOTE] `P2-worktree-noise`：提交勿收 `static_server/serve/**`、临时 `_holm-*.jpeg`；勿写回 `signingConfigs`
+- [NOTE] `P1-device-verify`：仍待本机 DevEco 自动签名后装机勾表（本机无 signingConfigs）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：清审查可修口径｜待批 0
+
+## 2026-11-16（Ohos 三包对齐 · 对标 iOS）
+
+- [ADD] `settings.ohos`：`:kmp-wgpu` / `:kmp-wgpu-surface` / `:holm-renderer-gl` / `:holm-renderer-wgpu` ohosArm64
+- [ADD] `OhosWgpuPlatform` / `HolmSessionBindings` / `OhosSurfaces`；renderer `HolmFullscreenPass` / `HolmRuntimeNative`
+- [ADD] `HolmRuntimeOhosBridge` + Demo `@CName holm_ohos_bridge_*`；`libholm_xc` dlsym Present；停直调 `holm_runtime_session_*`
+- [MODIFY] Lite/Runtime start `requireProvider`；Lite 空片元首包 defer；CMake 不再链 `holm_runtime` 到 xc
+- 自测：`./ohos_build.sh` 通过；`libshared` 导出 bridge 符号；`assembleHap` 通过（本机 SignHap 跳过 → 真机表待装机）
+- 真机验证表：`docs/reviews/device-check-list/holm-ohos-android-align.md`
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan 对齐 Ohos｜待批 0
+
 ## 2026-11-16（renderScale）
 
 - [ADD] Attr `renderScale` → NAPI `setRenderScale`；`GetSurfaceSize`×scale + `SET_BUFFER_GEOMETRY`；Lite/Runtime resize

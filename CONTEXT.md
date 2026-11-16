@@ -93,20 +93,20 @@ _Avoid_：`LITE_PENDING` 冒充完成；用 GLES 冒充 wgpu；另挂第二 XCom
 | 术语 | [`docs/product/references/glossary.md`](docs/product/references/glossary.md) |
 | AI 工作流 | [`.cursor/agents-guide.md`](.cursor/agents-guide.md) |
 
-## 工程壳（现状 · Android+H5+iOS 三包；Ohos 另单）
+## 工程壳（现状 · Android+H5+iOS+Ohos 三包 Present 对齐）
 
 | 项 | 值 |
 | --- | --- |
 | 根工程 | `KuiklyHolmUI` |
 | 三包 | `:holm-core` / `:holm-renderer-gl` / `:holm-renderer-wgpu` |
-| Umbrella | `:KuiklyHolmCore`（`api` 三包；iOS 已接 renderer；Ohos 源暂留） |
+| Umbrella | `:KuiklyHolmCore`（`api` 三包；iOS/Ohos 已接 renderer + Bridge） |
 | Runtime | `holm-runtime/`（= `kmp_wgpu_native`；产物名兼容）；Kotlin `:kmp-wgpu` + `:kmp-wgpu-surface`；Holm 适配 `HolmFullscreenPass` |
 | Demo | `:holmDemo` · 主推 `holm_runtime_m0` 双轨 + 多样本 chip（隧道 / IQ / 程序化海洋 / 电缆巢） |
 
 ## 当前状态
 
-- 身份：ADR 0007；目标拆包：ADR 0008（`holm-renderer-*`；Android+H5+iOS 已落地；Ohos 另单）
-- 下沉原语：ADR 0013 v1 Present + **v1.1 headless Compute+回读**（`:kmp-wgpu`；Android+H5；与 Surface 分表）；iOS Present 经 cinterop；Compute 仍 stub；Ohos 另单
+- 身份：ADR 0007；目标拆包：ADR 0008（`holm-renderer-*`；四端 Present 已对齐；Maven/拆仓另单）
+- 下沉原语：ADR 0013 v1 Present + **v1.1 headless Compute+回读**（`:kmp-wgpu`；Android+H5；与 Surface 分表）；iOS/Ohos Present 经 cinterop；Compute 仍 stub / 另单
 - Demo：Home「示例 / 双轨」+「kmp-wgpu Compute 回读」；页内 chip 切隧道 / IQ / 程序化海洋 / 电缆巢；官方五席源码已删
 - iOS：ADR 0009 泵仍 ObjC；Present 经 kmp-wgpu + Provider；Lite GLES 子树（`gles2-ios` / `wgpu-m0*`）
 - 鸿蒙：ADR 0010 Runtime + ADR 0011 Lite（同 XC EGL，`gles2-ohos`）；真机隧道/互切待勾

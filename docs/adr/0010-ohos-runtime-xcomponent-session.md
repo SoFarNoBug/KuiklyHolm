@@ -12,11 +12,11 @@ H5 / Android / iOS Runtime（wgpu Session + 宿主外泵 + WGSL）已通；鸿�
 
 1. **顺序**：本波只验收 Runtime 隧道；`executor=lite` → 深蓝 + 诚实 `onError`（如 `LITE_PENDING`），**禁止** GLES 冒充 wgpu；Lite 片元后置（**现行**：见 ADR 0011）。
 2. **呈现面**：ETS `KRHolmSurface`（`KuiklyRenderBaseView`，`viewName=KRHolmSurface`）内嵌 **`XComponent`（surface）**；Attr 对齐双轨（`executor` / `fragmentShader` / `maxFps` / `onReady` / `onError` / `onPerf`…）。
-3. **泵与胶水**：**XComponent NAPI 回调**拥有生命周期 + `OnFrame` → 同步 C `tick`；Rust **无内泵**。不把泵放到 Kotlin/Native。`maxFps`：`SetExpectedFrameRateRange` + 必要时跳帧；`0`=不限。
-4. **ABI**：新增 `holm_runtime_session_create_ohos(window: *mut c_void, w, h)`；其余 `destroy` / `resize` / `tick` / `set_custom_fs` / `set_scene` / … 与 iOS 共用 `holm_runtime_session_*`。ohos target 拉 **wgpu + Vulkan**。Android JNI / iOS Metal create **本波不改**。
-5. **产物（双 so）**：
-   - 脚本编 `libholm_runtime.so`（aarch64-ohos）；改 Rust 先跑脚本，**Hvigor 不自动编 Rust**。
-   - 独立 NAPI 模块 `libholm_xc.so`（`XComponent.libraryname = 'holm_xc'`）：注册 Surface/OnFrame 回调并调 Runtime C ABI；**不**并入 `libentry.so`。
+3. **泵与胶水**：**XComponent NAPI 回调**拥有生命周期 + `OnFrame` → 同步 `tick`；Rust **无内泵**。不把泵放到 Kotlin/Native。`maxFps`：`SetExpectedFrameRateRange` + 必要时跳帧；`0`=不限。
+4. **ABI**：`holm_runtime_session_create_ohos(window: *mut c_void, w, h)`；其余 `destroy` / `resize` / `tick` / `set_*` 与 iOS 共用。ohos target 拉 **wgpu + Vulkan**。
+5. **产物与 Present 路径（对齐 ADR 0008）**：
+   - 脚本编 `libholm_runtime.so`（aarch64-ohos）；改 Rust 先跑脚本，**Hvigor 不自动编 Rust**；由 **`libshared.so`（KN / kmp-wgpu cinterop）** 持有。
+   - 独立 NAPI 模块 `libholm_xc.so`：注册 Surface/OnFrame + **Lite EGL**；Runtime Present **经** `dlsym(holm_ohos_bridge_*)` → KN `HolmRuntimeOhosBridge` → `HolmFullscreenPass` → `OhosWgpuPlatform`；**禁止**壳直调 `holm_runtime_session_*`。
 6. **分辨率**：create/resize 以 `OH_NativeXComponent_GetXComponentSize` 的 Surface **像素**为基线；**现行**由 Attr `renderScale`（默认 `1`）相对基线缩放（见 2026-11-16 Consequences）。
 7. **失败**：缺 so / `has_wgpu=0` / create·tick 失败 → `onError(BLOCKED)`，深蓝底；**禁止**静默 GLES 冒充。
 8. **生命周期**：切 Lite / 卸岛 / SurfaceDestroyed → **UnregisterOnFrame** + Session `destroy`；新 Surface 再 `create`。
@@ -30,3 +30,4 @@ H5 / Android / iOS Runtime（wgpu Session + 宿主外泵 + WGSL）已通；鸿�
 - **2026-11-15**：`holm-runtime` 全端统一 **wgpu 30.0.2**（不再 Ohos 独占）；`session_core_ohos` 双核心退役，单一 `session_core`；Ohos 仍依赖 Vulkan / `VK_OHOS_surface`。
 - 可选后单：Android JNI 收拢到同一 C Session。
 - **2026-11-16**：降采样改为可配置 `HolmSurface.renderScale`（默认 `1`=基线满像素；`(0,1]`；四端 Lite+Runtime）；库不强制 1×。
+- **2026-11-16（三包对齐）**：Present 经 KN Bridge；切轨/start `requireProvider`；Lite 空片元首包 defer（对齐 iOS）。

@@ -21,7 +21,7 @@
    - `holm-wgpu` = Holm Provider / 岛 Present **薄适配**，依赖前者；保留三包 + Provider 必设。
 6. **仓**：先在 `kuikly-holm` 内分层模块化；API 与 Holm 迁移稳定后再拆独立仓发版。
 7. **里程碑**：
-   - **v1**：Holm Runtime 出帧路径迁到 `kmp-wgpu` + `kmp-wgpu-surface`，行为与现 Session **对等**；端范围先 **Android + H5**；iOS / Ohos → v1.x。
+   - **v1**：Holm Runtime 出帧路径迁到 `kmp-wgpu` + `kmp-wgpu-surface`，行为与现 Session **对等**；端范围 **Android + H5 + iOS + Ohos**（Ohos Present 2026-11-16）；Compute 仍按端 stub / 另单。
    - **v1.1（硬门禁）**：headless **Compute + 回读**示例必须交付（证明 Present 可选不是纸面）。
 8. **非目标**（另 ADR 才能推翻）：第二套非 wgpu 图形后端；Kuikly/Compose/任何 UI 桥；官方图像算子/特效目录；场景图/游戏引擎/物理；NPU/OpenCL 等非 wgpu 算力；v1/v1.1 toolkit 包。
 

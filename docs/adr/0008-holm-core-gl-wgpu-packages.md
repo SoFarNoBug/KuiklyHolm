@@ -1,8 +1,8 @@
 # ADR 0008: 目标拆包 · holm-core / holm-renderer-gl / holm-renderer-wgpu + Provider
 
-- Status: Accepted（**Android+H5 已落地**；**iOS 本波已对齐** Provider + renderer ios 目标 + kmp-wgpu Present；Ohos 另单）
+- Status: Accepted（**Android+H5+iOS+Ohos 已对齐** Provider + renderer 目标 + kmp-wgpu Present；Maven 独立坐标 / 拆仓另单）
 - Date: 2026-11-14
-- Updated: 2026-11-16（包名：`holm-renderer-*`；Android+H5 物理拆；iOS 架构对齐）
+- Updated: 2026-11-16（包名：`holm-renderer-*`；Android+H5 物理拆；iOS / Ohos 架构对齐）
 
 ## Context
 
@@ -24,7 +24,7 @@
 7. **物理拆节奏**：
    - **Android + H5**：三模块 + umbrella 已落地。
    - **iOS（本波）**：`kmp-wgpu` / `kmp-wgpu-surface` / `holm-renderer-*` 加 ios 目标；Runtime Present 经 `HolmFullscreenPass` + `HolmRuntimeIosBridge`；壳 **不再直调** C Session；泵仍 ObjC（ADR 0009）。
-   - **Ohos**：物理拆另单。Maven 独立坐标 / 拆仓另单（O7）。
+   - **Ohos（本波）**：`settings.ohos` 纳入三包 + `kmp-wgpu*`；Runtime Present 经 `HolmFullscreenPass` + `HolmRuntimeOhosBridge`（Demo `@CName` / `libholm_xc` dlsym）；壳 **不再直调** C Session；泵仍 XComponent OnFrame（ADR 0010）；Lite EGL 仍在 `libholm_xc`（ADR 0011）。Maven 独立坐标 / 拆仓另单（O7）。
 
 ## Consequences
 

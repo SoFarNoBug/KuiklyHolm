@@ -1,5 +1,18 @@
 # dualtrack-lite-vs-standard · changelog
 
+## 2026-11-16（Ohos 对齐审查整改 · 可修 P2 口径）
+
+- [NOTE] setters / Provider 负向 / Lite+bridge / worktree：与 `kuikly-dev-ohos` 同日条；无行为回归改动
+- [NOTE] 真机 DualTrack 仍挂 `P1-device-verify`（签名装机）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：清审查可修口径｜待批 0
+
+## 2026-11-16（Ohos 三包对齐 · Present 经 KN Bridge）
+
+- [ADD] Ohos：`kmp-wgpu*` / `holm-renderer-*` ohosArm64；`HolmRuntimeOhosBridge` + `holm_ohos_bridge_*`；壳停直调 C
+- [MODIFY] ADR 0008/0010/0013 + D13：四端 Present 对齐；Maven/拆仓仍另单
+- 自测：`ohos_build.sh` + `assembleHap`；真机 DualTrack 待签名装机勾表
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan｜待批 0
+
 ## 2026-11-16（Duo Sim Lite 冷启 + Runtime 出画）
 
 - [FIX] iOS Lite 冷启：空片元 defer + 晚到 shader 补 `onReady`（修 FRAGMENT_REQUIRED 粘住）
