@@ -3,12 +3,12 @@
 #import "KRHolmGlesHostView.h"
 #import <OpenKuiklyIOSRender/KRComponentDefine.h>
 #import <QuartzCore/QuartzCore.h>
-#import "holm_runtime.h"
+#import <holmDemo/holmDemo.h>
 
 /**
  * @CreateDate: 2026/11/14
  * @Author: jlj
- * @Description: 容器岛 — Runtime Metal C Session + Lite GLES2 子 View（ADR 0009 后单）。
+ * @Description: 容器岛 — Runtime 经 HolmRuntimeIosBridge（ObjC: HolmDemoHolmRuntimeIosBridge；kmp-wgpu Present）+ Lite GLES2（ADR 0009 泵仍 ObjC）。
  */
 
 static const NSInteger kHolmDefaultMaxFps = 60;
@@ -168,14 +168,14 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
     }
     _scene = [next copy];
     if (_sessionHandle != 0) {
-        holm_runtime_session_set_scene(_sessionHandle, _scene.UTF8String);
+        [HolmDemoHolmRuntimeIosBridge.shared setSceneHandle:_sessionHandle scene:_scene];
     }
 }
 
 - (void)setCss_playing:(NSNumber *)css_playing {
     _playing = css_playing.boolValue;
     if (_sessionHandle != 0) {
-        holm_runtime_session_set_playing(_sessionHandle, _playing ? 1u : 0u);
+        [HolmDemoHolmRuntimeIosBridge.shared setPlayingHandle:_sessionHandle playing:_playing];
     }
     if (_playing && ([self holm_isRuntime] ? _sessionHandle != 0 : _glesHost != nil)) {
         [self holm_startDisplayLink];
@@ -214,7 +214,7 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
 - (void)setCss_liquidBoost:(NSNumber *)css_liquidBoost {
     _liquidBoost = css_liquidBoost.floatValue;
     if (_sessionHandle != 0) {
-        holm_runtime_session_set_liquid(_sessionHandle, _liquidBoost, _liquidBend);
+        [HolmDemoHolmRuntimeIosBridge.shared setLiquidHandle:_sessionHandle boost:_liquidBoost bend:_liquidBend];
     }
     [_glesHost holm_setLiquidBoost:_liquidBoost bend:_liquidBend];
 }
@@ -222,7 +222,7 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
 - (void)setCss_liquidBend:(NSNumber *)css_liquidBend {
     _liquidBend = css_liquidBend.floatValue;
     if (_sessionHandle != 0) {
-        holm_runtime_session_set_liquid(_sessionHandle, _liquidBoost, _liquidBend);
+        [HolmDemoHolmRuntimeIosBridge.shared setLiquidHandle:_sessionHandle boost:_liquidBoost bend:_liquidBend];
     }
     [_glesHost holm_setLiquidBoost:_liquidBoost bend:_liquidBend];
 }
@@ -276,24 +276,26 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
             return;
         }
         CFAbsoluteTime t0 = CFAbsoluteTimeGetCurrent();
-        BOOL ok = holm_runtime_session_set_custom_fs(_sessionHandle, custom.UTF8String);
+        BOOL ok = [HolmDemoHolmRuntimeIosBridge.shared setCustomFsHandle:_sessionHandle fs:custom];
         float compileMs = (float)((CFAbsoluteTimeGetCurrent() - t0) * 1000.0);
         if (!ok) {
-            char codeBuf[64] = {0};
-            char msgBuf[512] = {0};
-            holm_runtime_session_last_error_code(_sessionHandle, codeBuf, sizeof(codeBuf));
-            holm_runtime_session_last_error_message(_sessionHandle, msgBuf, sizeof(msgBuf));
-            NSString *code = codeBuf[0] ? [NSString stringWithUTF8String:codeBuf] : @"SHADER_CUSTOM";
-            NSString *msg = msgBuf[0] ? [NSString stringWithUTF8String:msgBuf] : @"Runtime setCustomFs failed";
+            NSString *code = [HolmDemoHolmRuntimeIosBridge.shared lastErrorCodeHandle:_sessionHandle];
+            NSString *msg = [HolmDemoHolmRuntimeIosBridge.shared lastErrorMessageHandle:_sessionHandle];
+            if (code.length == 0) {
+                code = @"SHADER_CUSTOM";
+            }
+            if (msg.length == 0) {
+                msg = @"Runtime setCustomFs failed";
+            }
             [self holm_fireError:code message:msg];
             [self holm_fireShaderCompiled:NO wrapMs:0.f compileMs:compileMs executor:kHolmExecutorRuntime];
         } else {
             [self holm_fireShaderCompiled:YES wrapMs:0.f compileMs:compileMs executor:kHolmExecutorRuntime];
         }
     } else {
-        holm_runtime_session_set_custom_fs(_sessionHandle, "");
+        [HolmDemoHolmRuntimeIosBridge.shared setCustomFsHandle:_sessionHandle fs:@""];
         if (_scene.length) {
-            holm_runtime_session_set_scene(_sessionHandle, _scene.UTF8String);
+            [HolmDemoHolmRuntimeIosBridge.shared setSceneHandle:_sessionHandle scene:_scene];
         }
         // 空片元 ClearTri：ok=false，对齐 Lite 拒绝语义（审查 P2）
         [self holm_fireShaderCompiled:NO wrapMs:0.f compileMs:0.f executor:kHolmExecutorRuntime];
@@ -306,9 +308,12 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
     }
     NSString *custom = [_fragmentShader stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (custom.length == 0) {
-        [self holm_fireError:@"FRAGMENT_REQUIRED"
-                     message:@"fragmentShader required (official scenes removed on iOS)"];
-        [self holm_fireShaderCompiled:NO wrapMs:0.f compileMs:0.f executor:kHolmExecutorLite];
+        // 首包未到：不报错；已 onReady 后被清空才 FRAGMENT_REQUIRED
+        if (_readyFired) {
+            [self holm_fireError:@"FRAGMENT_REQUIRED"
+                         message:@"fragmentShader required (official scenes removed on iOS)"];
+            [self holm_fireShaderCompiled:NO wrapMs:0.f compileMs:0.f executor:kHolmExecutorLite];
+        }
         return;
     }
     if ([self holm_looksLikeWgslFragment:custom]) {
@@ -316,7 +321,18 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
         [self holm_fireShaderCompiled:NO wrapMs:0.f compileMs:0.f executor:kHolmExecutorLite];
         return;
     }
-    [_glesHost holm_setFragmentBody:custom];
+    if (![_glesHost holm_setFragmentBody:custom]) {
+        return;
+    }
+    _backendId = kHolmBackendGlesIos;
+    if (!_readyFired) {
+        _readyFired = YES;
+        _blockedNotified = NO;
+        _pendingErrorCode = nil;
+        _pendingErrorMessage = nil;
+        [self holm_fireReady];
+    }
+    [self holm_startDisplayLink];
 }
 
 - (void)holm_applyExecutorMode {
@@ -340,6 +356,12 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
 #pragma mark - Lite
 
 - (void)holm_startLite {
+    NSString *providerErr = [HolmDemoHolmRuntimeIosBridge.shared requireProviderExecutor:kHolmExecutorLite];
+    if (providerErr.length > 0) {
+        [self holm_teardownLite];
+        [self holm_fireBlocked:providerErr];
+        return;
+    }
     if (_glesHost && _glesHost.hasProgram) {
         _backendId = kHolmBackendGlesIos;
         if (!_readyFired) {
@@ -382,10 +404,8 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
 
     NSString *custom = [_fragmentShader stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (custom.length == 0) {
+        // didMoveToWindow 常早于 Compose 属性；等 setCss_fragmentShader，勿抢报 FRAGMENT_REQUIRED
         self.backgroundColor = [UIColor colorWithRed:0.02 green:0.08 blue:0.28 alpha:1];
-        [self holm_fireError:@"FRAGMENT_REQUIRED"
-                     message:@"fragmentShader required (official scenes removed on iOS)"];
-        [self holm_fireShaderCompiled:NO wrapMs:0.f compileMs:0.f executor:kHolmExecutorLite];
         [self holm_startDisplayLink];
         return;
     }
@@ -431,6 +451,12 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
         [self holm_startDisplayLink];
         return;
     }
+    NSString *providerErr = [HolmDemoHolmRuntimeIosBridge.shared requireProviderExecutor:kHolmExecutorRuntime];
+    if (providerErr.length > 0) {
+        [self holm_teardownRuntime];
+        [self holm_fireBlocked:providerErr];
+        return;
+    }
     if (!_metalHost) {
         _metalHost = [[KRHolmMetalHostView alloc] initWithFrame:self.bounds];
         _metalHost.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
@@ -439,10 +465,10 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
     [_metalHost holm_setRenderScale:_renderScale];
     [_metalHost holm_updateDrawableSize];
     CGSize px = _metalHost.metalLayer.drawableSize;
-    uint32_t w = (uint32_t)MAX(1.0, px.width);
-    uint32_t h = (uint32_t)MAX(1.0, px.height);
+    int32_t w = (int32_t)MAX(1.0, px.width);
+    int32_t h = (int32_t)MAX(1.0, px.height);
 
-    if (holm_runtime_has_wgpu() == 0) {
+    if (![HolmDemoHolmRuntimeIosBridge.shared hasWgpu]) {
         [self holm_teardownRuntime];
         [self holm_fireBlocked:@"holm_runtime has_wgpu=0. No silent GLES stand-in."];
         return;
@@ -454,21 +480,23 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
         return;
     }
 
-    uint64_t handle = holm_runtime_session_create_metal((__bridge void *)_metalHost.metalLayer, w, h);
+    int64_t layerPtr = (int64_t)(__bridge void *)_metalHost.metalLayer;
+    int64_t handle = [HolmDemoHolmRuntimeIosBridge.shared createMetalLayerPtr:layerPtr width:w height:h];
     if (handle == 0) {
-        char errBuf[512] = {0};
-        holm_runtime_last_create_error(errBuf, (uint32_t)sizeof(errBuf));
-        NSString *detail = errBuf[0] ? [NSString stringWithUTF8String:errBuf] : @"(no detail)";
+        NSString *detail = [HolmDemoHolmRuntimeIosBridge.shared lastCreateError];
+        if (detail.length == 0) {
+            detail = @"(no detail)";
+        }
         [self holm_teardownRuntime];
         [self holm_fireBlocked:[NSString stringWithFormat:
-            @"holm_runtime_session_create_metal failed: %@. No silent GLES stand-in.", detail]];
+            @"HolmDemoHolmRuntimeIosBridge create failed: %@. No silent GLES stand-in.", detail]];
         return;
     }
-    _sessionHandle = handle;
-    _lastSessionW = w;
-    _lastSessionH = h;
-    holm_runtime_session_set_liquid(_sessionHandle, _liquidBoost, _liquidBend);
-    holm_runtime_session_set_playing(_sessionHandle, _playing ? 1u : 0u);
+    _sessionHandle = (uint64_t)handle;
+    _lastSessionW = (uint32_t)w;
+    _lastSessionH = (uint32_t)h;
+    [HolmDemoHolmRuntimeIosBridge.shared setLiquidHandle:_sessionHandle boost:_liquidBoost bend:_liquidBend];
+    [HolmDemoHolmRuntimeIosBridge.shared setPlayingHandle:_sessionHandle playing:_playing];
     if (_fragmentShader.length > 0 &&
         ![self holm_looksLikeWgslFragment:_fragmentShader] &&
         [self holm_isRuntime]) {
@@ -480,12 +508,11 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
     }
     [self holm_applyRuntimeShaders];
 
-    char backendBuf[64] = {0};
-    holm_runtime_session_backend_id(_sessionHandle, backendBuf, sizeof(backendBuf));
-    _backendId = [NSString stringWithUTF8String:backendBuf] ?: @"wgpu-m0";
+    NSString *backend = [HolmDemoHolmRuntimeIosBridge.shared backendIdHandle:_sessionHandle];
+    _backendId = backend.length ? backend : @"wgpu-m0";
 
     float dt = 1.f / 60.f;
-    if (!holm_runtime_session_tick(_sessionHandle, dt)) {
+    if (![HolmDemoHolmRuntimeIosBridge.shared tickHandle:_sessionHandle dtSecs:dt]) {
         [self holm_teardownRuntime];
         [self holm_fireBlocked:@"holm_runtime tick failed after create. No silent GLES stand-in."];
         return;
@@ -502,7 +529,7 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
 - (void)holm_teardownRuntime {
     [self holm_stopDisplayLink];
     if (_sessionHandle != 0) {
-        holm_runtime_session_destroy(_sessionHandle);
+        [HolmDemoHolmRuntimeIosBridge.shared destroyHandle:_sessionHandle];
         _sessionHandle = 0;
     }
     if (_metalHost) {
@@ -529,7 +556,7 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
     }
     _lastSessionW = w;
     _lastSessionH = h;
-    holm_runtime_session_resize(_sessionHandle, w, h);
+    [HolmDemoHolmRuntimeIosBridge.shared resizeHandle:_sessionHandle width:(int32_t)w height:(int32_t)h];
 }
 
 #pragma mark - DisplayLink
@@ -602,17 +629,17 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
     _lastFrameTs = now;
 
     if ([self holm_isRuntime]) {
-        if (!holm_runtime_session_tick(_sessionHandle, dt)) {
+        if (![HolmDemoHolmRuntimeIosBridge.shared tickHandle:_sessionHandle dtSecs:dt]) {
             if (!_blockedNotified) {
                 _blockedNotified = YES;
-                char codeBuf[64] = {0};
-                char msgBuf[512] = {0};
-                holm_runtime_session_last_error_code(_sessionHandle, codeBuf, sizeof(codeBuf));
-                holm_runtime_session_last_error_message(_sessionHandle, msgBuf, sizeof(msgBuf));
-                NSString *code = codeBuf[0] ? [NSString stringWithUTF8String:codeBuf] : @"TICK";
-                NSString *msg = msgBuf[0]
-                    ? [NSString stringWithUTF8String:msgBuf]
-                    : @"holm_runtime tick failed. No silent GLES stand-in.";
+                NSString *code = [HolmDemoHolmRuntimeIosBridge.shared lastErrorCodeHandle:_sessionHandle];
+                NSString *msg = [HolmDemoHolmRuntimeIosBridge.shared lastErrorMessageHandle:_sessionHandle];
+                if (code.length == 0) {
+                    code = @"TICK";
+                }
+                if (msg.length == 0) {
+                    msg = @"holm_runtime tick failed. No silent GLES stand-in.";
+                }
                 [self holm_fireError:code message:msg];
             }
             [self holm_stopDisplayLink];

@@ -1,8 +1,8 @@
 # ADR 0008: 目标拆包 · holm-core / holm-renderer-gl / holm-renderer-wgpu + Provider
 
-- Status: Accepted（目标架构；**Android+H5 Gradle 物理拆执行中**；iOS/Ohos 另波）
+- Status: Accepted（**Android+H5 已落地**；**iOS 本波已对齐** Provider + renderer ios 目标 + kmp-wgpu Present；Ohos 另单）
 - Date: 2026-11-14
-- Updated: 2026-11-16（包名：`holm-renderer-*`；物理拆启动）
+- Updated: 2026-11-16（包名：`holm-renderer-*`；Android+H5 物理拆；iOS 架构对齐）
 
 ## Context
 
@@ -21,7 +21,10 @@
 4. **选用**：启动时注册默认 Provider；**岛上可覆盖**（保留 DualTrack 式 `executor=lite|runtime`）。不再「只引一个后端 jar 就自动默选」。
 5. **岛契约（v1）**：业务用布局决定岛的位置与大小；一段上色代码把该矩形每帧画满（全屏四边形片元语义）。第一期不承诺官方多 Pass 图 / Compute 产品入口。
 6. **样本**：产品叙事**废弃五席**；Demo **主推隧道**；五席源码已于 2026-11-14 从仓库移除。
-7. **物理拆节奏**：本波 **Android + H5** 落地三模块；`:KuiklyHolmCore` 暂作 umbrella（`api` 三包 + iOS/Ohos 源暂留）；iOS / Ohos 物理拆另单。Maven 独立坐标 / 拆仓另单（O7）。
+7. **物理拆节奏**：
+   - **Android + H5**：三模块 + umbrella 已落地。
+   - **iOS（本波）**：`kmp-wgpu` / `kmp-wgpu-surface` / `holm-renderer-*` 加 ios 目标；Runtime Present 经 `HolmFullscreenPass` + `HolmRuntimeIosBridge`；壳 **不再直调** C Session；泵仍 ObjC（ADR 0009）。
+   - **Ohos**：物理拆另单。Maven 独立坐标 / 拆仓另单（O7）。
 
 ## Consequences
 
@@ -34,4 +37,5 @@
 - ADR 0007（身份）  
 - ADR 0013（kmp-wgpu 原语层；`holm-renderer-wgpu` 叠其上）  
 - ADR 0005（fragmentShader / Shadertoy 壳）  
-- ADR 0006（Android Runtime Session）
+- ADR 0006（Android Runtime Session）  
+- ADR 0009（iOS 泵与 View；Present 经 kmp-wgpu）

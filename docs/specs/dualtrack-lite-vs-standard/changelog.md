@@ -1,5 +1,29 @@
 # dualtrack-lite-vs-standard · changelog
 
+## 2026-11-16（Duo Sim Lite 冷启 + Runtime 出画）
+
+- [FIX] iOS Lite 冷启：空片元 defer + 晚到 shader 补 `onReady`（修 FRAGMENT_REQUIRED 粘住）
+- [NOTE] Duo：`_holm-ios-duo-lite.png` / `_holm-ios-duo-runtime.png`；热切未自动化；真机表 #5–#8 仍待
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改 DualTrack 出画｜待批 0
+
+## 2026-11-16（iOS 对齐审查整改 · Holm set* 分层）
+
+- [FIX] P2：`HolmIosNative` 独立 cinterop set*；kmp-wgpu ios 仅 Present 粗块
+- [NOTE] ohos 签名材料已从工作区还原；Sim Duo DualTrack 待勾真机表
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改审查项｜待批 0
+
+## 2026-11-16（iOS 架构对齐 Android · 三包 + kmp-wgpu Present）
+
+- [ADD] `:kmp-wgpu` / `:kmp-wgpu-surface` ios 目标：cinterop `holm_runtime.h`；`IosWgpuPlatform` / `IosSurfaces`
+- [ADD] `:holm-renderer-wgpu` ios：`HolmFullscreenPass` / `HolmIosNative` / `HolmRuntimeNative`；`:holm-renderer-gl` ios 目标
+- [ADD] `KuiklyHolmCore` ios：`api` 两 renderer；`HolmUmbrellaBootstrap`；`HolmRuntimeIosBridge`（ObjC：`HolmDemoHolmRuntimeIosBridge`）
+- [MODIFY] `KRHolmSurface.m`：Present 停直调 `holm_runtime_session_*`；经 bridge；切轨/start `requireProvider`；`HolmIosBridge.configure` 显式 register
+- [MODIFY] ADR 0008/0009 / CONTEXT / 00 D13·D14 / AGENTS / file-map / ios runbook
+- [NOTE] 泵仍 ObjC CADisplayLink（ADR 0009）；App 仍链 xcframework；iOS Compute 仍 stub；Ohos 另单
+- 自测：`:kmp-wgpu`…`:holmDemo:linkPodDebugFrameworkIosSimulatorArm64` 通过；`iosApp` 无 `holm_runtime_session_*`
+- 真机验证表：本单编译门禁已过；Sim/真机 DualTrack DoD 待审核员表 `docs/reviews/device-check-list/holm-ios-android-align.md`
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan 对齐 iOS｜待批 0
+
 ## 2026-11-16（三包拆 · 清审查 P1/P2 可修项）
 
 - [FIX] P1-doc-drift：`docs/product/README` / ADR 0008 / D11 对齐 `holm-renderer-*`；写明 umbrella 自动注册为例外

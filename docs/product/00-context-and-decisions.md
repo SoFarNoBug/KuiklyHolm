@@ -116,8 +116,8 @@ Stage 0 曾在 2026-11-12 选 **Lite(A)**（ADR 0002），目标是「特效尖�
 | D10 | 命名 Holm / HolmSurface / KRHolmSurface / holm_* | 锁定 |
 | D11 | 目标默认后端叙事对齐 ADR 0008（Provider 必设；显式选 renderer-gl / renderer-wgpu；umbrella 可自动注册为例外） | **修订锁定** |
 | D12 | **身份：通用渲染底座**（ADR 0007）；不绑定单一业务 | **修订锁定** |
-| D13 | **目标拆包** holm-core / holm-renderer-gl / holm-renderer-wgpu + Provider（ADR 0008）；Android+H5 物理拆执行中；iOS/Ohos 另单 | **锁定** |
-| D14 | **kmp-wgpu** 原语层在 Holm 之下（ADR 0013）：Kotlin 脸、Present 可选、抽芯自 holm-runtime；v1=Android+H5 Present 对等；v1.1=Compute+回读硬门禁 | **锁定** |
+| D13 | **目标拆包** holm-core / holm-renderer-gl / holm-renderer-wgpu + Provider（ADR 0008）；Android+H5+iOS 已落地；Ohos 另单 | **锁定** |
+| D14 | **kmp-wgpu** 原语层在 Holm 之下（ADR 0013）：Kotlin 脸、Present 可选、抽芯自 holm-runtime；v1=Android+H5+iOS Present；v1.1=Compute+回读（Android+H5；iOS stub） | **锁定** |
 
 ## 6. 成功标准
 

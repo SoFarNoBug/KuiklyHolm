@@ -1,5 +1,28 @@
 # changelog · kuikly-dev-ios
 
+## 2026-11-16（Lite 冷启 defer FRAGMENT_REQUIRED + Duo 出画）
+
+- [FIX] `KRHolmSurface` Lite：`didMoveToWindow` 早于 Compose attr 时不抢报 `FRAGMENT_REQUIRED`；晚到 `setCss_fragmentShader` 成功后补 `onReady`
+- [MODIFY] Demo 默认 `executor=RUNTIME`（验收临时 Lite 已还原）
+- 自测：iPhone Duo Sim 冷启 Lite=`gles2` 隧道、Runtime=`wgpu-m0` fps≈58；截图进 device-check-list
+- 轻量治理：门禁 跳过｜三问 否/否/否｜理由：速速改 Duo Lite 冷启｜待批 0
+
+## 2026-11-16（审查整改 · Holm set* 迁出 kmp-wgpu）
+
+- [FIX] P2-kmp-wgpu-holm-setters：`IosWgpuPlatform` 去掉 set*；`HolmSessionBindings` + `HolmIosNative` 转发（renderer 侧自有 cinterop 未进 classpath，改同模块独立 object）
+- [FIX] holmDemo cocoapods `export(:holm-renderer-gl)`：修 ObjC 不见 `HolmShadertoyShell` / `HolmBuiltinShaders`
+- [NOTE] 还原工作区 `ohosApp/build-profile.json5` 签名噪声（勿提交）
+- 轻量治理：门禁 跳过｜三问 否/否/否｜理由：速速改审查项｜待批 0
+
+## 2026-11-16（iOS 架构对齐 Android · 三包 + kmp-wgpu Present）
+
+- [ADD] kmp-wgpu / surface / renderer ios；`HolmRuntimeIosBridge`；Core umbrella ios `api` 两 renderer
+- [MODIFY] `KRHolmSurface.m`：Present 经 `HolmDemoHolmRuntimeIosBridge`；停直调 C Session；Provider 闸
+- [MODIFY] ADR 0008/0009 + runbook；feature changelog 见 dualtrack
+- 自测：sim+arm64 `linkPodDebugFramework*` 通过；无 `holm_runtime_session_*` 于 ObjC
+- 真机验证表：待审核员 `docs/reviews/device-check-list/holm-ios-android-align.md`
+- 轻量治理：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan｜待批 0
+
 ## 2026-11-16（Runtime create_metal device + 错误透传）
 
 - [MODIFY] `KRHolmMetalHostView`：`CAMetalLayer.device = MTLCreateSystemDefaultDevice()`（wgpu CoreAnimationLayer 硬依赖）

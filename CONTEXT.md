@@ -63,7 +63,7 @@ _Avoid_：onShaderReady；塞进 onReady / onPerf；用缺省回调表示「尝�
 _Avoid_：官方特效完成态 / scene=frost 出画
 
 **iOS Runtime Session**：
-iOS 上 wgpu Session 通面形态：容器岛内 `CAMetalLayer` 子 View + ObjC 主线程外泵 + C ABI（ADR 0009）。
+iOS 上 wgpu Session 通面形态：容器岛内 `CAMetalLayer` 子 View + ObjC 主线程外泵；Present 经 `HolmRuntimeIosBridge` → kmp-wgpu cinterop → C ABI（ADR 0009；壳不直调 Session）。
 _Avoid_：用 GLES 冒充 Runtime；KN 拥有 DisplayLink；MTKView 抢 wgpu drawable
 
 **iOS Lite GLES**：
@@ -93,21 +93,21 @@ _Avoid_：`LITE_PENDING` 冒充完成；用 GLES 冒充 wgpu；另挂第二 XCom
 | 术语 | [`docs/product/references/glossary.md`](docs/product/references/glossary.md) |
 | AI 工作流 | [`.cursor/agents-guide.md`](.cursor/agents-guide.md) |
 
-## 工程壳（现状 · Android+H5 三包物理拆中）
+## 工程壳（现状 · Android+H5+iOS 三包；Ohos 另单）
 
 | 项 | 值 |
 | --- | --- |
 | 根工程 | `KuiklyHolmUI` |
 | 三包 | `:holm-core` / `:holm-renderer-gl` / `:holm-renderer-wgpu` |
-| Umbrella | `:KuiklyHolmCore`（`api` 三包；iOS/Ohos 源暂留） |
+| Umbrella | `:KuiklyHolmCore`（`api` 三包；iOS 已接 renderer；Ohos 源暂留） |
 | Runtime | `holm-runtime/`（= `kmp_wgpu_native`；产物名兼容）；Kotlin `:kmp-wgpu` + `:kmp-wgpu-surface`；Holm 适配 `HolmFullscreenPass` |
 | Demo | `:holmDemo` · 主推 `holm_runtime_m0` 双轨 + 多样本 chip（隧道 / IQ / 程序化海洋 / 电缆巢） |
 
 ## 当前状态
 
-- 身份：ADR 0007；目标拆包：ADR 0008（`holm-renderer-*`；Android+H5 Gradle 拆执行中）
-- 下沉原语：ADR 0013 v1 Present + **v1.1 headless Compute+回读**（`:kmp-wgpu`；Android+H5；与 Surface 分表）；iOS/Ohos 仍旧 C ABI / Compute stub
+- 身份：ADR 0007；目标拆包：ADR 0008（`holm-renderer-*`；Android+H5+iOS 已落地；Ohos 另单）
+- 下沉原语：ADR 0013 v1 Present + **v1.1 headless Compute+回读**（`:kmp-wgpu`；Android+H5；与 Surface 分表）；iOS Present 经 cinterop；Compute 仍 stub；Ohos 另单
 - Demo：Home「示例 / 双轨」+「kmp-wgpu Compute 回读」；页内 chip 切隧道 / IQ / 程序化海洋 / 电缆巢；官方五席源码已删
-- iOS：ADR 0009 Runtime Metal + Lite GLES 子树均已落地（`gles2-ios` / `wgpu-m0*`）
+- iOS：ADR 0009 泵仍 ObjC；Present 经 kmp-wgpu + Provider；Lite GLES 子树（`gles2-ios` / `wgpu-m0*`）
 - 鸿蒙：ADR 0010 Runtime + ADR 0011 Lite（同 XC EGL，`gles2-ohos`）；真机隧道/互切待勾
 - 后单：真机勾 v1.1 Compute 冒烟；真拆 holm 三依赖、独立仓、`holm_api` 对齐

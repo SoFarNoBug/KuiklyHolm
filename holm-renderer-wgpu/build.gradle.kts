@@ -16,6 +16,10 @@ kotlin {
         browser()
     }
 
+    iosX64()
+    iosArm64()
+    iosSimulatorArm64()
+
     sourceSets {
         val commonMain by getting {
             dependencies {
@@ -34,6 +38,19 @@ kotlin {
                 api(project(":kmp-wgpu-surface"))
                 implementation("com.tencent.kuikly-open.core-render-web:base:${Version.getKuiklyVersion()}")
             }
+        }
+        val iosX64Main by getting
+        val iosArm64Main by getting
+        val iosSimulatorArm64Main by getting
+        val iosMain by creating {
+            dependsOn(commonMain)
+            dependencies {
+                api(project(":kmp-wgpu"))
+                api(project(":kmp-wgpu-surface"))
+            }
+            iosX64Main.dependsOn(this)
+            iosArm64Main.dependsOn(this)
+            iosSimulatorArm64Main.dependsOn(this)
         }
     }
 }
