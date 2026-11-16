@@ -336,6 +336,13 @@ object HolmRuntimePumpSource {
           if (session && typeof session.drainErrors === "function") {
             try { session.drainErrors(); } catch (_) {}
           }
+          // 上一档失败曾 stop；父级 playing=true 若已早于 scene 到达则此处自愈开泵
+          if (playing) {
+            try {
+              if (typeof session.setPlaying === "function") session.setPlaying(true);
+            } catch (_) {}
+            start();
+          }
         } catch (e) {
           if (!flushSessionErrors()) {
             emitError("SHADER_CUSTOM", (e && e.message) ? e.message : String(e));

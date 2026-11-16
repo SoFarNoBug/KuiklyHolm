@@ -1,5 +1,15 @@
 # dualtrack-lite-vs-standard · changelog
 
+## 2026-11-16（H5 · 清 P2-h5-error-sticky-ui）
+
+- [FIX] H5 Runtime：成功 `setCustomFs` / 成功 `tick` 只 discard drain，不再把上一档 pending/`uncaptured` 打到 `onError`；成功装载后按 Attr 恢复泵
+- [FIX] H5 Worker `scene` 成功路径：若 `playing` 仍为 true 则 `start()` 自愈
+- [FIX] H5/Android `ON_ERROR` 重绑：只 replay `BLOCKED`，禁止把旧 `SHADER_*` 在 Compose 重绑时打回
+- [FIX] Demo：`shaderSeq`/`compiledOkSeq` 忽略迟到 SHADER_*；`onShaderCompiled(ok)` 清红字并恢复泵；`onPerf` 本代 ok 出帧清 sticky
+- 自测：`:holmDemo:packLocalJsBundleDebug` + H5「故意失败→隧道」→ `compile ok` / `fps≈60` / 无红字
+- 真机验证表：本单无新建表（复用 `docs/reviews/device-check-list/kmp-wgpu-extract-v1.md` #7）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改清审查 P2｜待批 0
+
 ## 2026-11-16（kmp-wgpu v1 · 修审查 P0/P1）
 
 - [FIX] H5 `Device.sessionTick` / 装载路径：成败只信 wasm throw/`Result`，不再用 sticky `lastErrorCode` 否决成功帧（review P0-silent-fail）

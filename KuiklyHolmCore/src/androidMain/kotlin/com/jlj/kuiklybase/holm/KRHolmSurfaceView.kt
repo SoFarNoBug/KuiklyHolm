@@ -376,7 +376,10 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
             }
             HolmSurfaceEvent.ON_ERROR -> {
                 _onError = propValue as? KuiklyRenderCallback
-                replayPendingError()
+                // 仅重放创建期 BLOCKED；SHADER_* 全量 replay 会在成功换档后 sticky 红字
+                if (_pendingErrorCode == HolmExecutor.ERROR_BLOCKED) {
+                    replayPendingError()
+                }
                 true
             }
             HolmSurfaceEvent.ON_PERF -> {

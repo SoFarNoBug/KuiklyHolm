@@ -71,6 +71,9 @@ private fun HolmRuntimeM0Screen() {
     var sample by remember { mutableStateOf(DemoSample.TUNNEL) }
     // SHADER_/WGPU_ 失败后必须 false，否则 Attr 持续 playing=true 会把泵拉起来播 ClearTri
     var surfacePlaying by remember { mutableStateOf(true) }
+    // 换样本代数：成功 compile 后丢弃迟到的上一档 onError（P2-h5-error-sticky-ui）
+    var shaderSeq by remember { mutableStateOf(0) }
+    var compiledOkSeq by remember { mutableStateOf(-1) }
     val scene = NeonTunnelShaders.SCENE_CUSTOM
     val fragmentShader = sample.fragmentFor(executor)
 
@@ -108,6 +111,8 @@ private fun HolmRuntimeM0Screen() {
             executor = executor,
             onSelect = { next ->
                 executor = next
+                shaderSeq += 1
+                compiledOkSeq = -1
                 surfacePlaying = true
                 errorText = ""
                 // 等 onReady 前勿粘旧 backend（审查 P1-doc-drift）
@@ -120,6 +125,8 @@ private fun HolmRuntimeM0Screen() {
             onSelect = { next ->
                 // 仅换 fragmentShader 不会再 onReady；勿清 backend（审查 P2）
                 // 换样本须清 sticky 红字，否则「故意失败」残留挡下一档
+                shaderSeq += 1
+                compiledOkSeq = -1
                 errorText = ""
                 surfacePlaying = true
                 sample = next
@@ -162,13 +169,19 @@ private fun HolmRuntimeM0Screen() {
                 },
                 onError = { err ->
                     val code = err.code
-                    // 正样本编挂也要红字（勿仅「故意失败」才显示）；换轨/换样本已清 errorText
-                    errorText = "onError $code: ${err.message}"
-                    // SHADER_WRAP 是切轨/空片元过渡噪声，勿停泵；真正编不过才停
-                    if (code == "SHADER_CUSTOM" || code == "SHADER_COMPILE" ||
-                        code.startsWith("WGPU_") || code == "TICK" || code == "SURFACE"
-                    ) {
-                        surfacePlaying = false
+                    // 本代已 compile ok：忽略迟到 SHADER_*（换档后 sticky）
+                    val ignoreStaleShader =
+                        compiledOkSeq == shaderSeq &&
+                            (code == "SHADER_CUSTOM" || code == "SHADER_COMPILE" || code == "SHADER_WRAP")
+                    if (!ignoreStaleShader) {
+                        // 正样本编挂也要红字（勿仅「故意失败」才显示）；换轨/换样本已清 errorText
+                        errorText = "onError $code: ${err.message}"
+                        // SHADER_WRAP 是切轨/空片元过渡噪声，勿停泵；真正编不过才停
+                        if (code == "SHADER_CUSTOM" || code == "SHADER_COMPILE" ||
+                            code.startsWith("WGPU_") || code == "TICK" || code == "SURFACE"
+                        ) {
+                            surfacePlaying = false
+                        }
                     }
                 },
                 onShaderCompiled = { compiled ->
@@ -177,23 +190,22 @@ private fun HolmRuntimeM0Screen() {
                     val okLabel = if (compiled.ok) "ok" else "fail"
                     compileText =
                         "compile $okLabel wrap=${wrap}ms compile=${compile}ms (${compiled.executor})"
-                    // 同样本编过：清残留红字（换片元不一定再 onReady）
+                    // 同样本编过：清残留红字并恢复泵（失败样本曾 surfacePlaying=false）
                     if (compiled.ok) {
+                        compiledOkSeq = shaderSeq
                         errorText = ""
+                        surfacePlaying = true
                     }
                 },
                 onPerf = { perf ->
                     val ms = ((perf.frameMs * 10f).toInt() / 10f)
                     perfText = "fps=${perf.fps.toInt()} (${ms}ms)"
-                    // 泵恢复出帧后清残留 error；SHADER_*/WGPU_* 须业务可见，不被 fps 冲掉
-                    if (errorText.isNotEmpty() && perf.fps > 0.01f) {
-                        val sticky = errorText.contains("SHADER_") ||
-                            errorText.contains("WGPU_") ||
-                            errorText.contains("TICK") ||
-                            errorText.contains("SURFACE")
-                        if (!sticky) {
-                            errorText = ""
-                        }
+                    // 泵已出帧且本代 compile ok：清残留红字
+                    if (errorText.isNotEmpty() &&
+                        perf.fps > 0.01f &&
+                        compiledOkSeq == shaderSeq
+                    ) {
+                        errorText = ""
                     }
                 },
             )

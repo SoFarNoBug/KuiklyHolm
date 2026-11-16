@@ -165,8 +165,11 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
             }
             HolmSurfaceEvent.ON_ERROR -> {
                 _onError = propValue.unsafeCast<KuiklyRenderCallback>()
-                // Attr 可能先于 Event 触发 BLOCKED；与 onReady 对称重放
-                replayPendingError()
+                // Attr 可能先于 Event 触发 BLOCKED；仅重放创建期 BLOCKED。
+                // SHADER_*/TICK 等若每轮 Compose 重绑都 replay，会在成功换档后把旧红字打回（P2-h5-error-sticky-ui）。
+                if (_pendingErrorCode == HolmExecutor.ERROR_BLOCKED) {
+                    replayPendingError()
+                }
                 true
             }
             HolmSurfaceEvent.ON_PERF -> {
@@ -444,7 +447,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
             if (!HolmShaderResolve.looksLikeWgslFragment(custom)) {
                 // 仍持 GLSL 正文时跳过，等 Attr 换成 WGSL（已卸旧 custom）
                 HolmRuntimeNative.sessionSetScene(session, _scene)
-                flushRuntimeSessionErrors(session)
+                discardRuntimeSessionErrors(session)
                 fireShaderCompiled(false, 0f, 0f, HolmExecutor.RUNTIME)
                 return
             }
@@ -454,9 +457,9 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
             val t1 = js("typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()")
                 .unsafeCast<Double>()
             val compileMs = (t1 - t0).toFloat()
-            val drained = flushRuntimeSessionErrors(session)
             if (err != null) {
                 // wasm 已 present_clear_only + playing=false；主线程泵对齐停
+                val drained = flushRuntimeSessionErrors(session)
                 HolmRuntimeNative.sessionSetPlaying(session, false)
                 _playing = false
                 postPlaying(false)
@@ -465,16 +468,28 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                 }
                 fireShaderCompiled(false, 0f, compileMs, HolmExecutor.RUNTIME)
             } else {
+                // 成功：丢掉上一失败/迟到 uncaptured，禁止再 fireError 盖住新特效（P2-h5-error-sticky-ui）
+                discardRuntimeSessionErrors(session)
                 clearPendingError()
+                HolmRuntimeNative.sessionSetPlaying(session, effectivePlaying())
+                if (effectivePlaying() && _runtimeRafId == 0 && _runtimeTimerId == 0) {
+                    startRuntimeLoop()
+                }
                 fireShaderCompiled(true, 0f, compileMs, HolmExecutor.RUNTIME)
             }
         } else {
             HolmRuntimeNative.sessionSetScene(session, _scene)
-            flushRuntimeSessionErrors(session)
+            discardRuntimeSessionErrors(session)
             clearPendingError()
             // 空片元 ClearTri：ok=false，对齐 Lite 拒绝语义（审查 P2）
             fireShaderCompiled(false, 0f, 0f, HolmExecutor.RUNTIME)
         }
+    }
+
+    /** 取出 pending 但不投递 onError（成功换档 / 成功 tick 清残留） */
+    private fun discardRuntimeSessionErrors(session: dynamic) {
+        if (session == null) return
+        HolmRuntimeNative.sessionDrainErrors(session)
     }
 
     /** @return 已投递条数 */
@@ -774,8 +789,8 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                 _runtimeAccMs = 0.0
                 val session = _runtimeSession
                 val tickErr = HolmRuntimeNative.sessionTick(session, dtSecs)
-                val drained = flushRuntimeSessionErrors(session)
                 if (tickErr != null) {
+                    val drained = flushRuntimeSessionErrors(session)
                     _backend = HolmExecutor.BACKEND_WGPU_BLOCKED
                     if (!_runtimeBlockedNotified) {
                         _runtimeBlockedNotified = true
@@ -789,6 +804,8 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                     stopRuntimeLoop()
                     return@frame
                 }
+                // 成功帧：丢弃迟到 uncaptured，勿把上一档 SHADER_* 再打到业务
+                discardRuntimeSessionErrors(session)
                 // 与 Lite 对齐：有 onPerf 时约 1s 汇总一次，禁止每帧打穿 Compose
                 if (_onPerf != null) {
                     if (_runtimePerfWindowMs == 0.0) {
