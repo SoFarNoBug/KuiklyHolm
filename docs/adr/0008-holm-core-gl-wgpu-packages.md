@@ -12,7 +12,7 @@
 1. **三包目标名**（对外坐标，暂不要求模块已拆）：
    - **`holm-core`**：岛组件、生命周期、喂 shader / 选后端的统一 API；**不含**画像素实现、不含官方特效目录。
    - **`holm-gl`**：轻量 **GL 族**后端（Android GLES / iOS GLES / H5 WebGL… 同一依赖名，按平台源集实现）。
-   - **`holm-wgpu`**：wgpu Runtime 后端（含 native `.so` / wasm 等按端产物）。
+   - **`holm-wgpu`**：Holm 的 wgpu **Provider / 岛 Present 薄适配**（含 native `.so` / wasm 等按端产物）；通用原语下沉见 **ADR 0013**（`kmp-wgpu`）。
 2. **可共存**：同一 App 可同时依赖 `holm-gl` 与 `holm-wgpu`。
 3. **Provider 必设**：无论 classpath 上有无后端，宿主都必须**显式注册 Provider**；仅有 `holm-core` 或未设 Provider → **明确失败/报错**，禁止静默假画（对齐 ADR 0006 诚实失败）。
 4. **选用**：启动时注册默认 Provider；**岛上可覆盖**（保留 DualTrack 式显式切轨）。不再「只引一个后端就自动默选」。
@@ -29,5 +29,6 @@
 ## Relates
 
 - ADR 0007（身份）  
+- ADR 0013（kmp-wgpu 原语层；`holm-wgpu` 叠其上）  
 - ADR 0005（fragmentShader / Shadertoy 壳）  
 - ADR 0006（Android Runtime Session）

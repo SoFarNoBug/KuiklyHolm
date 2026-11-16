@@ -4,6 +4,7 @@
 > 产品名：**Holm**（命名已定，不改）。  
 > **产品身份（已定 · ADR 0007）**：**通用渲染底座**（shader-in / surface-out）——业务定岛区域，传入上色 shader，库出呈现面。  
 > **目标拆包（已定 · ADR 0008）**：`holm-core` / `holm-gl` / `holm-wgpu`；**Provider 必设**；可共存、显式选用。  
+> **下沉原语（已定 · ADR 0013）**：`kmp-wgpu`（+可选 `kmp-wgpu-surface`）= 与 Holm/Kuikly 无关的 wgpu 原语层；`holm-wgpu` 为其上薄适配；自 `holm-runtime` 抽芯。  
 > **不是**「Kuikly 局部特效产品」；**不是**绑定某一业务。  
 > 第一宿主桥接仍走 Kuikly `expand-native-ui`；物理拆包另单。
 
@@ -24,6 +25,7 @@
 | 双后端通面（Lite GLES + Runtime wgpu） | DualTrack；ADR 0006 / 0009 / 0010 |
 | 旧「特效产品」身份已推翻 | ADR 0007 |
 | 三包 + Provider 目标架构 | ADR 0008 |
+| kmp-wgpu 原语层在 Holm 之下 | ADR 0013 / D14 |
 | 鸿蒙 Runtime：XComponent + 外泵 + 双 so | ADR 0010（Lite 后置） |
 
 ## 2. 目标（Goals）
@@ -59,7 +61,9 @@
 | --- | --- | --- |
 | **holm-core** | 岛 API + 生命周期 + Provider 槽 | 极小 |
 | **holm-gl** | GL 族后端（含 iOS GLES / H5 WebGL） | 小 |
-| **holm-wgpu** | wgpu Runtime 后端 | 中（须实测） |
+| **holm-wgpu** | Holm wgpu Provider（薄适配；依赖 `kmp-wgpu`） | 中（须实测） |
+| **kmp-wgpu**（ADR 0013） | 通用 wgpu 原语（Kotlin 脸；与 Holm 无关） | 中 |
+| **kmp-wgpu-surface** | 可选 Present | 随端 |
 
 历史称 Lite/Standard = 上述后端档口语；**对外目标名以 ADR 0008 为准**。  
 五席叙事**废弃**；官方五席源码**已删**（2026-11-14）；Demo **主推隧道**示例1。
@@ -113,6 +117,7 @@ Stage 0 曾在 2026-11-12 选 **Lite(A)**（ADR 0002），目标是「特效尖�
 | D11 | 目标默认后端叙事对齐 ADR 0008（Provider 必设；显式选 gl/wgpu） | **修订锁定** |
 | D12 | **身份：通用渲染底座**（ADR 0007）；不绑定单一业务 | **修订锁定** |
 | D13 | **目标拆包** holm-core/gl/wgpu + Provider（ADR 0008）；物理拆包另单 | **锁定** |
+| D14 | **kmp-wgpu** 原语层在 Holm 之下（ADR 0013）：Kotlin 脸、Present 可选、抽芯自 holm-runtime；v1=Android+H5 Present 对等；v1.1=Compute+回读硬门禁 | **锁定** |
 
 ## 6. 成功标准
 
@@ -136,7 +141,8 @@ Stage 0 曾在 2026-11-12 选 **Lite(A)**（ADR 0002），目标是「特效尖�
 | O3 | 3D / Filament | Full 前 |
 | O4 | 与 GearUI 边界 | 定仓后 |
 | O5 | 是否远期开源/多框架 | **非当前**；另 ADR |
-| O6 | 与 ParticleEngine 等消费者的接入契约（仅示例，非身份） | 另单；本 00 不绑定 |
+| O6 | 与 ParticleEngine 等消费者的接入契约（仅示例，非身份） | 另单；算力面应走 `kmp-wgpu`（ADR 0013），不绑 Holm |
+| O7 | `kmp-wgpu` 独立仓发版时机 | ADR 0013：先仓内分层，稳定后再拆 |
 
 ---
 

@@ -1,7 +1,7 @@
 ﻿# 01 · 架构详解（Holm · 通用渲染底座）
 
 > **身份以 [`00`](./00-context-and-decisions.md) + [ADR 0007](../adr/0007-holm-as-generic-render-substrate.md) / [ADR 0008](../adr/0008-holm-core-gl-wgpu-packages.md) 为准。**  
-> 决策：`00`（含 D13 三包）。身份：**通用渲染底座**；目标 **holm-core / holm-gl / holm-wgpu**。  
+> 决策：`00`（含 D13 三包、D14 kmp-wgpu）。身份：**通用渲染底座**；目标 **holm-core / holm-gl / holm-wgpu**；其下 **kmp-wgpu**（ADR 0013）。  
 > 硬问题：`07`。下文若仍出现「特效产品 / Lite 五席 KPI」措辞，以 00/0007/0008 覆盖。
 
 ## 1. 一句话
