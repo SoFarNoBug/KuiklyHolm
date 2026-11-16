@@ -9,8 +9,9 @@ package com.jlj.kuiklyholmui
  * 版权：CC0 1.0 Universal — 作者 mrange；出处 shadertoy.com
  * 片段保留：hsv2rgb（SO / WTFPL）；sphered（iquilezles articles）。
  *
- * 相对原版改动（GLES2 + Holm）：
+ * 相对原版改动（GLES2/WebGL1 + Holm）：
  * - 去掉 df 重载（GLES ES 1.00 不支持）→ df_state / df_world
+ * - rayMarch：for (int i=0)（WebGL1 禁 for(i=0) 先声明再赋值）
  * - postProcess 去掉 pow(1/2.2) 显示伽马（对齐 NeonTunnel / Holm）
  */
 object CableNestShaders {
@@ -123,14 +124,15 @@ float df_world(vec3 p) {
 }
 
 float rayMarch(in vec3 ro, in vec3 rd, out int iter) {
+  // WebGL1/GLSL ES 1.00：循环变量必须在 for 内声明（for (i=0) 非法）
   float t = 0.0;
-  int i = 0;
-  for (i = 0; i < MAX_RAY_MARCHES; i++) {
+  iter = 0;
+  for (int i = 0; i < MAX_RAY_MARCHES; i++) {
     float distance = df_world(ro + rd*t);
+    iter = i;
     if (distance < TOLERANCE || t > MAX_RAY_LENGTH) break;
     t += distance;
   }
-  iter = i;
   return t;
 }
 

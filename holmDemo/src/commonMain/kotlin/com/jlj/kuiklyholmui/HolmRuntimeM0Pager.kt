@@ -156,12 +156,7 @@ private fun HolmRuntimeM0Screen() {
                 },
                 onError = { err ->
                     val code = err.code
-                    // 成功换档后迟到的 SHADER_* 回调勿盖住新样本
-                    if ((code == "SHADER_CUSTOM" || code == "SHADER_COMPILE") &&
-                        sample != DemoSample.BAD_COMPILE
-                    ) {
-                        return@HolmSurface
-                    }
+                    // 正样本编挂也要红字（勿仅「故意失败」才显示）；换轨/换样本已清 errorText
                     errorText = "onError $code: ${err.message}"
                     // SHADER_WRAP 是切轨/空片元过渡噪声，勿停泵；真正编不过才停
                     if (code == "SHADER_CUSTOM" || code == "SHADER_COMPILE" ||
@@ -176,6 +171,10 @@ private fun HolmRuntimeM0Screen() {
                     val okLabel = if (compiled.ok) "ok" else "fail"
                     compileText =
                         "compile $okLabel wrap=${wrap}ms compile=${compile}ms (${compiled.executor})"
+                    // 同样本编过：清残留红字（换片元不一定再 onReady）
+                    if (compiled.ok) {
+                        errorText = ""
+                    }
                 },
                 onPerf = { perf ->
                     val ms = ((perf.frameMs * 10f).toInt() / 10f)

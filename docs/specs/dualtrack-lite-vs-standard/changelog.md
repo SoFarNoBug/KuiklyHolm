@@ -1,5 +1,14 @@
 # dualtrack-lite-vs-standard · changelog
 
+## 2026-11-16（Demo · Lite 电缆巢 WebGL1 + 红字）
+
+- [MODIFY] `CableNestShaders.LITE_BODY`：`rayMarch` 改为 `for (int i = 0; …)`（修 H5 WebGL1 `Invalid init declaration`）
+- [MODIFY] `HolmRuntimeM0Pager`：正样本 `SHADER_COMPILE`/`SHADER_CUSTOM` 也写红字；`onShaderCompiled(ok)` 清残留
+- [NOTE] H5 须 `:holmDemo:packLocalJsBundleDebug` 后硬刷新；只改源不 pack 则 8083 仍旧 `nativevue2.js`
+- 自测：已 pack；Lite「电缆巢」`compile ok` 出画；「故意失败」红字 `SHADER_COMPILE: undefined_holm_demo_error`
+- 真机验证表：本单无真机验证
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：口令修显示+GLES 循环｜待批 0
+
 ## 2026-11-16（holm-runtime release · opt-level=s）
 
 - [MODIFY] `Cargo.toml` `[profile.release]`：追加 `opt-level = "s"`（在 lto/strip/cg1 真机通过后）
