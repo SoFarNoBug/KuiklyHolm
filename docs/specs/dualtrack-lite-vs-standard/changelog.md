@@ -1,5 +1,15 @@
 # dualtrack-lite-vs-standard · changelog
 
+## 2026-11-16（renderScale 可配置缓冲）
+
+- [ADD] `HolmSurfaceAttr.renderScale` / Compose 参数：相对**平台基线**，默认 `1`；夹紧 `(0,1]`；与 `maxFps` 正交
+- [MODIFY] 四端 Lite+Runtime：Ohos `SET_BUFFER_GEOMETRY`；Android `setFixedSize`；iOS Lite `contentScaleFactor` / Runtime `drawableSize×scale`；H5 canvas = CSS×scale
+- [MODIFY] Demo `holm_runtime_m0`：`scale` 档 `1.0 / 0.5 / 0.25`
+- [MODIFY] ADR 0010/0011 Consequences：降采样改为可配置，不强制 1×
+- 自测：本单无真机验证（码农编译面；验收见 Plan）
+- 真机验证表：本单无真机验证
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan 落地 Attr｜待批 0
+
 ## 2026-11-16（Demo · Lite 电缆巢 WebGL1 + 红字）
 
 - [MODIFY] `CableNestShaders.LITE_BODY`：`rayMarch` 改为 `for (int i = 0; …)`（修 H5 WebGL1 `Invalid init declaration`）

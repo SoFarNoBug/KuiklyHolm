@@ -31,6 +31,12 @@ uint64_t holm_runtime_session_create_metal(void *metal_layer, uint32_t width, ui
  */
 uint64_t holm_runtime_session_create_ohos(void *native_window, uint32_t width, uint32_t height);
 
+/**
+ * Last create_ohos failure reason (NUL-terminated UTF-8).
+ * Empty if the last create succeeded. Independent of session handle.
+ */
+uint32_t holm_runtime_last_create_error(char *out_buf, uint32_t out_len);
+
 void holm_runtime_session_destroy(uint64_t handle);
 
 void holm_runtime_session_resize(uint64_t handle, uint32_t width, uint32_t height);

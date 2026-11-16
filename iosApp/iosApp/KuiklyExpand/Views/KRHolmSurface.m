@@ -12,9 +12,20 @@
  */
 
 static const NSInteger kHolmDefaultMaxFps = 60;
+static const CGFloat kHolmDefaultRenderScale = 1.0;
 static NSString *const kHolmExecutorRuntime = @"runtime";
 static NSString *const kHolmExecutorLite = @"lite";
 static NSString *const kHolmBackendGlesIos = @"gles2-ios";
+
+static CGFloat HolmNormalizeRenderScale(CGFloat value) {
+    if (!(value > 0.0) || !isfinite(value)) {
+        return kHolmDefaultRenderScale;
+    }
+    if (value > 1.0) {
+        return 1.0;
+    }
+    return value;
+}
 
 @class KRHolmSurface;
 
@@ -37,6 +48,7 @@ static NSString *const kHolmBackendGlesIos = @"gles2-ios";
 @property (nonatomic, copy) NSString *fragmentShader;
 @property (nonatomic, assign) BOOL playing;
 @property (nonatomic, assign) NSInteger maxFps;
+@property (nonatomic, assign) CGFloat renderScale;
 @property (nonatomic, assign) float liquidBoost;
 @property (nonatomic, assign) float liquidBend;
 @property (nonatomic, assign) BOOL readyFired;
@@ -76,6 +88,7 @@ static NSString *const kHolmBackendGlesIos = @"gles2-ios";
         _fragmentShader = @"";
         _playing = YES;
         _maxFps = kHolmDefaultMaxFps;
+        _renderScale = kHolmDefaultRenderScale;
         _liquidBoost = 1.35f;
         _liquidBend = 0.05f;
         _sessionHandle = 0;
@@ -182,6 +195,20 @@ static NSString *const kHolmBackendGlesIos = @"gles2-ios";
     _maxFps = next;
     [self holm_recomputeFrameInterval];
     [self holm_applyDisplayLinkFrameRate];
+}
+
+- (void)setCss_renderScale:(NSNumber *)css_renderScale {
+    CGFloat next = HolmNormalizeRenderScale(
+        css_renderScale != nil ? css_renderScale.doubleValue : kHolmDefaultRenderScale);
+    if (fabs(next - _renderScale) < 1e-6) {
+        return;
+    }
+    _renderScale = next;
+    [_glesHost holm_setRenderScale:_renderScale];
+    [_metalHost holm_setRenderScale:_renderScale];
+    if (_metalHost) {
+        [self holm_resizeSessionIfNeeded];
+    }
 }
 
 - (void)setCss_liquidBoost:(NSNumber *)css_liquidBoost {
@@ -329,6 +356,7 @@ static NSString *const kHolmBackendGlesIos = @"gles2-ios";
         _glesHost.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
         [self addSubview:_glesHost];
     }
+    [_glesHost holm_setRenderScale:_renderScale];
     {
         __weak typeof(self) weakSelf = self;
         _glesHost.onError = ^(NSString *code, NSString *message) {
@@ -408,6 +436,7 @@ static NSString *const kHolmBackendGlesIos = @"gles2-ios";
         _metalHost.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
         [self addSubview:_metalHost];
     }
+    [_metalHost holm_setRenderScale:_renderScale];
     [_metalHost holm_updateDrawableSize];
     CGSize px = _metalHost.metalLayer.drawableSize;
     uint32_t w = (uint32_t)MAX(1.0, px.width);

@@ -19,6 +19,8 @@ typedef void (^KRHolmGlesCompiledBlock)(BOOL ok, float wrapMs, float compileMs);
 - (BOOL)holm_setupGL;
 - (void)holm_teardownGL;
 - (void)holm_resizeBuffersIfNeeded;
+/** 相对点像素基线；(0,1]，默认 1。 */
+- (void)holm_setRenderScale:(CGFloat)scale;
 /** 空正文返回 NO（调用方发 FRAGMENT_REQUIRED）；失败保留上一成功 program。 */
 - (BOOL)holm_setFragmentBody:(NSString *)body;
 - (void)holm_setLiquidBoost:(float)boost bend:(float)bend;

@@ -99,8 +99,9 @@ node static_server/serve/index.js
 ## Holm 示例1 目视（holm_runtime_m0）
 
 - 示例1：霓虹隧道（Lite GLSL / Runtime WGSL）  
-- `maxFps`：`0 / 30 / 60 / 120`  
-- **H5 限帧语义**：`onPerf` = 真实 WebGL 提交率；`maxFps` 经 rAF + `nextDue` **跳提交**（与 Android `setFrameRate` 提示不同）。见 `HolmGlPumpSource`。  
+- `maxFps`：`0 / 30 / 60 / 120`
+- `renderScale`：默认 `1`；backing = CSS×scale（仍不乘 DPR）；与 `maxFps` 正交
+- **H5 限帧语义**：`onPerf` = 真实 WebGL 提交率；`maxFps` 经 rAF + `nextDue` **跳提交**（与 Android `setFrameRate` 提示不同）。见 `HolmGlPumpSource`。
 - backend：`onReady` 报 `webgl` / `webgl-worker`（Lite）或 `wgpu-m0`（Runtime）
 
 ## 与 Android 对照

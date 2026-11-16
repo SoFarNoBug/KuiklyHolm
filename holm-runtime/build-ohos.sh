@@ -74,7 +74,8 @@ rustup target add "$TARGET" >/dev/null
 export CC_aarch64_unknown_linux_ohos="$CLANG"
 export AR_aarch64_unknown_linux_ohos="$AR_BIN"
 export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_OHOS_LINKER="$CLANG"
-export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_OHOS_RUSTFLAGS="-C link-arg=--target=aarch64-linux-ohos -C link-arg=--sysroot=${SYSROOT}"
+# SONAME 必须是短名，否则依赖方（libholm_xc）会把绝对路径写进 NEEDED，真机加载失败
+export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_OHOS_RUSTFLAGS="-C link-arg=--target=aarch64-linux-ohos -C link-arg=--sysroot=${SYSROOT} -C link-arg=-Wl,-soname,${LIB_NAME}"
 
 cd "$ROOT"
 echo "==> cargo build --release --target $TARGET (native=$NATIVE)"

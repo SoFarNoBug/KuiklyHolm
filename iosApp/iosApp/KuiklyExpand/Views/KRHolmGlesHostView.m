@@ -8,7 +8,7 @@
  * @CreateDate: 2026/11/14
  * @Author: jlj
  * @Description: CAEAGLLayer Lite 宿主；wrap/vert 走 holmDemo HolmShadertoyShell / HolmBuiltinShaders（单源）。
- * 缓冲用 1x（点像素），对齐 DualTrack「不默认乘 DPR」。
+ * 缓冲默认 1x（点像素）；可由 renderScale 相对基线下调。
  */
 
 @interface KRHolmGlesHostView ()
@@ -26,6 +26,7 @@
 @property (nonatomic, assign) float liquidBend;
 @property (nonatomic, assign) GLint viewW;
 @property (nonatomic, assign) GLint viewH;
+@property (nonatomic, assign) CGFloat renderScale;
 @property (nonatomic, copy, nullable) NSString *fragmentBody;
 @end
 
@@ -58,13 +59,14 @@
         _posLoc = -1;
         _viewW = 1;
         _viewH = 1;
+        _renderScale = 1.0;
         self.opaque = YES;
-        // 1x：与 H5 Lite/旧 iOS 壳一致；nativeScale 下 raymarch 易堵主线程 → fps≈0
-        self.contentScaleFactor = 1.0;
+        // 基线 1x（点像素）；业务用 renderScale 再降
+        self.contentScaleFactor = _renderScale;
         self.backgroundColor = [UIColor colorWithRed:0.02 green:0.08 blue:0.28 alpha:1];
         CAEAGLLayer *layer = self.eaglLayer;
         layer.opaque = YES;
-        layer.contentsScale = 1.0;
+        layer.contentsScale = _renderScale;
         layer.drawableProperties = @{
             kEAGLDrawablePropertyRetainedBacking: @NO,
             kEAGLDrawablePropertyColorFormat: kEAGLColorFormatRGBA8,
@@ -85,10 +87,29 @@
 - (void)didMoveToWindow {
     [super didMoveToWindow];
     if (self.window) {
-        self.contentScaleFactor = 1.0;
-        self.eaglLayer.contentsScale = 1.0;
+        [self holm_applyContentScale];
         [self holm_resizeBuffersIfNeeded];
     }
+}
+
+- (void)holm_setRenderScale:(CGFloat)scale {
+    CGFloat next = scale;
+    if (!(next > 0.0) || !isfinite(next)) {
+        next = 1.0;
+    } else if (next > 1.0) {
+        next = 1.0;
+    }
+    if (fabs(next - _renderScale) < 1e-6) {
+        return;
+    }
+    _renderScale = next;
+    [self holm_applyContentScale];
+    [self holm_resizeBuffersIfNeeded];
+}
+
+- (void)holm_applyContentScale {
+    self.contentScaleFactor = _renderScale;
+    self.eaglLayer.contentsScale = _renderScale;
 }
 
 - (BOOL)holm_setupGL {

@@ -11,6 +11,7 @@ import holmXc from 'libholm_xc.so';
 const PROP_EXECUTOR = 'executor';
 const PROP_FRAGMENT_SHADER = 'fragmentShader';
 const PROP_MAX_FPS = 'maxFps';
+const PROP_RENDER_SCALE = 'renderScale';
 const PROP_PLAYING = 'playing';
 const PROP_SCENE = 'scene';
 const PROP_LIQUID_BOOST = 'liquidBoost';
@@ -23,7 +24,15 @@ const PROP_ON_SHADER_COMPILED = 'onShaderCompiled';
 const EXECUTOR_RUNTIME = 'runtime';
 const EXECUTOR_LITE = 'lite';
 const DEFAULT_MAX_FPS = 60;
+const DEFAULT_RENDER_SCALE = 1.0;
 const DEEP_BLUE = '#051A47';
+
+function normalizeRenderScale(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) {
+    return DEFAULT_RENDER_SCALE;
+  }
+  return value > 1 ? 1 : value;
+}
 
 let gHolmXcSeq = 0;
 
@@ -35,6 +44,7 @@ export class KRHolmSurface extends KuiklyRenderBaseView {
   cssExecutor: string = EXECUTOR_LITE;
   cssFragmentShader: string = '';
   cssMaxFps: number = DEFAULT_MAX_FPS;
+  cssRenderScale: number = DEFAULT_RENDER_SCALE;
   cssPlaying: boolean = true;
   cssScene: string = '';
   cssLiquidBoost: number = 1.35;
@@ -77,6 +87,11 @@ export class KRHolmSurface extends KuiklyRenderBaseView {
         const n = Number(propValue);
         this.cssMaxFps = Number.isFinite(n) ? Math.max(0, Math.floor(n)) : DEFAULT_MAX_FPS;
         this.pushMaxFps();
+        return true;
+      }
+      case PROP_RENDER_SCALE: {
+        this.cssRenderScale = normalizeRenderScale(Number(propValue));
+        this.pushRenderScale();
         return true;
       }
       case PROP_PLAYING: {
@@ -135,10 +150,12 @@ export class KRHolmSurface extends KuiklyRenderBaseView {
     try {
       holmXc.ensureIsland(this.xcId);
       this.pushCallbacks();
-      this.pushExecutor();
+      // 先片元再 executor，与 common HolmSurface 一致，避免首包错方言
       this.pushFragmentShader();
+      this.pushExecutor();
       this.pushPlaying();
       this.pushMaxFps();
+      this.pushRenderScale();
       this.pushScene();
       this.pushLiquid();
       this.nativeBound = true;
@@ -190,6 +207,14 @@ export class KRHolmSurface extends KuiklyRenderBaseView {
   private pushMaxFps(): void {
     try {
       holmXc.setMaxFps(this.xcId, this.cssMaxFps);
+    } catch (_e) {
+      // ignore
+    }
+  }
+
+  private pushRenderScale(): void {
+    try {
+      holmXc.setRenderScale(this.xcId, this.cssRenderScale);
     } catch (_e) {
       // ignore
     }

@@ -52,6 +52,8 @@ internal class HolmRuntimeM0Pager : BasePager() {
 
 private val RUNTIME_MAX_FPS_STEPS = intArrayOf(0, 30, HolmSurfaceAttr.DEFAULT_MAX_FPS, 120)
 private val RUNTIME_MAX_FPS_LABELS = arrayOf("0", "30", "60", "120")
+private val RUNTIME_RENDER_SCALE_STEPS = floatArrayOf(1.0f, 0.5f, 0.25f)
+private val RUNTIME_RENDER_SCALE_LABELS = arrayOf("1.0", "0.5", "0.25")
 private val ISLAND_FAIL_BLUE = Color(0xFF051447)
 private val ERROR_RED = Color(0xFFFF3355)
 
@@ -64,6 +66,7 @@ private fun HolmRuntimeM0Screen() {
     var compileText by remember { mutableStateOf("compile=—") }
     var executor by remember { mutableStateOf(HolmExecutor.RUNTIME) }
     var maxFps by remember { mutableStateOf(HolmSurfaceAttr.DEFAULT_MAX_FPS) }
+    var renderScale by remember { mutableStateOf(HolmSurfaceAttr.DEFAULT_RENDER_SCALE) }
     var islandSize by remember { mutableStateOf(IntSize(1, 1)) }
     var sample by remember { mutableStateOf(DemoSample.TUNNEL) }
     // SHADER_/WGPU_ 失败后必须 false，否则 Attr 持续 playing=true 会把泵拉起来播 ClearTri
@@ -86,7 +89,7 @@ private fun HolmRuntimeM0Screen() {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "executor=$executor | sample=${sample.id} | scene=$scene | maxFps=$maxFps | $perfText | $compileText | ${islandSize.width}x${islandSize.height} | $backendText",
+            text = "executor=$executor | sample=${sample.id} | scene=$scene | maxFps=$maxFps | scale=$renderScale | $perfText | $compileText | ${islandSize.width}x${islandSize.height} | $backendText",
             fontSize = 13.sp,
             lineHeight = 13.sp,
             color = DemoTheme.TextSecondary,
@@ -133,6 +136,8 @@ private fun HolmRuntimeM0Screen() {
         }
         Spacer(modifier = Modifier.height(8.dp))
         RuntimeMaxFpsRow(value = maxFps, onSelect = { maxFps = it })
+        Spacer(modifier = Modifier.height(8.dp))
+        RuntimeRenderScaleRow(value = renderScale, onSelect = { renderScale = it })
         Spacer(modifier = Modifier.height(12.dp))
         Box(
             modifier = Modifier
@@ -148,6 +153,7 @@ private fun HolmRuntimeM0Screen() {
                 modifier = Modifier.fillMaxSize(),
                 playing = surfacePlaying,
                 maxFps = maxFps,
+                renderScale = renderScale,
                 executor = executor,
                 fragmentShader = fragmentShader,
                 onReady = { ready ->
@@ -296,6 +302,36 @@ private fun RuntimeMaxFpsRow(
             val step = RUNTIME_MAX_FPS_STEPS[i]
             RuntimeChip(
                 label = RUNTIME_MAX_FPS_LABELS[i],
+                active = value == step,
+                onClick = { onSelect(step) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun RuntimeRenderScaleRow(
+    value: Float,
+    onSelect: (Float) -> Unit,
+) {
+    Row(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "scale",
+            fontSize = 13.sp,
+            lineHeight = 13.sp,
+            color = DemoTheme.TextSecondary,
+            modifier = Modifier
+                .padding(end = 8.dp)
+                .align(Alignment.CenterVertically),
+        )
+        val count = minOf(RUNTIME_RENDER_SCALE_STEPS.size, RUNTIME_RENDER_SCALE_LABELS.size)
+        for (i in 0 until count) {
+            if (i > 0) {
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            val step = RUNTIME_RENDER_SCALE_STEPS[i]
+            RuntimeChip(
+                label = RUNTIME_RENDER_SCALE_LABELS[i],
                 active = value == step,
                 onClick = { onSelect(step) },
             )

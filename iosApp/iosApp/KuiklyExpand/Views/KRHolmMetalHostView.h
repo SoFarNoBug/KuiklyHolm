@@ -11,6 +11,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, readonly) CAMetalLayer *metalLayer;
 
 - (void)holm_updateDrawableSize;
+/** 相对 nativeScale 基线；(0,1]，默认 1。 */
+- (void)holm_setRenderScale:(CGFloat)scale;
 
 @end
 

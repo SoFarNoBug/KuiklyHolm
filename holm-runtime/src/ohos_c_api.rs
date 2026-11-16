@@ -10,12 +10,40 @@ use std::ffi::{c_char, CStr};
 use std::os::raw::c_void;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::ptr::{self, NonNull};
+use std::sync::Mutex;
+
+static LAST_CREATE_ERROR: Mutex<String> = Mutex::new(String::new());
+
+fn set_last_create_error(msg: impl Into<String>) {
+    if let Ok(mut g) = LAST_CREATE_ERROR.lock() {
+        *g = msg.into();
+    }
+}
+
+fn clear_last_create_error() {
+    if let Ok(mut g) = LAST_CREATE_ERROR.lock() {
+        g.clear();
+    }
+}
 
 struct OhosWindowPtr(*mut c_void);
 
 // Safety: window 由 XComponent 生命周期持有；Session 仅在泵线程使用。
 unsafe impl Send for OhosWindowPtr {}
 unsafe impl Sync for OhosWindowPtr {}
+
+/// wgpu 30：`InstanceDescriptor::display` 与 `create_surface` 都需要 DisplayHandle。
+/// 对齐 Android：空 `OhosDisplayHandle` 作平台标记（须与 surface 侧一致）。
+#[derive(Debug)]
+struct OhosDisplayOwner;
+
+impl HasDisplayHandle for OhosDisplayOwner {
+    fn display_handle(&self) -> Result<DisplayHandle<'_>, HandleError> {
+        Ok(unsafe {
+            DisplayHandle::borrow_raw(RawDisplayHandle::Ohos(OhosDisplayHandle::new()))
+        })
+    }
+}
 
 struct OhosSurfaceTarget {
     window: OhosWindowPtr,
@@ -60,6 +88,7 @@ pub extern "C" fn holm_runtime_session_create_ohos(
     height: u32,
 ) -> u64 {
     if native_window.is_null() {
+        set_last_create_error("native_window is null");
         return 0;
     }
     let w = width.max(1);
@@ -68,13 +97,17 @@ pub extern "C" fn holm_runtime_session_create_ohos(
         window: OhosWindowPtr(native_window),
     };
 
+    // from_window 会把 display 置 None → MissingDisplayHandle；须 Instance.display + from_display_and_window。
+    // Vulkan：wgpu-hal 30 尚不匹配 OhosNdk → create_surface 失败；GLES/EGL 支持 OhosNdk，作诚实回退（非静默冒充）。
     let result = catch_unwind(AssertUnwindSafe(|| {
-        let mut desc = wgpu::InstanceDescriptor::new_without_display_handle();
-        desc.backends = wgpu::Backends::VULKAN;
+        let mut desc =
+            wgpu::InstanceDescriptor::new_with_display_handle(Box::new(OhosDisplayOwner));
+        desc.backends = wgpu::Backends::VULKAN | wgpu::Backends::GL;
         let instance = wgpu::Instance::new(desc);
         // SAFETY: caller guarantees a live OHNativeWindow* for the session lifetime.
-        let target_unsafe = unsafe { wgpu::SurfaceTargetUnsafe::from_window(&target) }
-            .map_err(|e| format!("surface_target: {e}"))?;
+        let target_unsafe =
+            unsafe { wgpu::SurfaceTargetUnsafe::from_display_and_window(&target, &target) }
+                .map_err(|e| format!("surface_target: {e}"))?;
         let surface = unsafe { instance.create_surface_unsafe(target_unsafe) }
             .map_err(|e| format!("create_surface: {e}"))?;
         let core = pollster::block_on(HolmRuntimeSessionCore::create_with_surface(
@@ -84,11 +117,21 @@ pub extern "C" fn holm_runtime_session_create_ohos(
     }));
 
     match result {
-        Ok(Ok(core)) => box_session(NativeSession {
-            core,
-            _window: OhosWindowPtr(native_window),
-        }),
-        _ => 0,
+        Ok(Ok(core)) => {
+            clear_last_create_error();
+            box_session(NativeSession {
+                core,
+                _window: OhosWindowPtr(native_window),
+            })
+        }
+        Ok(Err(e)) => {
+            set_last_create_error(e);
+            0
+        }
+        Err(panic) => {
+            set_last_create_error(format!("create_ohos panic: {panic:?}"));
+            0
+        }
     }
 }
 
@@ -227,6 +270,22 @@ fn copy_utf8(s: &str, out_buf: *mut c_char, out_len: u32) -> u32 {
         *out_buf.add(n) = 0;
     }
     n as u32
+}
+
+/// Last create_ohos failure reason (NUL-terminated UTF-8). Empty if last create succeeded.
+#[no_mangle]
+pub extern "C" fn holm_runtime_last_create_error(out_buf: *mut c_char, out_len: u32) -> u32 {
+    let result = catch_unwind(AssertUnwindSafe(|| {
+        let msg = LAST_CREATE_ERROR
+            .lock()
+            .map(|g| g.clone())
+            .unwrap_or_default();
+        copy_utf8(&msg, out_buf, out_len)
+    }));
+    match result {
+        Ok(v) => v,
+        Err(_) => 0,
+    }
 }
 
 #[no_mangle]

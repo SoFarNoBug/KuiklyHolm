@@ -7,8 +7,9 @@
 #ifndef HOLM_XC_LITE_GL_H
 #define HOLM_XC_LITE_GL_H
 
-#include <GLES2/gl2.h>
+#include <GLES3/gl3.h>
 #include <EGL/egl.h>
+#include <EGL/eglext.h>
 
 #include <cstdint>
 #include <string>

@@ -1,5 +1,11 @@
 # changelog · kuikly-dev-ios
 
+## 2026-11-16（renderScale）
+
+- [ADD] `setCss_renderScale:`；Lite `contentScaleFactor=renderScale`（基线仍 1× 点）；Runtime `drawableSize=points×nativeScale×renderScale`
+- 默认 `1` 保持改前像素；本单无真机验证
+- 轻量治理：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan｜待批 0
+
 ## 2026-11-16（onShaderCompiled）
 
 - [ADD] Lite/Runtime 装载结束 `onShaderCompiled`（wrapMs/compileMs；ADR 0012）

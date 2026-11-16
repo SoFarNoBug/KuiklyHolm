@@ -40,6 +40,9 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
     private var _warpAmount: Float = HolmSurfaceAttr.DEFAULT_WARP_AMOUNT
     private var _scrollSpeed: Float = HolmSurfaceAttr.DEFAULT_SCROLL_SPEED
     private var _maxFps: Int = HolmSurfaceAttr.DEFAULT_MAX_FPS
+    private var _renderScale: Float = HolmSurfaceAttr.DEFAULT_RENDER_SCALE
+    private var _layoutW: Int = 0
+    private var _layoutH: Int = 0
     private var _executor: String = HolmSurfaceAttr.DEFAULT_EXECUTOR
     private var _fragmentShader: String = ""
     private var _vertexShader: String = ""
@@ -344,6 +347,16 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
                 }
                 true
             }
+            HolmSurfaceAttr.PROP_RENDER_SCALE -> {
+                val next = HolmSurfaceAttr.normalizeRenderScale(
+                    propValue.toHolmFloat(HolmSurfaceAttr.DEFAULT_RENDER_SCALE),
+                )
+                if (next != _renderScale) {
+                    _renderScale = next
+                    applyBufferGeometry()
+                }
+                true
+            }
             HolmSurfaceAttr.PROP_EXECUTOR -> {
                 val next = HolmExecutor.normalize(propValue.toString())
                 if (next != _executor) {
@@ -376,6 +389,32 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
             }
             else -> super.setProp(propKey, propValue)
         }
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        if (w != _layoutW || h != _layoutH) {
+            _layoutW = w
+            _layoutH = h
+            applyBufferGeometry()
+        }
+    }
+
+    /** layout px × renderScale → Surface 缓冲；1.0 恢复跟随 layout。 */
+    private fun applyBufferGeometry() {
+        if (_layoutW <= 0 || _layoutH <= 0) {
+            return
+        }
+        val scale = HolmSurfaceAttr.normalizeRenderScale(_renderScale)
+        if (scale >= 0.999f) {
+            _glView.holder.setSizeFromLayout()
+            _runtimeView.holder.setSizeFromLayout()
+            return
+        }
+        val bufW = kotlin.math.floor(_layoutW * scale).toInt().coerceAtLeast(1)
+        val bufH = kotlin.math.floor(_layoutH * scale).toInt().coerceAtLeast(1)
+        _glView.holder.setFixedSize(bufW, bufH)
+        _runtimeView.holder.setFixedSize(bufW, bufH)
     }
 
     override fun onDetachedFromWindow() {

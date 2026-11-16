@@ -8,7 +8,8 @@
 - **类名 = viewName** `KRHolmSurface`
 - Runtime：`holm-runtime` xcframework → `holm_runtime_session_*`；`onReady.backend=wgpu-m0*`
 - Lite：GLES2 Shadertoy；`onReady.backend=gles2-ios`；空片元 → `FRAGMENT_REQUIRED`
-- Attr：`executor` / `fragmentShader` / `scene` / `playing` / `maxFps` / knobs + `onReady` / `onError` / `onPerf`
+- Attr：`executor` / `fragmentShader` / `scene` / `playing` / `maxFps` / `renderScale` / knobs + `onReady` / `onError` / `onPerf`
+- `renderScale`：默认 `1`；Lite 基线=点像素（历史硬编码 1× 现可再降）；Runtime 基线=`points×nativeScale`
 
 ## 前置
 
@@ -49,6 +50,7 @@ Kotlin 侧若需先编 framework：
 - [ ] 切 Lite → 隧道；`onReady backend=gles2-ios`（**无** `LITE_PENDING`）
 - [ ] 切回 Runtime → 隧道恢复；backend 回 wgpu
 - [ ] Lite / Runtime 下 `maxFps` 30/60/0 可感知或采集 fps 合理
+- [ ] `renderScale` 1.0→0.5：重场景 fps 可升、画面可变糊；回 1.0 不崩
 - [ ] 旋转 / resize / 二次进页不崩
 - [ ] 真机 arm64 同左
 - [ ]（负向）Lite 空 `fragmentShader` → 深蓝 + `FRAGMENT_REQUIRED`

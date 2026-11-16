@@ -91,8 +91,9 @@ vivo 等机型偶发要在「设置 → 更多设置 → 开发者选项」里�
 ## DualTrack 目视（holm_runtime_m0 · 示例1）
 
 - 示例：霓虹隧道（Lite GLSL / Runtime WGSL）；官方五席已删  
-- `maxFps`：`0 / 30 / 60 / 120`  
-- **Android 限帧语义**（勿当 bug）：`onPerf` = **真实 GL 提交率**；`maxFps` 经 `Surface.setFrameRate` 只是系统提示。`RENDERMODE_CONTINUOUSLY` 下设 30 仍可能报 ~60。跳画会闪，当前不做；真贴档需 WHEN_DIRTY + `requestRender`（未做）。见 `KRHolmSurfaceView.applySurfaceFrameRate` KDoc。  
+- `maxFps`：`0 / 30 / 60 / 120`
+- `renderScale`：`1.0 / 0.5 / 0.25`（默认 `1`=layout 物理基线；`setFixedSize` 缩缓冲）
+- **Android 限帧语义**（勿当 bug）：`onPerf` = **真实 GL 提交率**；`maxFps` 经 `Surface.setFrameRate` 只是系统提示。`RENDERMODE_CONTINUOUSLY` 下设 30 仍可能报 ~60。跳画会闪，当前不做；真贴档需 WHEN_DIRTY + `requestRender`（未做）。见 `KRHolmSurfaceView.applySurfaceFrameRate` KDoc。
 - backend：Lite `gles2`；Runtime `wgpu-m0`（缺 so → BLOCKED）
 
 ## DualTrack 切轨期望

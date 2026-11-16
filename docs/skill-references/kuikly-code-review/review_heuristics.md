@@ -25,6 +25,8 @@
 | `WebView` / `addJavascriptInterface` / deeplink / Intent extra / 日志打 token | 卡 E 安全 |
 | `dto` / `bean` / Retrofit 模型包路径 | 本仓无网络模型 keep 门禁；勿据此开卡 |
 | 仅 `strings.xml` / 文案 Key | `P1-i18n` 扫一眼即可，可跳过 A～D 深潜 |
+| `executor` / DualTrack / `KRHolmSurface` / Worker / Offscreen / `holm_xc` / `catch_unwind` / `renderScale` / Shadertoy wrap | 卡 F DualTrack/Holm 桥 |
+| `ohosApp/**/types/lib*/index.d.ts` / NAPI `ExportFn` | 卡 F（dts 同步条） |
 
 无路由命中时仍做卡 B 轻扫（主路径是否接线）。
 
@@ -133,6 +135,34 @@
 
 - **正**：日志打印 refresh token → `P1-unlisted`，待补桶写建议 `P1-security`
 - **反**：把安全问题塞进 `P0-silent-fail` 却无「功能不生效」论证 → 定级漂移，禁止
+
+---
+
+## 卡 F · DualTrack / Holm 桥
+
+**何时打开**：改 `executor` / Lite↔Runtime、Worker/Offscreen、`holm_xc` NAPI、Shadertoy 双源 wrap、`renderScale`/分辨率策略、跨 FFI Session。
+
+**必问**：
+
+1. **对称 teardown**：切轨 / 卸岛是否成对拆 Session + 泵（含 Worker/Offscreen）？禁止只清半套标志。
+2. **Worker 失败契约**：Offscreen/Worker 异步 init 失败是否与主线程同契约（`BLOCKED` + ready / 可回退或看门狗）？
+3. **方言与 FFI**：Compose 先写 `fragmentShader` 再写 `executor` 时，仍持 Runtime 是否拒绝非本轨方言？跨 FFI native 入口是否 `catch_unwind`（或等价）防 panic abort？
+4. **性能对比口径**：报告/changelog/对比是否标注端与分辨率策略（含 iOS Lite 点像素基线、`renderScale`、H5 CSS 基线）？禁止用模拟器 GLES raymarch fps 当真机结论。
+5. **Shadertoy 双源**：C++ 内嵌 wrap/vert 与 Kotlin SoT 是否同单同步，且 changelog 留同步义务？
+6. **鸿蒙 NAPI dts**：新增/改名 `ExportFn` 是否同步 `entry/src/main/cpp/types/lib*/index.d.ts`？（漏同步 → 编不过，对齐 `P0-build-break`）
+7. **H5 `js` 赋值**：禁止 `js("ident").asDynamic()` 赋浏览器全局（会编成非法 `ident.asDynamic()`）；须 IIFE/`js("(function(fn){…})")(fn)` 等安全形态。
+
+**勿报**：仅改官方席文案、未碰双轨/桥/NAPI。
+
+**默认定级**：对称 teardown / Worker 契约缺失导致整条轨不可用 → 论证后 `P0-silent-fail`；dts 漏同步编不过 → `P0-build-break`；口径未标分辨率 → `P1-doc-drift` 或对比场景 `P1-device-verify`；双源不同步 → `P1-doc-drift` / `P2`（视是否已留同步义务）。
+
+**样例**：
+
+- **正**：runtime→lite 不 `destroyPump` 致 Lite 永不画 → `P0-silent-fail`
+- **正**：NAPI 已 `setRenderScale` 但 `.d.ts` 无声明 → ArkTS 失败 → `P0-build-break`
+- **反**：仅怀疑 Worker「可能慢」无契约缺口 → 不得硬塞 P0
+
+（晋升自审查 `_backlog` 2026-11-12～16 已达标项；未达标项仍留池。）
 
 ---
 

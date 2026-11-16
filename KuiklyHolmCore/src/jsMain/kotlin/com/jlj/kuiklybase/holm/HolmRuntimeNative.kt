@@ -48,9 +48,12 @@ object HolmRuntimeNative {
 
     /**
      * 创建泵帧 Session；成功回调 (session, backendId)。
+     * [width]/[height] 为 backing store（已含 renderScale；基线=CSS px）。
      */
     fun createSession(
         canvas: HTMLCanvasElement,
+        width: Int,
+        height: Int,
         onSuccess: (session: dynamic, backend: String) -> Unit,
         onError: (message: String) -> Unit,
     ) {
@@ -60,19 +63,19 @@ object HolmRuntimeNative {
         }
         val ok = { session: dynamic, backend: String -> onSuccess(session, backend) }
         val err = { message: String -> onError(message) }
+        val w = width.coerceAtLeast(1)
+        val h = height.coerceAtLeast(1)
         js(
             """
-            (function(canvas, ok, err) {
+            (function(canvas, w, h, ok, err) {
               var rt = window.__holmRuntime;
               if (!rt || typeof rt.createSession !== 'function') {
                 err('holm-runtime createSession missing');
                 return;
               }
-              // 与 Lite 一致：backing store = CSS 像素（不乘 DPR），避免 Runtime 默认可视像素数翻 4~9 倍
-              var cssW = Math.max(1, canvas.clientWidth | 0);
-              var cssH = Math.max(1, canvas.clientHeight | 0);
-              canvas.width = cssW;
-              canvas.height = cssH;
+              // 基线 CSS px；调用方已乘 renderScale（默认 1=不降采样）
+              canvas.width = Math.max(1, w | 0);
+              canvas.height = Math.max(1, h | 0);
               Promise.resolve(rt.createSession(canvas)).then(
                 function(session) {
                   var backend = 'wgpu-m0';
@@ -93,10 +96,12 @@ object HolmRuntimeNative {
         ).unsafeCast<
             (
                 HTMLCanvasElement,
+                Int,
+                Int,
                 (dynamic, String) -> Unit,
                 (String) -> Unit,
             ) -> Unit,
-            >()(canvas, ok, err)
+            >()(canvas, w, h, ok, err)
     }
 
     fun sessionSetScene(session: dynamic, scene: String) {

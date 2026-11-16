@@ -8,22 +8,22 @@
 
 ## 候选
 
-- [ ] Kotlin/JS 禁止 `js("ident").asDynamic()` 赋浏览器全局（会编成 `ident.asDynamic()` 运行时炸）；改用 `js("(function(fn){ self.x = fn; })")(fn)` 或等价 IIFE ｜2026-11-12｜自评：已达标（h5-worker-gl-pump 已规避）
+- [ ] DualTrack 性能对比须标注 `renderScale` 与端基线（物理/点/CSS），避免跨端数字误读｜2026-11-16｜自评：未达标（renderscale device-verify）
 - [ ] 原生桥 `onError`/`onReady`：若 Attr 侧可能在回调注册前 fire，须像 onReady 一样支持「已发生则重放」，避免 Compose Attr→Event 顺序丢错 ｜2026-11-12｜自评：未达标（dualtrack P1-concurrency）
-- [ ] Kuikly expand View 模式/`executor` 切换须对称 teardown（含 Worker/Offscreen），禁止只清半套 Session 标志 ｜2026-11-13｜自评：已达标（dualtrack-r4 已关对应 P0；待批晋升）
-- [ ] Offscreen Worker 异步 init 失败须与主线程失败同契约（BLOCKED + ready + 可回退/看门狗）｜2026-11-13｜自评：已达标（dualtrack-r4 已关对应 P0；待批晋升）
 - [ ] DualTrack/expand View：`executor` 热切后须按当前轨重发 `onReady`（含 backend），不得依赖「Surface 已创建则不再 onSurfaceCreated」｜2026-11-14｜自评：未达标（android-runtime-dualtrack P1-doc-drift）
 - [ ] 持 native Surface 的急拆：await 超时也必须停泵并丢弃句柄，禁止超时后继续 tick｜2026-11-14｜自评：未达标（android-runtime-dualtrack P1-concurrency）
 - [ ] 删除/改写 holm-runtime 着色器源后，须同单或明确门禁更新入仓 `.so`/wasm，并对照产物字符串或行为验收；禁止只改 Rust 源却宣称仓库无官方席｜2026-11-14｜自评：未达标（delete-five-scenes P1-plan-soft-drift）
-- [ ] DualTrack/expand View：Compose 先写 fragmentShader 再写 executor 时，仍持 Runtime Session 必须拒绝非本轨方言；跨 FFI native 入口须 catch_unwind（或等价）防 panic abort｜2026-11-14｜自评：已达标（ios-runtime-adr0009 热修；待批晋升）
-- [ ] DualTrack 性能对比须标注端与分辨率策略；iOS Lite 1x 点像素；模拟器 GLES raymarch fps 不作真机结论｜2026-11-14｜自评：已达标（ios-lite-gles 审查观察；待批晋升）
 - [ ] 同窗 DualTrack（wgpu↔EGL）落地后，README/runbook 不得残留 `LITE_PENDING` 当现行；切轨占窗释放须真机证｜2026-11-15｜自评：未达标（ohos-lite-adr0011 P1-doc-drift + device-verify）
-- [ ] C++ 内嵌 Shadertoy wrap 与 Kotlin SoT 双源时，changelog 须写同步义务｜2026-11-15｜自评：已达标（ohos-lite-adr0011；待批晋升）
 - [ ] Demo 仅换 fragmentShader 时不应清空 onReady/backend 展示；切 executor 与切片元语义不同｜2026-11-15｜自评：未达标（demo-acd-samples P2）
 - [ ] Runtime 错误桥：`emit`+`Result`/`throw` 与宿主 `drain` 只能选一侧 fire，避免同一次失败双发 onError｜2026-11-15｜自评：未达标（wgpu-error-to-business P2-duplicate-onerror）
 - [ ] H5 Runtime 主线程回退须与 Worker 同契约透传 tick/lastError/drain，禁止只接 Worker 路径｜2026-11-15｜自评：未达标（wgpu-error-to-business P1-plan-soft-drift）
 
 ## 已晋升
 
-
-（暂无）
+- [x] 鸿蒙 NAPI 新导出必须同步 `types/lib*/index.d.ts`｜2026-11-16｜→ `review_heuristics` 卡 F §6
+- [x] Kotlin/JS 禁止 `js("ident").asDynamic()` 赋浏览器全局｜2026-11-12｜→ 卡 F §7
+- [x] expand View `executor` 切换须对称 teardown（含 Worker/Offscreen）｜2026-11-13｜→ 卡 F §1
+- [x] Offscreen Worker 异步 init 失败须与主线程同契约｜2026-11-13｜→ 卡 F §2
+- [x] 先 fragment 再 executor：拒非本轨方言；FFI `catch_unwind`｜2026-11-14｜→ 卡 F §3
+- [x] DualTrack 性能对比须标注端与分辨率策略；模拟器 fps 不作真机结论｜2026-11-14｜→ 卡 F §4（`renderScale` 细项仍见候选未达标）
+- [x] C++ Shadertoy wrap 与 Kotlin SoT 双源须 changelog 同步义务｜2026-11-15｜→ 卡 F §5

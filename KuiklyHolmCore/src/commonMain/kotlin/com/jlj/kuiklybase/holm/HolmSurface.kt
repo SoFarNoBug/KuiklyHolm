@@ -30,7 +30,7 @@ class HolmSurfaceView : DeclarativeBaseView<HolmSurfaceAttr, HolmSurfaceEvent>()
 /**
  * @CreateDate: 2026/11/12
  * @Author: jlj
- * @Description: HolmSurface Attr（scene / playing / knobs / maxFps / executor / fragmentShader / vertexShader）。
+ * @Description: HolmSurface Attr（scene / playing / knobs / maxFps / renderScale / executor / fragmentShader / vertexShader）。
  */
 class HolmSurfaceAttr : ComposeAttr() {
     fun scene(value: String): HolmSurfaceAttr {
@@ -80,6 +80,18 @@ class HolmSurfaceAttr : ComposeAttr() {
     }
 
     /**
+     * GPU 缓冲相对**当前平台基线**的缩放（与 [maxFps] 正交）。
+     * 默认 `1` = 与改前相同像素数；`0.5` ≈ 半分辨率（糊一点换帧率）。
+     * `≤0` / 非有限 → `1`；本波夹紧到 `(0, 1]`（禁止超采样）。
+     *
+     * 基线因端而异：Ohos/Android=物理 Surface px；iOS Lite=点像素；iOS Runtime=`points×nativeScale`；H5=CSS px。
+     */
+    fun renderScale(value: Float): HolmSurfaceAttr {
+        PROP_RENDER_SCALE with normalizeRenderScale(value)
+        return this
+    }
+
+    /**
      * DualTrack 旁路：`lite`（默认，GLES/WebGL）或 `runtime`（holm-runtime wgpu M0）。
      * runtime 缺 native 时平台侧 `onError(BLOCKED)`，不静默回落 GLES。
      */
@@ -113,6 +125,7 @@ class HolmSurfaceAttr : ComposeAttr() {
         const val PROP_WARP_AMOUNT: String = "warpAmount"
         const val PROP_SCROLL_SPEED: String = "scrollSpeed"
         const val PROP_MAX_FPS: String = "maxFps"
+        const val PROP_RENDER_SCALE: String = "renderScale"
         const val PROP_EXECUTOR: String = "executor"
         const val PROP_FRAGMENT_SHADER: String = "fragmentShader"
         const val PROP_VERTEX_SHADER: String = "vertexShader"
@@ -121,7 +134,16 @@ class HolmSurfaceAttr : ComposeAttr() {
         const val DEFAULT_WARP_AMOUNT: Float = 0.04f
         const val DEFAULT_SCROLL_SPEED: Float = 1.0f
         const val DEFAULT_MAX_FPS: Int = 60
+        const val DEFAULT_RENDER_SCALE: Float = 1.0f
         const val DEFAULT_EXECUTOR: String = HolmExecutor.LITE
+
+        /** `≤0` / NaN/Inf → 1；否则夹紧到 `(0, 1]`。 */
+        fun normalizeRenderScale(value: Float): Float {
+            if (!value.isFinite() || value <= 0f) {
+                return DEFAULT_RENDER_SCALE
+            }
+            return if (value > 1f) 1f else value
+        }
     }
 }
 
@@ -275,6 +297,7 @@ fun HolmSurface(
     warpAmount: Float = HolmSurfaceAttr.DEFAULT_WARP_AMOUNT,
     scrollSpeed: Float = HolmSurfaceAttr.DEFAULT_SCROLL_SPEED,
     maxFps: Int = HolmSurfaceAttr.DEFAULT_MAX_FPS,
+    renderScale: Float = HolmSurfaceAttr.DEFAULT_RENDER_SCALE,
     executor: String = HolmSurfaceAttr.DEFAULT_EXECUTOR,
     fragmentShader: String = "",
     vertexShader: String = "",
@@ -295,6 +318,7 @@ fun HolmSurface(
                 warpAmount(warpAmount)
                 scrollSpeed(scrollSpeed)
                 maxFps(maxFps)
+                renderScale(renderScale)
                 // 先写源码再切 executor，避免热切时首包带错方言（审查 P1-concurrency）
                 fragmentShader(fragmentShader)
                 vertexShader(vertexShader)

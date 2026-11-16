@@ -1,8 +1,7 @@
-﻿---
-name: kuikly-code-review
-description: kuikly-holm Android 审核员技能（主会话执行、不派子 Agent）。触发：代码审查、review、检查代码改动、/review；只读业务源码；可写 docs/reviews/（含 device-check-list/）与本 skill _backlog；不改 changelog。定级 severity.md；发现面 review_heuristics.md（ADR 0024 / 0036 / 0037）。v18。
 ---
-
+name: kuikly-code-review
+description: kuikly-holm Android 审核员技能（主会话执行、不派子 Agent）。触发：代码审查、review、检查代码改动、/review；只读业务源码；可写 docs/reviews/（含 device-check-list/）与本 skill _backlog；不改 changelog。定级 severity.md；发现面 review_heuristics.md（ADR 0024 / 0036 / 0037）。v17。
+---
 # kuikly-code-review · 审核员技能
 
 > **无子 Agent**：本 Skill + 角色 Rule 即全部规程。

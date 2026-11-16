@@ -24,6 +24,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
     private var _warpAmount: Float = HolmSurfaceAttr.DEFAULT_WARP_AMOUNT
     private var _scrollSpeed: Float = HolmSurfaceAttr.DEFAULT_SCROLL_SPEED
     private var _maxFps: Int = HolmSurfaceAttr.DEFAULT_MAX_FPS
+    private var _renderScale: Float = HolmSurfaceAttr.DEFAULT_RENDER_SCALE
     private var _executor: String = HolmSurfaceAttr.DEFAULT_EXECUTOR
     private var _fragmentShader: String = ""
     private var _vertexShader: String = ""
@@ -131,6 +132,20 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                 }
                 true
             }
+            HolmSurfaceAttr.PROP_RENDER_SCALE -> {
+                val next = HolmSurfaceAttr.normalizeRenderScale(
+                    propValue.toHolmFloat(HolmSurfaceAttr.DEFAULT_RENDER_SCALE),
+                )
+                if (next != _renderScale) {
+                    _renderScale = next
+                    // 强制走 postResize（绕过 lastW/H 相等短路）
+                    _lastW = 0
+                    _lastH = 0
+                    val size = readBufferSize()
+                    postResize(size.first, size.second)
+                }
+                true
+            }
             HolmSurfaceAttr.PROP_EXECUTOR -> {
                 val next = HolmExecutor.normalize(propValue.toString())
                 if (next != _executor) {
@@ -195,7 +210,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
             if (_controlTransferred) {
                 replaceCanvasInPlace()
             }
-            val size = readCssSize()
+            val size = readBufferSize()
             _lastW = size.first
             _lastH = size.second
             val workerOk = if (canUseWorkerPath()) {
@@ -607,7 +622,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
     private fun attachObservers() {
         if (_resizeObserver == null) {
             val onResize: () -> Unit = {
-                val size = readCssSize()
+                val size = readBufferSize()
                 postResize(size.first, size.second)
             }
             _resizeObserver = js(
@@ -971,9 +986,13 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
         return _playing && !hidden
     }
 
-    private fun readCssSize(): Pair<Int, Int> {
-        val w = _canvas.clientWidth.coerceAtLeast(1)
-        val h = _canvas.clientHeight.coerceAtLeast(1)
+    /** CSS 布局尺寸 × renderScale → canvas backing（基线=CSS px，不乘 DPR）。 */
+    private fun readBufferSize(): Pair<Int, Int> {
+        val cssW = _canvas.clientWidth.coerceAtLeast(1)
+        val cssH = _canvas.clientHeight.coerceAtLeast(1)
+        val scale = HolmSurfaceAttr.normalizeRenderScale(_renderScale)
+        val w = kotlin.math.floor(cssW * scale).toInt().coerceAtLeast(1)
+        val h = kotlin.math.floor(cssH * scale).toInt().coerceAtLeast(1)
         return w to h
     }
 
@@ -1033,7 +1052,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
             if (_runtimeSessionStarted) return
             _runtimeSessionStarted = true
             _runtimeMainFallbackTried = false
-            val size = readCssSize()
+            val size = readBufferSize()
             _lastW = size.first
             _lastH = size.second
             // 优先 Worker+Offscreen（对齐 Lite 主线程卸载）；失败再主线程 Session
@@ -1067,8 +1086,13 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
             return
         }
         _runtimeSessionStarted = true
+        val size = readBufferSize()
+        _lastW = size.first
+        _lastH = size.second
         HolmRuntimeNative.createSession(
             canvas = _canvas,
+            width = size.first,
+            height = size.second,
             onSuccess = { session, backend ->
                 if (!_attached || !HolmExecutor.isRuntime(_executor)) {
                     HolmRuntimeNative.sessionDestroy(session)

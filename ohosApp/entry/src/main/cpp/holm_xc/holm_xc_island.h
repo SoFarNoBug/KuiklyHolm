@@ -24,6 +24,8 @@ struct HolmXcIsland {
     std::string scene;
     bool playing = true;
     int32_t maxFps = 60;
+    /** 相对 XComponent 物理像素基线；(0,1]，默认 1=不降采样 */
+    float renderScale = 1.0f;
     float liquidBoost = 1.35f;
     float liquidBend = 0.05f;
 
@@ -34,6 +36,8 @@ struct HolmXcIsland {
     bool frameRegistered = false;
     bool readyFired = false;
     bool blockedNotified = false;
+    /** Runtime→Lite：拆 session 后推迟若干 OnFrame 再建 EGL，等 wgpu 放窗 */
+    int32_t liteStartDeferFrames = 0;
 
     uint64_t lastFrameTsNs = 0;
     uint64_t lastDrawTsNs = 0;
@@ -46,6 +50,19 @@ struct HolmXcIsland {
     napi_ref onErrorRef = nullptr;
     napi_ref onPerfRef = nullptr;
     napi_ref onShaderCompiledRef = nullptr;
+
+    /** 持 HolmXcMutex 时置 true：Fire* 只入队，解锁后再 Flush，避免 JS 回打 NAPI 死锁。 */
+    bool deferJs = false;
+    bool pendingReady = false;
+    std::string pendingReadyBackend;
+    bool pendingError = false;
+    std::string pendingErrCode;
+    std::string pendingErrMsg;
+    bool pendingCompiled = false;
+    bool pendingCompiledOk = false;
+    double pendingWrapMs = 0.0;
+    double pendingCompileMs = 0.0;
+    std::string pendingCompiledExec;
 };
 
 inline std::mutex &HolmXcMutex()

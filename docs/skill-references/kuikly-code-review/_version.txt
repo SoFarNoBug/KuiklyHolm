@@ -1,3 +1,3 @@
+v17
 # 代数真源。vN = severity.md 中 P0/P1 桶行数（version_counts: severity_buckets）。
-# 当前：6 个 P0 + 12 个 P1 = 18（桶数未变；ADR 0037 改 P1-device-verify 判定句与发现面外置，代数仍 v18）。
-v18
+# 当前：5 个 P0 + 12 个 P1 = 17（发现面卡 F 为 heuristics 增补，不增桶；此前误标 18 已对齐实计）。

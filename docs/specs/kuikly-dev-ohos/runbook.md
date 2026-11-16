@@ -58,6 +58,23 @@ python3 -c "from pathlib import Path; p=Path('ohosApp/AppScope/app.json5'); b=p.
 
 **预防**：编辑/生成 `*.json5` 时用 UTF-8 **无 BOM**；合并冲突或某些编辑器「带签名保存」易重新引入。`oh-package.json5` 等同理（Sync 也会读）。
 
+### 坑：`libholm_xc` NEEDED 写成宿主绝对路径 → 双轨黑屏
+
+**现象**：HAP 里有 `libholm_runtime.so`，真机 hilog：
+`Error loading shared library /Users/.../libs/arm64-v8a/libholm_runtime.so: (needed by .../libholm_xc.so)`；Lite/Runtime 黑屏。
+
+**根因**：IMPORTED `.so` 无 SONAME 时，lld 把**本机绝对路径**写进 `DT_NEEDED` / `RUNPATH`；设备上该路径不存在。
+
+**排查**：
+
+```bash
+llvm-readelf -d ohosApp/entry/build/.../libholm_xc.so | rg 'NEEDED|RUNPATH'
+# 坏：NEEDED [.../Users/.../libholm_runtime.so]
+# 好：NEEDED [libholm_runtime.so]；RUNPATH [$ORIGIN]
+```
+
+**修复**：`build-ohos.sh` 带 `-Wl,-soname,libholm_runtime.so`；CMake `IMPORTED_SONAME` + `BUILD_RPATH=$ORIGIN`。改完须重编 Runtime 与 HAP。
+
 ## 验收
 
 1. 打开 Demo「示例1 / 双轨」(`holm_runtime_m0`)。
@@ -65,8 +82,9 @@ python3 -c "from pathlib import Path; p=Path('ohosApp/AppScope/app.json5'); b=p.
 3. **Lite**：`executor=lite` → 霓虹隧道出画；`onReady.backend=gles2-ohos`；**无** `LITE_PENDING`。
 4. Runtime↔Lite 互切多次：backend 不粘；无崩。
 5. 切轨 / 离页：急拆 Session **与** Lite EGL（`UnregisterOnFrame` + destroy），无泄漏。
-6. `maxFps`：`SetExpectedFrameRateRange` + OnFrame 跳帧可感知。
-7. 负向：空 `fragmentShader` → `FRAGMENT_REQUIRED`；Lite 喂 WGSL → `SHADER_DIALECT`。
+6. `maxFps`：`SetExpectedFrameRateRange` 调度 OnFrame；**仅** `0 < maxFps < 55`（如 30）软件跳帧，且 ExpectedRange 仍按 60Hz 密回调（防 expected=30 再软件掐 → ~15）；`≥55` / `0` 不软件掐（防 60Hz 隔帧掉到 ~30）。
+7. `renderScale`（默认 `1`）：相对 XComponent 物理像素基线；`<1` 时 `SET_BUFFER_GEOMETRY` 缩缓冲（糊一点换帧率）；库不强制 1×。
+8. 负向：空 `fragmentShader` → `FRAGMENT_REQUIRED`；Lite 喂 WGSL → `SHADER_DIALECT`。
 
 ## 架构备忘
 

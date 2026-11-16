@@ -1,5 +1,11 @@
 ﻿# changelog · kuikly-dev-android
 
+## 2026-11-16（renderScale）
+
+- [ADD] `PROP_RENDER_SCALE`：`setFixedSize` / `setSizeFromLayout`（Lite GLSurfaceView + Runtime SurfaceView）
+- 默认 `1`=layout 物理基线；本单无真机验证
+- 轻量治理：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan｜待批 0
+
 ## 2026-11-16（onShaderCompiled）
 
 - [ADD] Lite `rebuildProgram` / Runtime `setCustomFs` 上报 `onShaderCompiled`（ADR 0012）

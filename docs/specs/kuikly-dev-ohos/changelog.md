@@ -1,5 +1,12 @@
 # changelog · kuikly-dev-ohos
 
+## 2026-11-16（renderScale）
+
+- [ADD] Attr `renderScale` → NAPI `setRenderScale`；`GetSurfaceSize`×scale + `SET_BUFFER_GEOMETRY`；Lite/Runtime resize
+- 默认 `1`=物理基线；几何失败仍用逻辑尺寸
+- 本单无真机验证
+- 轻量治理：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan｜待批 0
+
 ## 2026-11-16（onShaderCompiled）
 
 - [ADD] `FireShaderCompiled` + ETS 回调；Lite/Runtime 双耗时（ADR 0012）
