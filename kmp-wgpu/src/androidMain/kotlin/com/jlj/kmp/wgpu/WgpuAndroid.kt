@@ -70,26 +70,6 @@ object AndroidWgpuPlatform : WgpuPlatform {
         return runCatching { nativeTick(handle, dtSecs) }.getOrDefault(false)
     }
 
-    fun setCustomFs(handle: WgpuHandle, fs: String): Boolean {
-        if (handle == 0L) return false
-        return runCatching { nativeSetCustomFs(handle, fs) }.getOrDefault(false)
-    }
-
-    fun setScene(handle: WgpuHandle, scene: String) {
-        if (handle == 0L) return
-        runCatching { nativeSetScene(handle, scene) }
-    }
-
-    fun setLiquid(handle: WgpuHandle, boost: Float, bend: Float) {
-        if (handle == 0L) return
-        runCatching { nativeSetLiquid(handle, boost, bend) }
-    }
-
-    fun setPlaying(handle: WgpuHandle, playing: Boolean) {
-        if (handle == 0L) return
-        runCatching { nativeSetPlaying(handle, playing) }
-    }
-
     fun backendId(handle: WgpuHandle): String {
         if (handle == 0L) return "wgpu-blocked"
         return runCatching { nativeBackendId(handle) }.getOrDefault("wgpu-m0")
@@ -151,10 +131,6 @@ object AndroidWgpuPlatform : WgpuPlatform {
     private external fun nativeLastCreateError(): String
     private external fun nativeDestroy(handle: Long)
     private external fun nativeResize(handle: Long, width: Int, height: Int)
-    private external fun nativeSetScene(handle: Long, scene: String)
-    private external fun nativeSetCustomFs(handle: Long, fs: String): Boolean
-    private external fun nativeSetLiquid(handle: Long, boost: Float, bend: Float)
-    private external fun nativeSetPlaying(handle: Long, playing: Boolean)
     private external fun nativeTick(handle: Long, dtSecs: Float): Boolean
     private external fun nativeBackendId(handle: Long): String
     private external fun nativeLastErrorCode(handle: Long): String

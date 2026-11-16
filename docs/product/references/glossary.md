@@ -3,9 +3,9 @@
 | 术语 | 含义 |
 | --- | --- |
 | **Holm** | 通用渲染底座（shader-in / surface-out）；不绑定单一业务（ADR 0007） |
-| **holm-core** | 目标骨架包：岛 API / 生命周期 / Provider 槽（ADR 0008） |
-| **holm-gl** | 目标轻量 GL 族后端包（Android/iOS GLES、H5 WebGL…） |
-| **holm-wgpu** | Holm 的 wgpu **Provider / 岛 Present 薄适配**；依赖 `kmp-wgpu`（+可选 surface）（ADR 0008 / 0013） |
+| **holm-core** | 骨架包：岛 API / 生命周期 / Provider 槽（ADR 0008） |
+| **holm-renderer-gl** | 轻量 GL 族后端包（Android/iOS GLES、H5 WebGL…）；原草案名 `holm-gl` |
+| **holm-renderer-wgpu** | Holm 的 wgpu **Provider / 岛 Present 薄适配**；依赖 `kmp-wgpu`（+可选 surface）；原草案名 `holm-wgpu` |
 | **kmp-wgpu** | 与 Holm/Kuikly 无关的跨端 wgpu **原语库**（Kotlin 脸；近 1:1 wgpu）（ADR 0013） |
 | **kmp-wgpu-surface** | 可选 Present/Surface 模块；纯算力可不依赖（ADR 0013） |
 | **kmp_wgpu_native** | Rust+wgpu 实现 crate；自 `holm-runtime` 抽芯演进（ADR 0013） |

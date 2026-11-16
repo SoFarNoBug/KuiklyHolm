@@ -13,7 +13,7 @@
 | [0005](./0005-business-fragment-shadertoy-shell.md) | 业务片元 Attr + Shadertoy 薄壳 |
 | [0006](./0006-android-runtime-surface-session.md) | Android Runtime · SurfaceView + Kotlin 外泵 |
 | [0007](./0007-holm-as-generic-render-substrate.md) | **身份** · 通用渲染底座（shader-in / surface-out） |
-| [0008](./0008-holm-core-gl-wgpu-packages.md) | **目标拆包** · holm-core / holm-gl / holm-wgpu + Provider |
+| [0008](./0008-holm-core-gl-wgpu-packages.md) | **目标拆包** · holm-core / holm-renderer-gl / holm-renderer-wgpu + Provider |
 | [0009](./0009-ios-runtime-cametallayer-objc-session.md) | iOS Runtime · CAMetalLayer + ObjC 外泵 Session |
 | [0010](./0010-ohos-runtime-xcomponent-session.md) | 鸿蒙 Runtime · XComponent + 外泵 Session |
 | [0011](./0011-ohos-lite-egl-xcomponent.md) | 鸿蒙 Lite · 同 XComponent + EGL/GLES |

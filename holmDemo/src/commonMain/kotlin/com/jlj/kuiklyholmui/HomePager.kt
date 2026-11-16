@@ -36,6 +36,7 @@ import com.tencent.kuikly.core.pager.Pager
 internal class HomePager : BasePager() {
     override fun willInit() {
         super.willInit()
+        HolmDemoBootstrap.ensure()
         setContent {
             HomeScreen()
         }

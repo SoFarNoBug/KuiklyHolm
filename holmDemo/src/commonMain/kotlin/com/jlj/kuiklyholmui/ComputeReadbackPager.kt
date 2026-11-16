@@ -36,6 +36,7 @@ import com.tencent.kuikly.core.annotations.Page
 internal class ComputeReadbackPager : BasePager() {
     override fun willInit() {
         super.willInit()
+        HolmDemoBootstrap.ensure()
         setContent {
             ComputeReadbackScreen()
         }

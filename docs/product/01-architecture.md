@@ -1,7 +1,7 @@
 ﻿# 01 · 架构详解（Holm · 通用渲染底座）
 
 > **身份以 [`00`](./00-context-and-decisions.md) + [ADR 0007](../adr/0007-holm-as-generic-render-substrate.md) / [ADR 0008](../adr/0008-holm-core-gl-wgpu-packages.md) 为准。**  
-> 决策：`00`（含 D13 三包、D14 kmp-wgpu）。身份：**通用渲染底座**；目标 **holm-core / holm-gl / holm-wgpu**；其下 **kmp-wgpu**（ADR 0013）。  
+> 决策：`00`（含 D13 三包、D14 kmp-wgpu）。身份：**通用渲染底座**；目标 **holm-core / holm-renderer-gl / holm-renderer-wgpu**；其下 **kmp-wgpu**（ADR 0013）。  
 > 硬问题：`07`。下文若仍出现「特效产品 / Lite 五席 KPI」措辞，以 00/0007/0008 覆盖。
 
 ## 1. 一句话
@@ -95,12 +95,15 @@ WebGPU 不可用 → WebGL2 → 再降须登记
 ## 9. 模块建议（Kuikly 仓内或旁路仓）
 
 ```text
-kuikly-holm/           # 或业务 monorepo 子模块
-  shaders/             # 同源 WGSL ★
-  holm-lite-backends/  # 可选：各端轻量执行器
-  holm-runtime/        # Standard+ 才需要
-  kuikly-bridge/       # KRHolmSurface + KMP API
-  demo/                # Kuikly Demo 页
+kuikly-holm/
+  holm-core/             # 岛 API + Provider SPI
+  holm-renderer-gl/      # Lite GL 族
+  holm-renderer-wgpu/    # wgpu Present 薄适配（HolmFullscreenPass）
+  kmp-wgpu/              # ADR 0013 原语（与 Holm 无关）
+  kmp-wgpu-surface/      # 可选 Present Surface
+  holm-runtime/          # = kmp_wgpu_native；产物名兼容 holm_runtime
+  KuiklyHolmCore/        # umbrella（api 三包；iOS/Ohos 暂留）
+  holmDemo/
 ```
 
 ## 10. 架构验收

@@ -3,7 +3,7 @@ package com.jlj.kuiklybase.holm
 /**
  * @CreateDate: 2026/11/12
  * @Author: jlj
- * @Description: DualTrack 执行器旁路常量；默认 Lite，runtime 走 holm-runtime(wgpu) 探测。
+ * @Description: DualTrack 执行器常量；lite→holm-renderer-gl，runtime→holm-renderer-wgpu（经 Provider）。
  */
 object HolmExecutor {
     const val LITE: String = "lite"

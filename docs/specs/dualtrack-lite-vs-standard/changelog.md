@@ -1,5 +1,27 @@
 # dualtrack-lite-vs-standard · changelog
 
+## 2026-11-16（三包拆 · 清审查 P1/P2 可修项）
+
+- [FIX] P1-doc-drift：`docs/product/README` / ADR 0008 / D11 对齐 `holm-renderer-*`；写明 umbrella 自动注册为例外
+- [FIX] P1-plan-soft-drift（Demo 半）：`HolmDemoBootstrap` + `HomePager` / `KRApplication` / H5 `Main` 显式 `HolmProviders.register`
+- [FIX] P2-provider-ready-backend：Android Provider 失败设 `_providerBlocked`，`onReady.backend=wgpu-blocked`（对齐 H5）
+- [NOTE] 未做：Provider 真正分发 View 半部；H5 Worker 双路径收敛；worktree noise
+- 自测：`:KuiklyHolmCore` / `:holmDemo` / `:androidApp` Android + `:KuiklyHolmCore`/`:holmDemo` JS compile 通过
+- 真机验证表：`docs/reviews/device-check-list/holm-three-package-split.md`（仍挂 P1-device-verify）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：审查打回项整改｜待批 0
+
+## 2026-11-16（Holm 三包物理拆 · Android+H5 + kmp-wgpu 抽芯收尾）
+
+- [ADD] Gradle：`:holm-core` / `:holm-renderer-gl` / `:holm-renderer-wgpu`；`:KuiklyHolmCore` 改 umbrella（`api` 三包；iOS/Ohos 源暂留）
+- [ADD] `HolmBackendProvider` + `HolmProviders`（必设 / 缺则 BLOCKED）；`GlBackendProvider` / `WgpuBackendProvider`；umbrella `HolmUmbrellaBootstrap` 自动注册
+- [MODIFY] ADR 0008 / CONTEXT / 00 / glossary / AGENTS / file-map：包名 `holm-renderer-gl` / `holm-renderer-wgpu`（取代草案 `holm-gl` / `holm-wgpu`）
+- [MODIFY] Android Present 唯一入口：`KRHolmSurfaceView` → `HolmFullscreenPass`；Holm 语义 JNI → `HolmAndroidJni`（迁出 `AndroidWgpuPlatform`）
+- [MODIFY] H5 Runtime 主路径经 `createFullscreenPass`；Worker 仍经 `HolmRuntimeNative.sessionSet*`（符号名未改）
+- [NOTE] 本波不做 crate/so/wasm/`HolmRuntimeSession` 改名；不做 iOS/Ohos 物理拆；不做 Maven 独立坐标
+- 自测：`:holm-core` / `:holm-renderer-gl` / `:holm-renderer-wgpu` / `:KuiklyHolmCore` / `:holmDemo` / `:kmp-wgpu` Android+JS compile 通过；so 含 `HolmAndroidJni_nativeSet*`
+- 真机验证表：本单编译门禁已过；真机 DualTrack DoD 待审核员表 `docs/reviews/device-check-list/holm-three-package-split.md`
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan 物理拆｜待批 0
+
 ## 2026-11-16（kmp-wgpu v1.1 · Headless Compute + 回读）
 
 - [ADD] `holm-runtime`：`compute_readback` / `HeadlessCompute`；Android JNI `nativeCreateHeadless`/`nativeComputeReadback`；wasm `HeadlessComputeSession`

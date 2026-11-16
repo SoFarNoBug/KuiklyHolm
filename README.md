@@ -5,7 +5,8 @@
 | 项 | 值 |
 |---|---|
 | 根工程 | `KuiklyHolmUI` |
-| 库 | `:KuiklyHolmCore` · `com.jlj.kuiklybase.holm` |
+| 三包 | `:holm-core` / `:holm-renderer-gl` / `:holm-renderer-wgpu` |
+| Umbrella | `:KuiklyHolmCore` · `com.jlj.kuiklybase.holm`（兼容只引 Core） |
 | Demo | `:holmDemo` · `com.jlj.kuiklyholmui` |
 | 坐标 | `io.github.sofarnobug:KuiklyHolmCore` |
 

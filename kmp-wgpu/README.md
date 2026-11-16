@@ -35,7 +35,7 @@
 
 ## 非本模块
 
-`setCustomFs` / `setScene` / `liquid*` / `playing` 属 **Holm 适配**（`HolmFullscreenPass` / `HolmRuntimeNative`），不在 `kmp-wgpu` 包下。
+`setCustomFs` / `setScene` / `liquid*` / `playing` 属 **Holm 适配**，Kotlin 面在 `:holm-renderer-wgpu`（`HolmAndroidJni` / `HolmFullscreenPass`），**不在** `com.jlj.kmp.wgpu`。
 
 ## Native
 

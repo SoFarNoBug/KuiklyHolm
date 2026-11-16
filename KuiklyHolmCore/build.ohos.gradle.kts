@@ -38,11 +38,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                api("com.tencent.kuikly-open:core:${Version.getKuiklyOhosVersion()}")
-                api("com.tencent.kuikly-open:core-annotations:${Version.getKuiklyOhosVersion()}")
-                api("com.tencent.kuikly-open:compose:${Version.getKuiklyOhosVersion()}")
-                // Ohos KN 需要带 ohos_arm64 variant 的 KBA 坐标（官方 1.8.1 无该 target）
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0-KBA-002")
+                api(project(":holm-core"))
             }
         }
         val androidMain by getting {

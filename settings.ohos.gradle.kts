@@ -26,6 +26,8 @@ rootProject.name = "KuiklyHolmUI"
 val buildFileName = "build.ohos.gradle.kts"
 rootProject.buildFileName = buildFileName
 
+include(":holm-core")
+project(":holm-core").buildFileName = "build.ohos.gradle.kts"
 include(":KuiklyHolmCore")
 project(":KuiklyHolmCore").buildFileName = buildFileName
 include(":holmDemo")

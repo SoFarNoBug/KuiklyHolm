@@ -231,8 +231,9 @@ pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeResize(
     }
 }
 
+/// Holm Session 语义：Kotlin 面在 `HolmAndroidJni`（holm-renderer-wgpu），不在 kmp-wgpu。
 #[no_mangle]
-pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeSetScene(
+pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmAndroidJni_nativeSetScene(
     mut env: JNIEnv,
     _class: JClass,
     handle: jlong,
@@ -248,7 +249,7 @@ pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeSetScene(
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeSetCustomFs(
+pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmAndroidJni_nativeSetCustomFs(
     mut env: JNIEnv,
     _class: JClass,
     handle: jlong,
@@ -267,7 +268,7 @@ pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeSetCustom
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeSetLiquid(
+pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmAndroidJni_nativeSetLiquid(
     _env: JNIEnv,
     _class: JClass,
     handle: jlong,
@@ -280,7 +281,7 @@ pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeSetLiquid
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeSetPlaying(
+pub extern "system" fn Java_com_jlj_kuiklybase_holm_HolmAndroidJni_nativeSetPlaying(
     _env: JNIEnv,
     _class: JClass,
     handle: jlong,

@@ -57,7 +57,7 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
     private var _surfaceAlive: Boolean = false
     private var _appliedSurfaceFps: Float = -1f
 
-    private var _sessionHandle: Long = 0L
+    private var _fullscreenPass: HolmFullscreenPass? = null
     /** UI 与渲染线程共享；Surface 有效性以本旗标为准。 */
     private val _runtimeSurfaceValid = AtomicBoolean(false)
     private var _runtimeWidth: Int = 1
@@ -67,6 +67,8 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
     private var _runtimePerfFrames: Int = 0
     private var _runtimePumpPosted: Boolean = false
     private var _runtimeBackendId: String = HolmExecutor.BACKEND_WGPU_M0
+    /** Provider 未注册 / 未 setDefault：onReady 须诚实 BLOCKED，禁止回报假 gles2。 */
+    private var _providerBlocked: Boolean = false
     private val _runtimeEagerDestroying = AtomicBoolean(false)
 
     private var _renderThread = HandlerThread("holm-runtime").also { it.start() }
@@ -115,9 +117,9 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
             }
             ensureRenderThread()
             _renderHandler.post {
-                val handle = _sessionHandle
-                if (handle != 0L && _runtimeSurfaceValid.get()) {
-                    HolmRuntimeNative.resize(handle, w, h)
+                val pass = _fullscreenPass
+                if (pass != null && _runtimeSurfaceValid.get()) {
+                    pass.resize(w, h)
                 }
             }
         }
@@ -132,10 +134,10 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
     private val _frameCallback = object : Choreographer.FrameCallback {
         override fun doFrame(frameTimeNanos: Long) {
             _runtimePumpPosted = false
-            if (!HolmExecutor.isRuntime(_executor) || !_playing || _sessionHandle == 0L) {
+            val pass = _fullscreenPass
+            if (!HolmExecutor.isRuntime(_executor) || !_playing || pass == null) {
                 return
             }
-            val handle = _sessionHandle
             if (_runtimeLastFrameNs == 0L) {
                 _runtimeLastFrameNs = frameTimeNanos
             }
@@ -147,13 +149,13 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
                 destroyRuntimeSessionOnRenderThread()
                 return
             }
-            val ok = HolmRuntimeNative.tick(handle, dtSecs)
+            val ok = pass.tick(dtSecs)
             if (!ok) {
                 // 只走 drain（Rust 已 emit）；空则回落 lastError，避免双发
-                val drained = flushRuntimeErrors(handle)
+                val drained = flushRuntimeErrors(pass)
                 if (drained == 0) {
-                    val code = HolmRuntimeNative.lastErrorCode(handle).ifBlank { "TICK" }
-                    val detail = HolmRuntimeNative.lastErrorMessage(handle)
+                    val code = pass.lastErrorCode().ifBlank { "TICK" }
+                    val detail = pass.lastErrorMessage()
                         .ifBlank { "DualTrack B BLOCKED: holm_runtime tick failed. No silent GLES stand-in." }
                     post {
                         if (!_runtimeBlockedNotified) {
@@ -168,10 +170,10 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
                 destroyRuntimeSessionOnRenderThread()
                 return
             }
-            flushRuntimeErrors(handle)
+            flushRuntimeErrors(pass)
             if (!HolmRuntimeNative.isM0Presentable()) {
                 HolmRuntimeNative.markPresentable(true)
-                _runtimeBackendId = HolmRuntimeNative.backendId(handle)
+                _runtimeBackendId = pass.backendId()
                 post {
                     if (!_readyFired) {
                         _readyFired = true
@@ -185,6 +187,7 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
     }
 
     init {
+        HolmUmbrellaBootstrap.ensure()
         _glView.setEGLContextClientVersion(2)
         _glView.setRenderer(_renderer)
         _glView.renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
@@ -275,7 +278,7 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
             HolmSurfaceAttr.PROP_PLAYING -> {
                 _playing = propValue.toBool()
                 if (HolmExecutor.isRuntime(_executor)) {
-                    postRuntime { HolmRuntimeNative.setPlaying(it, _playing) }
+                    postRuntime { it.setPlaying(_playing) }
                     if (_playing) {
                         ensureRenderThread()
                         _renderHandler.post { scheduleRuntimePump() }
@@ -291,7 +294,7 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
                     _liquidBoost = next
                     if (HolmExecutor.isRuntime(_executor)) {
                         postRuntime {
-                            HolmRuntimeNative.setLiquid(it, _liquidBoost, _liquidBend)
+                            it.setLiquid(_liquidBoost, _liquidBend)
                         }
                     } else {
                         _glView.queueEvent { _renderer.setLiquidBoost(next) }
@@ -305,7 +308,7 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
                     _liquidBend = next
                     if (HolmExecutor.isRuntime(_executor)) {
                         postRuntime {
-                            HolmRuntimeNative.setLiquid(it, _liquidBoost, _liquidBend)
+                            it.setLiquid(_liquidBoost, _liquidBend)
                         }
                     } else {
                         _glView.queueEvent { _renderer.setLiquidBend(next) }
@@ -489,6 +492,23 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
     }
 
     private fun applyExecutorMode() {
+        HolmUmbrellaBootstrap.ensure()
+        try {
+            HolmProviders.requireForExecutor(_executor)
+            _providerBlocked = false
+        } catch (e: IllegalStateException) {
+            _providerBlocked = true
+            setBackgroundColor(0xFF1E2A4A.toInt())
+            if (!_runtimeBlockedNotified) {
+                _runtimeBlockedNotified = true
+                fireError(HolmExecutor.ERROR_BLOCKED, e.message ?: HolmProviders.missingDefaultMessage())
+            }
+            if (!_readyFired) {
+                _readyFired = true
+                fireReady()
+            }
+            return
+        }
         if (HolmExecutor.isRuntime(_executor)) {
             // 切 Runtime：停 Lite GLES，挂 SurfaceView；create 在 surfaceCreated
             // onPause 会丢 EGL；先失效 program，避免切回 Lite 时 same-check 误跳过重编 → 蓝屏
@@ -555,11 +575,11 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
         ensureRenderThread()
         _renderHandler.post {
             if (!HolmExecutor.isRuntime(_executor) || !_runtimeSurfaceValid.get()) return@post
-            if (_sessionHandle != 0L) {
+            if (_fullscreenPass != null) {
                 destroyRuntimeSessionOnRenderThread()
             }
-            val handle = HolmRuntimeNative.createSession(surface, width, height)
-            if (handle == 0L) {
+            val pass = HolmRuntimeNative.createFullscreenPass(surface, width, height)
+            if (pass == null) {
                 HolmRuntimeNative.markPresentable(false)
                 post {
                     setBackgroundColor(0xFF1E2A4A.toInt())
@@ -574,10 +594,10 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
                 }
                 return@post
             }
-            _sessionHandle = handle
-            applyRuntimeShaders(handle)
-            HolmRuntimeNative.setLiquid(handle, _liquidBoost, _liquidBend)
-            HolmRuntimeNative.setPlaying(handle, _playing)
+            _fullscreenPass = pass
+            applyRuntimeShaders(pass)
+            pass.setLiquid(_liquidBoost, _liquidBend)
+            pass.setPlaying(_playing)
             _runtimeLastFrameNs = 0L
             _runtimePerfWindowNs = 0L
             _runtimePerfFrames = 0
@@ -586,24 +606,24 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
         }
     }
 
-    private fun postRuntime(block: (Long) -> Unit) {
+    private fun postRuntime(block: (HolmFullscreenPass) -> Unit) {
         ensureRenderThread()
         _renderHandler.post {
-            val handle = _sessionHandle
-            if (handle != 0L) {
-                block(handle)
+            val pass = _fullscreenPass
+            if (pass != null) {
+                block(pass)
             }
         }
     }
 
     /** 对齐 H5：先卸上一档 custom，再装新；失败则 ClearTri，不残留旧特效。 */
-    private fun applyRuntimeShaders(handle: Long) {
+    private fun applyRuntimeShaders(pass: HolmFullscreenPass) {
         val custom = _fragmentShader.trim()
         // 切换样本/轨：先停掉上一档
-        HolmRuntimeNative.setCustomFs(handle, "")
+        pass.setCustomFs("")
         if (custom.isNotEmpty()) {
             if (!HolmShaderResolve.looksLikeWgslFragment(custom)) {
-                HolmRuntimeNative.setScene(handle, _scene)
+                pass.setScene(_scene)
                 post {
                     fireError(
                         "SHADER_CUSTOM",
@@ -614,13 +634,13 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
                 return
             }
             val t0 = System.nanoTime()
-            val ok = HolmRuntimeNative.setCustomFs(handle, custom)
+            val ok = pass.setCustomFs(custom)
             val compileMs = (System.nanoTime() - t0) / 1_000_000f
             // 失败已 emit 进 pending：只 drain 一次，勿再读 lastError 双发
-            val drained = flushRuntimeErrors(handle)
+            val drained = flushRuntimeErrors(pass)
             if (!ok) {
                 // native 已清屏停泵；宿主对齐，避免 Choreographer 继续空转 ClearTri
-                HolmRuntimeNative.setPlaying(handle, false)
+                pass.setPlaying(false)
                 _playing = false
                 if (drained == 0) {
                     post {
@@ -634,16 +654,15 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
                 post { fireShaderCompiled(true, 0f, compileMs, HolmExecutor.RUNTIME) }
             }
         } else {
-            HolmRuntimeNative.setScene(handle, _scene)
+            pass.setScene(_scene)
             // 空片元 ClearTri：ok=false，对齐 Lite 拒绝语义（审查 P2）
             post { fireShaderCompiled(false, 0f, 0f, HolmExecutor.RUNTIME) }
         }
     }
 
     /** @return 已投递的错误条数 */
-    private fun flushRuntimeErrors(handle: Long): Int {
-        if (handle == 0L) return 0
-        val errs = HolmRuntimeNative.drainErrors(handle)
+    private fun flushRuntimeErrors(pass: HolmFullscreenPass): Int {
+        val errs = pass.drainErrors()
         if (errs.isEmpty()) return 0
         post {
             for ((code, message) in errs) {
@@ -655,7 +674,7 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
 
     private fun scheduleRuntimePump() {
         if (_runtimePumpPosted) return
-        if (!HolmExecutor.isRuntime(_executor) || !_playing || _sessionHandle == 0L) return
+        if (!HolmExecutor.isRuntime(_executor) || !_playing || _fullscreenPass == null) return
         if (!_runtimeSurfaceValid.get()) return
         ensureRenderThread()
         val choreographer = _choreographer ?: Choreographer.getInstance().also { _choreographer = it }
@@ -685,11 +704,9 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
 
     private fun destroyRuntimeSessionOnRenderThread() {
         stopRuntimePump()
-        val handle = _sessionHandle
-        _sessionHandle = 0L
-        if (handle != 0L) {
-            HolmRuntimeNative.destroySession(handle)
-        }
+        val pass = _fullscreenPass
+        _fullscreenPass = null
+        pass?.destroy()
     }
 
     private fun eagerDestroyRuntimeSession(waitMs: Long) {
@@ -699,7 +716,7 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
         try {
             _runtimeSurfaceValid.set(false)
             if (!_renderThread.isAlive) {
-                _sessionHandle = 0L
+                _fullscreenPass = null
                 HolmRuntimeNative.markPresentable(false)
                 return
             }
@@ -748,6 +765,7 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
 
     private fun fireReady() {
         val backend = when {
+            _providerBlocked -> HolmExecutor.BACKEND_WGPU_BLOCKED
             HolmExecutor.isRuntime(_executor) && HolmRuntimeNative.isAvailable() ->
                 _runtimeBackendId.ifEmpty { HolmExecutor.BACKEND_WGPU_M0 }
             HolmExecutor.isRuntime(_executor) -> HolmExecutor.BACKEND_WGPU_BLOCKED

@@ -92,7 +92,7 @@ class HolmSurfaceAttr : ComposeAttr() {
     }
 
     /**
-     * DualTrack 旁路：`lite`（默认，GLES/WebGL）或 `runtime`（holm-runtime wgpu M0）。
+     * DualTrack 旁路：`lite`（默认，holm-renderer-gl）或 `runtime`（holm-renderer-wgpu / kmp-wgpu Present）。
      * runtime 缺 native 时平台侧 `onError(BLOCKED)`，不静默回落 GLES。
      */
     fun executor(value: String): HolmSurfaceAttr {

@@ -1,7 +1,6 @@
 package com.jlj.kuiklybase.holm
 
 import com.jlj.kmp.wgpu.Device
-import com.jlj.kmp.wgpu.androidPlatform
 import com.jlj.kmp.wgpu.sessionBackendId
 import com.jlj.kmp.wgpu.sessionDrainErrors
 import com.jlj.kmp.wgpu.sessionLastErrorCode
@@ -13,14 +12,14 @@ import com.jlj.kmp.wgpu.surface.SurfaceConfiguration
 /**
  * @CreateDate: 2026/11/16
  * @Author: jlj
- * @Description: Holm 全屏片元适配（Android）；Holm 语义经 AndroidWgpuPlatform，不进 kmp-wgpu 产品面。
+ * @Description: Holm 全屏片元适配（Android）；Present 唯一入口；Holm 语义经 HolmAndroidJni。
  */
 class HolmFullscreenPass(
     val gpuSurface: GpuSurface,
 ) {
     val device: Device get() = gpuSurface.device
 
-    private val _platform get() = androidPlatform()
+    val handle: Long get() = device.handle
 
     fun resize(width: Int, height: Int) {
         gpuSurface.configure(
@@ -32,18 +31,18 @@ class HolmFullscreenPass(
     }
 
     fun setCustomFs(wgslFs: String): Boolean =
-        _platform.setCustomFs(device.handle, wgslFs)
+        HolmAndroidJni.setCustomFs(handle, wgslFs)
 
     fun setScene(scene: String) {
-        _platform.setScene(device.handle, scene)
+        HolmAndroidJni.setScene(handle, scene)
     }
 
     fun setLiquid(boost: Float, bend: Float) {
-        _platform.setLiquid(device.handle, boost, bend)
+        HolmAndroidJni.setLiquid(handle, boost, bend)
     }
 
     fun setPlaying(playing: Boolean) {
-        _platform.setPlaying(device.handle, playing)
+        HolmAndroidJni.setPlaying(handle, playing)
     }
 
     fun tick(dtSecs: Float): Boolean = device.sessionTick(dtSecs)

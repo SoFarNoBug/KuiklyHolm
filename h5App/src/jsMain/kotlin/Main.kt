@@ -1,3 +1,6 @@
+import com.jlj.kuiklybase.holm.GlBackendProvider
+import com.jlj.kuiklybase.holm.HolmProviders
+import com.jlj.kuiklybase.holm.WgpuBackendProvider
 import com.tencent.kuikly.core.render.web.ktx.SizeI
 import kotlinx.browser.document
 import kotlinx.browser.window
@@ -8,6 +11,11 @@ import utils.URL
  */
 fun main() {
     console.log("##### Kuikly Web Render")
+    HolmProviders.register(GlBackendProvider)
+    HolmProviders.register(WgpuBackendProvider)
+    if (HolmProviders.defaultIdOrNull().isNullOrBlank()) {
+        HolmProviders.setDefault(GlBackendProvider.ID)
+    }
     // Root container id, note that this needs to match the container id in the actual index.html file
     val containerId = "root"
     val webSign = "is_web"
