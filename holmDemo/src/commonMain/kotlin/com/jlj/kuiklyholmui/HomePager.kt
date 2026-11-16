@@ -76,6 +76,11 @@ private fun HomeScreen() {
             label = "示例 / 双轨 (holm_runtime_m0)",
             onClick = { openPage(localPager, "holm_runtime_m0") },
         )
+        Spacer(modifier = Modifier.height(16.dp))
+        HomeButton(
+            label = "kmp-wgpu Compute 回读 (v1.1)",
+            onClick = { openPage(localPager, "kmp_wgpu_compute") },
+        )
     }
 }
 

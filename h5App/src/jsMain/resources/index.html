@@ -72,6 +72,8 @@
           abiVersion: function () { return wasm_bindgen.holm_runtime_abi_version(); },
           hasWgpu: function () { return wasm_bindgen.holm_runtime_has_wgpu(); },
           createSession: function (canvas) { return wasm_bindgen.HolmRuntimeSession.create(canvas); },
+          // ADR 0013 v1.1 · headless Compute（与 Surface Session 分型）
+          createHeadless: function () { return wasm_bindgen.HeadlessComputeSession.create(); },
         };
       })
       .catch(function (e) {

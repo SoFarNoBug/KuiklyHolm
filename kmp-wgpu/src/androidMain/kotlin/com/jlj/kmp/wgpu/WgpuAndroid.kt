@@ -117,6 +117,34 @@ object AndroidWgpuPlatform : WgpuPlatform {
         return out
     }
 
+    /** Headless（v1.1）· 与 Surface Session 分表。 */
+    fun createHeadless(): Long {
+        if (!isLibraryLoaded()) return 0L
+        return runCatching { nativeCreateHeadless() }.getOrDefault(0L)
+    }
+
+    fun destroyHeadless(handle: Long) {
+        if (handle == 0L || !isLibraryLoaded()) return
+        runCatching { nativeDestroyHeadless(handle) }
+    }
+
+    fun computeReadback(
+        handle: Long,
+        wgsl: String,
+        input: FloatArray,
+        workgroupCountX: Int,
+    ): FloatArray? {
+        if (handle == 0L || !isLibraryLoaded()) return null
+        return runCatching {
+            nativeComputeReadback(handle, wgsl, input, workgroupCountX)
+        }.getOrNull()
+    }
+
+    fun headlessBackendId(handle: Long): String {
+        if (handle == 0L || !isLibraryLoaded()) return "wgpu-blocked"
+        return runCatching { nativeHeadlessBackendId(handle) }.getOrDefault("wgpu-m0")
+    }
+
     private external fun nativeAbiVersion(): Int
     private external fun nativeHasWgpu(): Int
     private external fun nativeCreate(surface: Surface, width: Int, height: Int): Long
@@ -132,6 +160,15 @@ object AndroidWgpuPlatform : WgpuPlatform {
     private external fun nativeLastErrorCode(handle: Long): String
     private external fun nativeLastErrorMessage(handle: Long): String
     private external fun nativeDrainErrors(handle: Long): Array<String>
+    private external fun nativeCreateHeadless(): Long
+    private external fun nativeDestroyHeadless(handle: Long)
+    private external fun nativeHeadlessBackendId(handle: Long): String
+    private external fun nativeComputeReadback(
+        handle: Long,
+        wgsl: String,
+        input: FloatArray,
+        workgroupCountX: Int,
+    ): FloatArray?
 }
 
 actual object WgpuRuntime {

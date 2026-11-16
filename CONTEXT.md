@@ -105,8 +105,8 @@ _Avoid_：`LITE_PENDING` 冒充完成；用 GLES 冒充 wgpu；另挂第二 XCom
 ## 当前状态
 
 - 身份：ADR 0007；目标拆包：ADR 0008（文档已定，Gradle 未拆）
-- 下沉原语：ADR 0013 v1（`:kmp-wgpu` / `:kmp-wgpu-surface`；Android+H5 Holm Runtime 已迁；iOS/Ohos 仍旧 C ABI；Compute→v1.1）
-- Demo：Home「示例 / 双轨」；页内 chip 切隧道 / IQ（MIT · Quilez）/ 程序化海洋（MIT · afl_ext）/ 电缆巢（CC0 · mrange）；官方五席源码已删
+- 下沉原语：ADR 0013 v1 Present + **v1.1 headless Compute+回读**（`:kmp-wgpu`；Android+H5；与 Surface 分表）；iOS/Ohos 仍旧 C ABI / Compute stub
+- Demo：Home「示例 / 双轨」+「kmp-wgpu Compute 回读」；页内 chip 切隧道 / IQ / 程序化海洋 / 电缆巢；官方五席源码已删
 - iOS：ADR 0009 Runtime Metal + Lite GLES 子树均已落地（`gles2-ios` / `wgpu-m0*`）
 - 鸿蒙：ADR 0010 Runtime + ADR 0011 Lite（同 XC EGL，`gles2-ohos`）；真机隧道/互切待勾
-- 后单：真机验收双轨（so 已按新 JNI 重编）；v1.1 Compute+回读；真拆 holm 三依赖、独立仓、`holm_api` 对齐
+- 后单：真机勾 v1.1 Compute 冒烟；真拆 holm 三依赖、独立仓、`holm_api` 对齐

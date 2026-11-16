@@ -1,7 +1,9 @@
 //! Android JNI：从 `android.view.Surface` 建 Session，供 Kotlin 外泵 tick。
+//! Headless Compute（v1.1）句柄与 Surface Session **分表**，勿混用 tick/setCustomFs。
 
+use crate::compute_readback::HeadlessCompute;
 use crate::holm_fullscreen::HolmRuntimeSessionCore;
-use jni::objects::{JClass, JObject, JString, JValue};
+use jni::objects::{JClass, JFloatArray, JObject, JString, JValue, ReleaseMode};
 use jni::sys::{jboolean, jfloat, jint, jlong, jstring, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 use raw_window_handle::{
@@ -379,4 +381,134 @@ pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeDrainErro
         let _ = env.set_object_array_element(&arr, (i * 2 + 1) as i32, jm);
     }
     arr.into_raw()
+}
+
+// --- Headless Compute（v1.1）· 与 NativeSession 分表 ---
+
+fn box_headless(session: HeadlessCompute) -> jlong {
+    Box::into_raw(Box::new(session)) as jlong
+}
+
+unsafe fn from_headless<'a>(handle: jlong) -> Option<&'a mut HeadlessCompute> {
+    if handle == 0 {
+        return None;
+    }
+    Some(&mut *(handle as *mut HeadlessCompute))
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeCreateHeadless(
+    mut env: JNIEnv,
+    _class: JClass,
+) -> jlong {
+    let created = catch_unwind(AssertUnwindSafe(|| {
+        pollster::block_on(HeadlessCompute::create(false))
+    }));
+    match created {
+        Ok(Ok(session)) => {
+            clear_last_create_error();
+            box_headless(session)
+        }
+        Ok(Err(e)) => {
+            set_last_create_error(&e);
+            log_e(&mut env, &format!("nativeCreateHeadless failed: {e}"));
+            0
+        }
+        Err(panic) => {
+            let msg = format!("nativeCreateHeadless panic: {panic:?}");
+            set_last_create_error(&msg);
+            log_e(&mut env, &msg);
+            0
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeDestroyHeadless(
+    _env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+) {
+    if handle == 0 {
+        return;
+    }
+    let _ = unsafe { Box::from_raw(handle as *mut HeadlessCompute) };
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeHeadlessBackendId(
+    env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+) -> jstring {
+    let id = unsafe { from_headless(handle) }
+        .map(|s| s.backend_id)
+        .unwrap_or("wgpu-blocked");
+    env.new_string(id)
+        .map(|s| s.into_raw())
+        .unwrap_or(std::ptr::null_mut())
+}
+
+/// 粗块：WGSL compute + f32[] 回读。失败返回 null，文案进 lastCreateError。
+#[no_mangle]
+pub extern "system" fn Java_com_jlj_kmp_wgpu_AndroidWgpuPlatform_nativeComputeReadback<'local>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    handle: jlong,
+    wgsl: JString<'local>,
+    input: JFloatArray<'local>,
+    workgroup_count_x: jint,
+) -> jni::sys::jfloatArray {
+    let Some(session) = (unsafe { from_headless(handle) }) else {
+        set_last_create_error("nativeComputeReadback: bad headless handle");
+        return std::ptr::null_mut();
+    };
+    let Ok(src) = env.get_string(&wgsl) else {
+        set_last_create_error("nativeComputeReadback: bad wgsl");
+        return std::ptr::null_mut();
+    };
+    let Ok(elems) = env.get_array_length(&input) else {
+        set_last_create_error("nativeComputeReadback: bad input length");
+        return std::ptr::null_mut();
+    };
+    if elems <= 0 {
+        set_last_create_error("nativeComputeReadback: empty input");
+        return std::ptr::null_mut();
+    }
+    let Ok(auto) = (unsafe { env.get_array_elements(&input, ReleaseMode::NoCopyBack) }) else {
+        set_last_create_error("nativeComputeReadback: get_array_elements failed");
+        return std::ptr::null_mut();
+    };
+    let input_vec: Vec<f32> = auto.iter().copied().collect();
+    drop(auto);
+
+    let wg = workgroup_count_x.max(1) as u32;
+    let result = catch_unwind(AssertUnwindSafe(|| {
+        pollster::block_on(session.run_f32(&src.to_string_lossy(), &input_vec, wg))
+    }));
+    match result {
+        Ok(Ok(out)) => {
+            clear_last_create_error();
+            let Ok(arr) = env.new_float_array(out.len() as i32) else {
+                set_last_create_error("nativeComputeReadback: new_float_array failed");
+                return std::ptr::null_mut();
+            };
+            if env.set_float_array_region(&arr, 0, &out).is_err() {
+                set_last_create_error("nativeComputeReadback: set_float_array_region failed");
+                return std::ptr::null_mut();
+            }
+            arr.into_raw()
+        }
+        Ok(Err(e)) => {
+            set_last_create_error(&e);
+            log_e(&mut env, &format!("nativeComputeReadback failed: {e}"));
+            std::ptr::null_mut()
+        }
+        Err(panic) => {
+            let msg = format!("nativeComputeReadback panic: {panic:?}");
+            set_last_create_error(&msg);
+            log_e(&mut env, &msg);
+            std::ptr::null_mut()
+        }
+    }
 }

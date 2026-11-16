@@ -1,5 +1,21 @@
 # dualtrack-lite-vs-standard · changelog
 
+## 2026-11-16（kmp-wgpu v1.1 · Headless Compute + 回读）
+
+- [ADD] `holm-runtime`：`compute_readback` / `HeadlessCompute`；Android JNI `nativeCreateHeadless`/`nativeComputeReadback`；wasm `HeadlessComputeSession`
+- [ADD] `:kmp-wgpu`：`createHeadlessDevice*` / `computeReadback*` / `ComputeReadbackSample`（方案 B 粗块；与 Present 分表）
+- [ADD] Demo：`kmp_wgpu_compute` 页（无 HolmSurface）；Home 入口；H5 `__holmRuntime.createHeadless`
+- [NOTE] 范围 Android+H5；iOS/Ohos stub「TBD」；未拆 Holm 三包
+- 自测：`:kmp-wgpu` / `:holmDemo` Android+JS compile；so 含 `nativeCreateHeadless`；wasm glue 含 `HeadlessComputeSession`
+- 真机：H5 Compute `ok size=8 sample=2…10` + Present `fps=60 wgpu-m0`；vivo V2545A Compute 同结果 + Present `fps=60 compile ok backend=wgpu-m0`
+- 真机验证表：见审查 `docs/reviews/review-kmp-wgpu-compute-v1.1.md` / 可执行档待审核员补 `device-check-list/kmp-wgpu-compute-v1.1.md`
+- 审查跟进：README 标短同步 / WGSL 双份同步义务
+- [FIX] review P1-main-thread-io：Android `*Async` 真下沉到 `kmp-wgpu-headless` 线程；Demo 回主线程再改 UI
+- [FIX] review P2-destroy-not-idempotent：`HeadlessDevice.destroy` 幂等
+- [FIX] review P2-wgsl-dual-copy：Rust/Kotlin 双侧交叉引用注释
+- [NOTE] P2-worktree-noise：本单提交勿带 `iosApp`/`ohosApp`/`static_server` 无关改动
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：审查打回项整改｜待批 0
+
 ## 2026-11-16（H5 · 清 P2-h5-error-sticky-ui）
 
 - [FIX] H5 Runtime：成功 `setCustomFs` / 成功 `tick` 只 discard drain，不再把上一档 pending/`uncaptured` 打到 `onError`；成功装载后按 Attr 恢复泵

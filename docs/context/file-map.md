@@ -5,12 +5,12 @@
 | 路径 | 说明 |
 | --- | --- |
 | `KuiklyHolmCore/` | 库：`HolmSurface` + View；Android/H5 Runtime 经 `HolmFullscreenPass` → kmp-wgpu |
-| `kmp-wgpu/` | ADR 0013 原语层（Kotlin 类型壳 + 粗 FFI；方案 B） |
+| `kmp-wgpu/` | ADR 0013 原语层（Kotlin 类型壳 + 粗 FFI；方案 B）；v1.1 headless Compute+回读 |
 | `kmp-wgpu-surface/` | 可选 Present（`AndroidSurfaces` / `JsSurfaces`） |
-| `holm-runtime/` | `kmp_wgpu_native`：Rust+wgpu；`holm_fullscreen`；产物名 `holm_runtime`；`build-*.ps1/sh` |
+| `holm-runtime/` | `kmp_wgpu_native`：Rust+wgpu；`holm_fullscreen` + `compute_readback`；产物名 `holm_runtime`；`build-*.ps1/sh` |
 | `iosApp/.../KRHolmSurface.*` | Track A：iOS GLES2 Lite 薄壳（五席已删；无宿主片元 → 清屏+error） |
 | `KuiklyHolmCore/.../HolmGlPumpSource.kt` | H5 纯 JS WebGL 泵（Blob Worker / 主线程回退） |
-| `holmDemo/` | Demo：`home` + `holm_runtime_m0`（示例1 / 双轨 / 采集） |
+| `holmDemo/` | Demo：`home` + `holm_runtime_m0`（双轨）+ `kmp_wgpu_compute`（v1.1 无 Surface 冒烟） |
 | `docs/specs/business-custom-shader/` | 业务片元 changelog |
 | `docs/specs/holm-render-substrate/` | 底座身份 / 删五席 changelog |
 | `docs/adr/0005-*.md` | 业务片元 + Shadertoy 薄壳 |
