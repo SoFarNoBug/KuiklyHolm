@@ -1,13 +1,13 @@
 ﻿# 01 · 架构详解（Holm · 通用渲染底座）
 
 > **身份以 [`00`](./00-context-and-decisions.md) + [ADR 0007](../adr/0007-holm-as-generic-render-substrate.md) / [ADR 0008](../adr/0008-holm-core-gl-wgpu-packages.md) 为准。**  
-> 决策：`00`（含 D13 三包、D14 kmp-wgpu）。身份：**通用渲染底座**；目标 **holm-core / holm-gl / holm-wgpu**；其下 **kmp-wgpu**（ADR 0013）。  
+> 决策：`00`（含 D13 三包、D14 kmp-wgpu）。身份：**通用渲染底座**；目标 **holm-core / holm-renderer-gl / holm-renderer-wgpu**；其下 **kmp-wgpu**（ADR 0013）。  
 > 硬问题：`07`。下文若仍出现「特效产品 / Lite 五席 KPI」措辞，以 00/0007/0008 覆盖。
 
 ## 1. 一句话
 
 **Kuikly（或宿主）画壳；Holm 提供局部 GPU 岛，按传入 shader 出帧。**  
-核心锚点是 **shader 契约 / Pass 语义**；统一 Runtime/RHI 是 **可插拔后端档**，不是 Lite 的强制项。
+核心锚点是 **shader 契约 / Pass 语义**；统一 RHI / renderer-wgpu 是 **可插拔渲染后端档**，不是 renderer-gl 的强制项。
 
 ## 2. 四层可插拔栈（对内）
 
@@ -17,8 +17,8 @@
 ├─────────────────────────────────────────────┤
 │ L3 场景与着色（Scene / Pass / WGSL 源）       │  ★ 单一真相源（所有重量档共享）
 ├─────────────────────────────────────────────┤
-│ L2 执行后端（可插拔）                         │  Lite: 各端轻量后端 / 预编译产物
-│                                             │  Standard+: RHI（如 wgpu）可选
+│ L2 渲染后端（可插拔）                         │  renderer-gl: 各端轻量 GL / 预编译产物
+│                                             │  renderer-wgpu: kmp-wgpu Present 可选
 ├─────────────────────────────────────────────┤
 │ L1 Kuikly 桥接                              │  KRHolmSurface、生命周期、事件
 └─────────────────────────────────────────────┘
@@ -37,17 +37,17 @@
 
 | 档 | L3 Shader | L2 | L1 | 业务感知 |
 | --- | --- | --- | --- | --- |
-| **Lite** | 有；构建期编到各端 | **无**大 Runtime；原生 GLES/Metal/WebGL 等执行器 | KRHolmSurface 或等价薄壳 | 调特效组件即可 |
-| **Standard** | 有 | Holm Runtime + RHI | 同左 | 可自定义 Pass |
+| **renderer-gl** | 有；构建期编到各端 | **无**大 Runtime；原生 GLES/Metal/WebGL 等执行器 | KRHolmSurface 或等价薄壳 | 调特效组件即可 |
+| **renderer-wgpu** | 有 | holm-renderer-wgpu + kmp-wgpu | 同左 | 可自定义 Pass |
 | **Full** | 有 | Standard + glTF/简单 3D | 同左 | 英雄 3D |
 
-Stage 0 选 A ≈ 先落地 Lite；选 B ≈ 建 Standard（仍建议先有 1～2 个特效能用）。
+Stage 0 选 A ≈ 先落地 renderer-gl；选 B ≈ 建 renderer-wgpu（仍建议先有 1～2 个特效能用）。
 
 ## 4. Shader 锚点（替代「强制 wgpu」）
 
 1. 手写源：**WGSL**（或团队选定的单一源语言）。  
 2. 构建期：用 naga / spirv-cross 等离线生成 MSL / SPIR-V / GLSL 等（工具链可 Stage 0 后渐进，但目标如此）。  
-3. 运行时：只加载产物并跑 Pass；**允许** Lite 与 Standard 用不同 L2，只要 Pass 语义一致。  
+3. 运行时：只加载产物并跑 Pass；**允许** renderer-gl 与 renderer-wgpu 用不同 L2，只要 Pass 语义一致。  
 4. 禁止长期「Android 一份 AGSL 手写算法、iOS 另一份」且无同源源码。
 
 证据：业界一致性来自材质/shader，而非必须同一图形 API（见 evidence-index D/E）。
@@ -61,7 +61,7 @@ Stage 0 选 A ≈ 先落地 Lite；选 B ≈ 建 Standard（仍建议先有 1～
 
 远期若要其它宿主：另 ADR，**不阻塞** Kuikly 业务。
 
-## 6. 一帧流（Standard；Lite 类同更简）
+## 6. 一帧流（renderer-wgpu；renderer-gl 类同更简）
 
 ```text
 Kuikly 布局 → Bridge resize/props
@@ -95,21 +95,24 @@ WebGPU 不可用 → WebGL2 → 再降须登记
 ## 9. 模块建议（Kuikly 仓内或旁路仓）
 
 ```text
-kuikly-holm/           # 或业务 monorepo 子模块
-  shaders/             # 同源 WGSL ★
-  holm-lite-backends/  # 可选：各端轻量执行器
-  holm-runtime/        # Standard+ 才需要
-  kuikly-bridge/       # KRHolmSurface + KMP API
-  demo/                # Kuikly Demo 页
+kuikly-holm/
+  holm-core/             # 岛 API + Provider SPI
+  holm-renderer-gl/      # renderer-gl
+  holm-renderer-wgpu/    # wgpu Present 薄适配（HolmFullscreenPass）
+  kmp-wgpu/              # ADR 0013 原语（与 Holm 无关）
+  kmp-wgpu-surface/      # 可选 Present Surface
+  kmp-wgpu-native/          # = kmp_wgpu_native；产物名 kmp_wgpu_native
+  KuiklyHolmCore/        # umbrella（api 三包；iOS/Ohos 暂留）
+  holmDemo/
 ```
 
 ## 10. 架构验收
 
 - [ ] 说得出「锚点是 Shader 不是 wgpu」  
-- [ ] Lite/Standard/Full 边界清晰  
+- [ ] renderer-gl / renderer-wgpu / Full 边界清晰  
 - [ ] 第一桥接只有 Kuikly  
 - [ ] 防膨胀与 H1 默认策略写进实现计划  
-- [ ] 业务能先用到特效，而不是先看到空 Runtime  
+- [ ] 业务能先用到特效，而不是先看到空 wgpu Present  
 
 ---
 

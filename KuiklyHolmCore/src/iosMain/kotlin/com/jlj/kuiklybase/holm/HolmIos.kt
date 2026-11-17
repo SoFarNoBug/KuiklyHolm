@@ -5,7 +5,7 @@ import kotlin.concurrent.Volatile
 /**
  * @CreateDate: 2026/11/12
  * @Author: jlj
- * @Description: iOS 宿主初始化占位。Runtime=Metal C Session；Lite=GLES2 Shadertoy（iosApp KRHolmSurface）；viewName=KRHolmSurface。
+ * @Description: iOS 宿主初始化；umbrella Provider 兜底；Runtime Present 经 HolmWgpuIosBridge。
  */
 object HolmIos {
     @Volatile
@@ -13,6 +13,7 @@ object HolmIos {
 
     fun init(cacheDir: String) {
         _cacheDir = cacheDir
+        HolmUmbrellaBootstrap.ensure()
     }
 
     fun cacheDirOrNull(): String? = _cacheDir

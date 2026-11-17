@@ -55,27 +55,29 @@
 <body>
 <div id="root"></div>
 <script src="http://127.0.0.1:8083/nativevue2.js" type="text/javascript"></script>
-<!-- DualTrack B：holm-runtime wasm（no-modules）；失败时 __holmRuntime.ready=false，Kotlin 侧 BLOCKED -->
-<script src="holm-runtime/holm_runtime.js" type="text/javascript"></script>
+<!-- DualTrack B：kmp-wgpu-native wasm（no-modules）；失败时 __kmpWgpu.ready=false，Kotlin 侧 BLOCKED -->
+<script src="kmp-wgpu-native/kmp_wgpu_native.js" type="text/javascript"></script>
 <script type="text/javascript">
   (function () {
-    window.__holmRuntime = { ready: false };
+    window.__kmpWgpu = { ready: false };
     if (typeof wasm_bindgen !== 'function') {
-      window.__holmRuntime.error = 'wasm_bindgen missing (holm_runtime.js not loaded)';
+      window.__kmpWgpu.error = 'wasm_bindgen missing (kmp_wgpu_native.js not loaded)';
       return;
     }
     // no-modules：init Promise resolve 的是 raw wasm exports；胶水 API 在 wasm_bindgen.* 上
-    wasm_bindgen('holm-runtime/holm_runtime_bg.wasm')
+    wasm_bindgen('kmp-wgpu-native/kmp_wgpu_native_bg.wasm')
       .then(function () {
-        window.__holmRuntime = {
+        window.__kmpWgpu = {
           ready: true,
-          abiVersion: function () { return wasm_bindgen.holm_runtime_abi_version(); },
-          hasWgpu: function () { return wasm_bindgen.holm_runtime_has_wgpu(); },
-          createSession: function (canvas) { return wasm_bindgen.HolmRuntimeSession.create(canvas); },
+          abiVersion: function () { return wasm_bindgen.kmp_wgpu_abi_version(); },
+          hasWgpu: function () { return wasm_bindgen.kmp_wgpu_has_wgpu(); },
+          createSession: function (canvas) { return wasm_bindgen.KmpWgpuSession.create(canvas); },
+          // ADR 0013 v1.1 · headless Compute（与 Surface Session 分型）
+          createHeadless: function () { return wasm_bindgen.HeadlessComputeSession.create(); },
         };
       })
       .catch(function (e) {
-        window.__holmRuntime = {
+        window.__kmpWgpu = {
           ready: false,
           error: (e && e.message) ? e.message : String(e),
         };

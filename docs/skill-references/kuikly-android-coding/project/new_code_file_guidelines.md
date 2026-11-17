@@ -10,7 +10,7 @@ layer: L3
 
 ## 规则
 
-1. **新建文件优先 Kotlin**：数据类、工具类、常量持有者、新建模块、expect/actual，全部适用本仓 module（`:holm-runtime` / `:kuikly-bridge` / `:demo` / 各端 App）。
+1. **新建文件优先 Kotlin**：数据类、工具类、常量持有者、新建模块、expect/actual，全部适用本仓 module（`:kmp-wgpu-native` / `:kuikly-bridge` / `:demo` / 各端 App）。
 2. **需要新开文件承载新逻辑时，默认开 `.kt`**。
    - **例外（须留痕）**：必须与真 Java 契约强耦合（注解处理器 / 反射契约等）时可新建 `.java`，**必须在该次 changelog 写明「为何不能用 Kotlin」**。
    - 例外不是默认值：判不出理由就写 Kotlin。

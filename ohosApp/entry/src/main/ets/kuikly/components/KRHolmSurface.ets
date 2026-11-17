@@ -21,8 +21,8 @@ const PROP_ON_ERROR = 'onError';
 const PROP_ON_PERF = 'onPerf';
 const PROP_ON_SHADER_COMPILED = 'onShaderCompiled';
 
-const EXECUTOR_RUNTIME = 'runtime';
-const EXECUTOR_LITE = 'lite';
+const EXECUTOR_WGPU = 'renderer-wgpu';
+const EXECUTOR_GL = 'renderer-gl';
 const DEFAULT_MAX_FPS = 60;
 const DEFAULT_RENDER_SCALE = 1.0;
 const DEEP_BLUE = '#051A47';
@@ -41,7 +41,7 @@ export class KRHolmSurface extends KuiklyRenderBaseView {
   static readonly VIEW_NAME = 'KRHolmSurface';
 
   xcId: string = '';
-  cssExecutor: string = EXECUTOR_LITE;
+  cssExecutor: string = EXECUTOR_GL;
   cssFragmentShader: string = '';
   cssMaxFps: number = DEFAULT_MAX_FPS;
   cssRenderScale: number = DEFAULT_RENDER_SCALE;
@@ -73,8 +73,8 @@ export class KRHolmSurface extends KuiklyRenderBaseView {
   setProp(propKey: string, propValue: KRAny | KuiklyRenderCallback): boolean {
     switch (propKey) {
       case PROP_EXECUTOR: {
-        const next = ((propValue as string) ?? EXECUTOR_LITE).toLowerCase();
-        this.cssExecutor = next === EXECUTOR_RUNTIME ? EXECUTOR_RUNTIME : EXECUTOR_LITE;
+        const next = ((propValue as string) ?? EXECUTOR_GL).toLowerCase();
+        this.cssExecutor = next === EXECUTOR_WGPU ? EXECUTOR_WGPU : EXECUTOR_GL;
         this.pushExecutor();
         return true;
       }
@@ -160,8 +160,8 @@ export class KRHolmSurface extends KuiklyRenderBaseView {
       this.pushLiquid();
       this.nativeBound = true;
       if (typeof holmXc.hasWgpu === 'function' && holmXc.hasWgpu() === 0 &&
-        this.cssExecutor === EXECUTOR_RUNTIME) {
-        this.fireLocalError('BLOCKED', 'holm_runtime has_wgpu=0. No silent GLES stand-in.');
+        this.cssExecutor === EXECUTOR_WGPU) {
+        this.fireLocalError('BLOCKED', 'kmp_wgpu has_wgpu=0. No silent GLES stand-in.');
       }
     } catch (e) {
       this.fireLocalError('BLOCKED', `libholm_xc unavailable: ${String(e)}`);

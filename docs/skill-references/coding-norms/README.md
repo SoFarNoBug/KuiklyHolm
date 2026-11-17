@@ -50,7 +50,7 @@
 
 未用到的语言/平台**不建空壳**。各仓在自己的 `project.yaml` → `norms[]` 写明 `layer:` 与 `ref`。
 
-> **Rust / wgpu**：货架已收 `lang_rust` + `platform_wgpu`（官方背书见各文件文首「来源」）。本仓码农 skill **尚未默认挂载**；改 `holm-runtime` 时在对应 `project.yaml` → `norms[]` 按改动面启用，并升该 skill 代数。
+> **Rust / wgpu**：货架已收 `lang_rust` + `platform_wgpu`（官方背书见各文件文首「来源」）。本仓码农 skill **尚未默认挂载**；改 `kmp-wgpu-native` 时在对应 `project.yaml` → `norms[]` 按改动面启用，并升该 skill 代数。
 
 ## 消费方示例（kuikly-android-coding · L3 不共享）
 

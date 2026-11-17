@@ -5,7 +5,7 @@ import kotlin.concurrent.Volatile
 /**
  * @CreateDate: 2026/11/12
  * @Author: jlj
- * @Description: 鸿蒙宿主初始化占位。
+ * @Description: 鸿蒙宿主初始化；触发 umbrella Provider 注册。
  */
 object HolmOhos {
     @Volatile
@@ -15,6 +15,7 @@ object HolmOhos {
     private var _cacheDir: String? = null
 
     fun init(resfileDir: String, cacheDir: String = resfileDir) {
+        HolmUmbrellaBootstrap.ensure()
         _resfileDir = resfileDir
         _cacheDir = cacheDir
     }

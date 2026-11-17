@@ -3,12 +3,12 @@
 ## 项目概况
 
 - 产品：**Holm**（**通用渲染底座**：shader-in / surface-out）
-- 身份：**ADR 0007**；目标拆包：**ADR 0008**（`holm-core` / `holm-gl` / `holm-wgpu` + **Provider 必设**）
-- 下沉：**ADR 0013**（`kmp-wgpu` 原语层；`holm-wgpu` 为其上薄适配；与 Kuikly 无关）
-- 根工程：`KuiklyHolmUI`；库 `:KuiklyHolmCore`；Demo `:holmDemo`
+- 身份：**ADR 0007**；目标拆包：**ADR 0008**（`holm-core` / `holm-renderer-gl` / `holm-renderer-wgpu` + **Provider 必设**）
+- 下沉：**ADR 0013**（`kmp-wgpu` 原语层；`holm-renderer-wgpu` 为其上薄适配；与 Kuikly 无关）
+- 根工程：`KuiklyHolmUI`；三包 `:holm-core` / `:holm-renderer-gl` / `:holm-renderer-wgpu`；umbrella `:KuiklyHolmCore`；Demo `:holmDemo`
 - 命名：`HolmSurface` / `KRHolmSurface` / `holm_*`；原语层 `kmp-wgpu` / `kmp-wgpu-surface`
-- 形态：现状胖 Core + `holm-runtime`；**目标**三包可插拔 + 其下 kmp-wgpu（尚未物理拆/抽芯）
-- 节奏：稳固岛与 shader 契约 → 文档目标架构 → 抽芯/拆包另单；Demo **主推隧道**；五席源码已删
+- 形态：Android+H5+iOS+Ohos 三包 Present 已对齐；`kmp-wgpu-native`；`:kmp-wgpu` / `:kmp-wgpu-surface`
+- 节奏：岛契约稳 → ADR 0013 v1 抽芯（已）→ v1.1 Compute（已）→ 真拆三包（四端 Present 已；Maven/拆仓另单）；Demo **主推隧道**；五席源码已删
 
 ## 接手阅读顺序
 
@@ -23,7 +23,7 @@
 ## 硬规则（摘录）
 
 1. 身份以 **00 + ADR 0007/0008/0013** 为准；禁止写成「专为粒子/专为玻璃」。
-2. 目标：业务自选 `holm-gl` / `holm-wgpu`；**必须设 Provider**；仅 core 必报错。
+2. 目标：业务自选 `holm-renderer-gl` / `holm-renderer-wgpu`；**必须设 Provider**；仅 core 必报错。
 3. 通用 GPU 算力 / 图像加速走 **`kmp-wgpu`**，不要把 Holm 扩成算力 SDK。
 4. 全量 Standard/wgpu 产品化须有书面选型；失败路径诚实。
 5. 禁止系统 Liquid Glass / WebView+Three 冒充底座完成。

@@ -1,5 +1,43 @@
 # changelog · kuikly-dev-ohos
 
+## 2026-11-17（ADR 0014 · 消灭 holm-runtime 命名）
+
+- [MODIFY] native / C ABI / 产物 / Bridge·Demo 名对齐 `kmp-wgpu-native` / `kmp_wgpu_*` / `HolmWgpu*` / `holm_dualtrack`（详见 dualtrack changelog + ADR 0014）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan｜待批 0
+
+## 2026-11-17（ADD · Ohos headless Compute 回读）
+
+- [ADD] C ABI：`holm_runtime_headless_create/destroy/compute_readback`；`HeadlessCompute` Ohos DisplayHandle
+- [ADD] `kmp-wgpu` / Demo：`ComputeReadback.ohos` + `ComputeReadbackBridge.ohos`（短样本同步）
+- 自测：`build-ohos.sh` + `ohos_build.sh` + 真机 `kmp_wgpu_compute` 点 Run → `ok size=…`
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改 Ohos Compute｜待批 0
+
+## 2026-11-17（FIX · holm_ohos_bridge dlopen libshared）
+
+- [FIX] `holm_ohos_bridge.cpp`：显式 `dlopen(libshared.so)` 再 `dlsym`（XComponent 独立加载时 `RTLD_DEFAULT` 看不到 @CName）
+- [FIX] `EnsureBridgeResolved`：失败可重试，不再一次定终身
+- 自测：真机 `FMR0223927006189` DualTrack — Runtime `onReady.backend=wgpu-m0-gl` 隧道出画；切 Lite 隧道出画 fps≈60（原 `BLOCKED: holm_ohos_bridge unresolved` 已消）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改桥解析｜待批 0
+
+## 2026-11-16（审查整改 · holm-ohos-android-align 可修项）
+
+- [NOTE] `P2-kmp-wgpu-holm-setters`：Ohos 已与 iOS 同构 — set* 在 `HolmSessionBindings`，**不**挂 `OhosWgpuPlatform`；残余同模块边界可接受（对标 iOS r2 已关）
+- [NOTE] `P2-lite-needs-bridge`：Lite start 亦 `EnsureBridgeResolved`+`requireProvider` 为故意（无 Provider / 无 libshared 不静默 GLES）；冷启依赖 Demo 先加载 shared
+- [NOTE] `P2-provider-negative-hard`：默认 Demo 负向难触发；真机表 #8 / runbook 标可选特制宿主
+- [NOTE] `P2-worktree-noise`：提交勿收 `static_server/serve/**`、临时 `_holm-*.jpeg`；勿写回 `signingConfigs`
+- [NOTE] `P1-device-verify`：仍待本机 DevEco 自动签名后装机勾表（本机无 signingConfigs）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：清审查可修口径｜待批 0
+
+## 2026-11-16（Ohos 三包对齐 · 对标 iOS）
+
+- [ADD] `settings.ohos`：`:kmp-wgpu` / `:kmp-wgpu-surface` / `:holm-renderer-gl` / `:holm-renderer-wgpu` ohosArm64
+- [ADD] `OhosWgpuPlatform` / `HolmSessionBindings` / `OhosSurfaces`；renderer `HolmFullscreenPass` / `HolmRuntimeNative`
+- [ADD] `HolmRuntimeOhosBridge` + Demo `@CName holm_ohos_bridge_*`；`libholm_xc` dlsym Present；停直调 `holm_runtime_session_*`
+- [MODIFY] Lite/Runtime start `requireProvider`；Lite 空片元首包 defer；CMake 不再链 `holm_runtime` 到 xc
+- 自测：`./ohos_build.sh` 通过；`libshared` 导出 bridge 符号；`assembleHap` 通过（本机 SignHap 跳过 → 真机表待装机）
+- 真机验证表：`docs/reviews/device-check-list/holm-ohos-android-align.md`
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan 对齐 Ohos｜待批 0
+
 ## 2026-11-16（renderScale）
 
 - [ADD] Attr `renderScale` → NAPI `setRenderScale`；`GetSurfaceSize`×scale + `SET_BUFFER_GEOMETRY`；Lite/Runtime resize

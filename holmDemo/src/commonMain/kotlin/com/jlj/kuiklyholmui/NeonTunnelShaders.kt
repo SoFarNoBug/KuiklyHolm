@@ -9,7 +9,7 @@ object NeonTunnelShaders {
     const val SCENE_CUSTOM: String = "custom"
 
     /** Shadertoy 正文（库薄壳补 iTime / iResolution / main）。 */
-    val LITE_BODY: String = """
+    val GL_BODY: String = """
 const int MAX_STEPS = 60;
 const float MAX_DIST = 50.0;
 const float SURF_DIST = 0.002;
@@ -86,7 +86,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
      * Runtime WGSL 片元（接 FULLSCREEN_VS + FrameUniforms；入口 fs_main）。
      * 同隧道 raymarch / 霓虹意图，非 GLSL 逐字。
      */
-    val RUNTIME_FS: String = """
+    val WGPU_FS: String = """
 const MAX_STEPS: i32 = 60;
 const MAX_DIST: f32 = 50.0;
 const SURF_DIST: f32 = 0.002;

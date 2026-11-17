@@ -30,12 +30,13 @@ import com.tencent.kuikly.core.pager.Pager
 /**
  * @CreateDate: 2026/11/12
  * @Author: jlj
- * @Description: Holm Demo 入口主页（示例 / 双轨）。
+ * @Description: Holm Demo 入口主页（示例 / 双渲染后端）。
  */
 @Page("home", supportInLocal = true)
 internal class HomePager : BasePager() {
     override fun willInit() {
         super.willInit()
+        HolmDemoBootstrap.ensure()
         setContent {
             HomeScreen()
         }
@@ -73,8 +74,13 @@ private fun HomeScreen() {
         )
         Spacer(modifier = Modifier.height(40.dp))
         HomeButton(
-            label = "示例 / 双轨 (holm_runtime_m0)",
-            onClick = { openPage(localPager, "holm_runtime_m0") },
+            label = "示例 / 双渲染后端 (holm_dualtrack)",
+            onClick = { openPage(localPager, "holm_dualtrack") },
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        HomeButton(
+            label = "kmp-wgpu Compute 回读 (v1.1)",
+            onClick = { openPage(localPager, "kmp_wgpu_compute") },
         )
     }
 }

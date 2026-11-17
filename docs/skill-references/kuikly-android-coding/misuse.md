@@ -211,7 +211,7 @@ fun onPageSelected(position: Int) {
 
 **错误写法**：`HolmShadertoyShell.wrapFragment` 固定 `precision mediump float;`，业务正文含 raymarch / SDF。
 
-**为什么错**：真机 GLES2（Adreno 等）上 mediump 步进距离不稳 → 彩色噪点 / 花屏；隧道形状可辨但满屏噪点。佐证：`holm_runtime_m0` Lite+custom（SM-S9110）。
+**为什么错**：真机 GLES2（Adreno 等）上 mediump 步进距离不稳 → 彩色噪点 / 花屏；隧道形状可辨但满屏噪点。佐证：`holm_dualtrack` Lite+custom（SM-S9110）。
 
 **正确写法**：与官方 liquid 席对齐，优先 highp：
 

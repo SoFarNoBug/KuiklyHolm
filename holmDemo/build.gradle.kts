@@ -52,8 +52,9 @@ kotlin {
             freeCompilerArgs = freeCompilerArgs + getCommonCompilerArgs()
             isStatic = true
             license = "MIT"
-            // 导出 Core，使 Swift 经 import holmDemo 可见 HolmIosBridge
+            // 导出 Core（HolmIosBridge / Runtime bridge）+ GL 壳（ObjC Lite wrap 用 HolmShadertoyShell）
             export(project(":KuiklyHolmCore"))
+            export(project(":holm-renderer-gl"))
         }
         extraSpecAttributes["resources"] = "['src/commonMain/assets/**']"
     }
@@ -76,6 +77,12 @@ kotlin {
         val androidMain by getting {
             dependencies {
                 api("com.tencent.kuikly-open:core-render-android:${Version.getKuiklyVersion()}")
+                implementation(project(":kmp-wgpu"))
+            }
+        }
+        val jsMain by getting {
+            dependencies {
+                implementation(project(":kmp-wgpu"))
             }
         }
 
@@ -84,6 +91,10 @@ kotlin {
         val iosSimulatorArm64Main by getting
         val iosMain by creating {
             dependsOn(commonMain)
+            dependencies {
+                // export(holm-renderer-gl) 要求直接依赖；ObjC KRHolmGlesHostView 调 HolmShadertoyShell
+                api(project(":holm-renderer-gl"))
+            }
             iosX64Main.dependsOn(this)
             iosArm64Main.dependsOn(this)
             iosSimulatorArm64Main.dependsOn(this)

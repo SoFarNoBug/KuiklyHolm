@@ -1,7 +1,7 @@
 # 真机可执行档 · unify-wgpu-30
 
 - 关联报告：`docs/reviews/review-unify-wgpu-30.md`
-- 包名 / 入口：`com.jlj.kuiklyholmui` · Home →「示例 / 双轨」(`holm_runtime_m0`)
+- 包名 / 入口：`com.jlj.kuiklyholmui` · Home →「示例 / 双轨」(`holm_dualtrack`)
 - 前置条件：
   - 本单产物：`holm-runtime/build-wasm.ps1`、`build-android.ps1` 已跑；`h5App/.../holm-runtime/` 与 `androidApp/.../libholm_runtime.so` 时间戳新于改码
   - iOS：有 Mac/Xcode 时先 `./build-ios.sh` 再装真机/模拟器

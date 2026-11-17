@@ -1,7 +1,8 @@
 ﻿# Holm · 通用渲染底座
 
 > **身份以 [`00`](./00-context-and-decisions.md) + [ADR 0007](../adr/0007-holm-as-generic-render-substrate.md) / [ADR 0008](../adr/0008-holm-core-gl-wgpu-packages.md) 为准。**  
-> Holm = **shader-in / surface-out**；目标包 **`holm-core` / `holm-gl` / `holm-wgpu`**；**Provider 必设**。  
+> Holm = **shader-in / surface-out**；目标包 **`holm-core` / `holm-renderer-gl` / `holm-renderer-wgpu`**；**Provider 必设**。  
+> Android+H5 已物理拆；`:KuiklyHolmCore` 为 umbrella（可自动注册，宿主仍可显式 `HolmProviders.register`）。  
 > Demo **主推隧道**；五席叙事废弃。  
 > 命名锁定：Holm / `HolmSurface` / `KRHolmSurface` / `holm_*`。
 
@@ -32,7 +33,7 @@
 
 1. 读 `00` + **ADR 0007/0008**。  
 2. 禁止写成「专为粒子 / 专为玻璃」；五席不主推。  
-3. 目标：三包 + Provider 必设（物理拆包另单）。  
+3. 目标：三包 + Provider 必设（Android+H5 已拆；iOS/Ohos 另单）。  
 4. 禁止系统 Liquid Glass / WebView+Three 冒充底座完成。  
 5. 命名不改。  
 
@@ -41,8 +42,8 @@
 ```text
 Host / Kuikly 壳 + HolmSurface
   └── shader 契约（宿主片元或样本）
-        ├── Lite：各端轻量 GL
-        └── Standard+：可选 Holm Runtime / RHI
+        ├── renderer-gl：各端轻量 GL
+        └── renderer-wgpu：可选 kmp-wgpu Present
 ```
 
 ## 状态
@@ -50,7 +51,7 @@ Host / Kuikly 壳 + HolmSurface
 | 项 | 状态 |
 | --- | --- |
 | 身份 | **通用渲染底座**（ADR 0007） |
-| 目标拆包 | ADR 0008（尚未物理拆） |
+| 目标拆包 | ADR 0008：Android+H5 已物理拆（`holm-core` / `holm-renderer-*`）；iOS/Ohos 另单 |
 | Demo | 主推隧道；五席废弃叙事 |
 
 ## 修订
@@ -61,3 +62,4 @@ Host / Kuikly 壳 + HolmSurface
 | 2026-11-12 | Kuikly 优先特效叙事；Lite/Standard/Full |
 | 2026-11-14 | **推翻身份** → 通用渲染底座（ADR 0007） |
 | 2026-11-14 | 目标三包 + Provider（ADR 0008）；Demo 隧道优先 |
+| 2026-11-16 | 状态表对齐：Android+H5 三包已拆（关审查 r2 `P1-doc-drift`） |

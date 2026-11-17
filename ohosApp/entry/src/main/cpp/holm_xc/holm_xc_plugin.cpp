@@ -1,11 +1,12 @@
 /**
  * @file holm_xc_plugin.cpp
  * @brief ADR 0010/0011 · libholm_xc.so：XComponent OnFrame + Runtime/Lite 双轨
- * @date 2026-11-15
- * @author Auto
+ * Present 经 KN holm_ohos_bridge_*（dlsym）；禁止直调 kmp_wgpu_session_*。
+ * @date 2026-11-16
+ * @author jlj
  */
 #include "holm_xc_island.h"
-#include "holm_runtime.h"
+#include "holm_ohos_bridge.h"
 
 #include <ace/xcomponent/native_interface_xcomponent.h>
 #include <hilog/log.h>
@@ -27,10 +28,28 @@
 
 namespace {
 
-constexpr const char *kExecutorRuntime = "runtime";
-constexpr const char *kExecutorLite = "lite";
+constexpr const char *kExecutorWgpu = "renderer-wgpu";
+constexpr const char *kExecutorGl = "renderer-gl";
 constexpr const char *kBackendGles2Ohos = "gles2-ohos";
 constexpr double kNsPerSec = 1e9;
+
+HolmOhosBridgeApi g_bridgeApi {};
+bool g_bridgeResolved = false;
+
+bool EnsureBridgeResolved()
+{
+    if (g_bridgeResolved) {
+        return true;
+    }
+    // libshared 可能晚于 XComponent 首帧；失败可重试（勿一次定终身）。
+    g_bridgeResolved = HolmOhosBridgeResolve(&g_bridgeApi);
+    return g_bridgeResolved;
+}
+
+const HolmOhosBridgeApi &Bridge()
+{
+    return g_bridgeApi;
+}
 
 bool NapiOk(napi_status status)
 {
@@ -265,13 +284,15 @@ void FlushDeferredJs(HolmXcIsland &island)
 
 bool IsRuntime(const HolmXcIsland &island)
 {
-    return island.executor == kExecutorRuntime;
+    return island.executor == kExecutorWgpu;
 }
 
 void DestroyRuntimeSession(HolmXcIsland &island)
 {
     if (island.sessionHandle != 0) {
-        holm_runtime_session_destroy(island.sessionHandle);
+        if (EnsureBridgeResolved()) {
+            Bridge().destroy(static_cast<int64_t>(island.sessionHandle));
+        }
         island.sessionHandle = 0;
     }
 }
@@ -347,8 +368,9 @@ void ApplyDrawSizeNow(HolmXcIsland &island)
     uint32_t h = 1;
     GetSurfaceSize(island, island.nativeWindow, w, h);
     if (IsRuntime(island)) {
-        if (island.sessionHandle != 0) {
-            holm_runtime_session_resize(island.sessionHandle, w, h);
+        if (island.sessionHandle != 0 && EnsureBridgeResolved()) {
+            Bridge().resize(static_cast<int64_t>(island.sessionHandle), static_cast<int32_t>(w),
+                static_cast<int32_t>(h));
         }
         return;
     }
@@ -364,38 +386,39 @@ void ApplyDrawSizeNow(HolmXcIsland &island)
 
 void ApplyRuntimeShaders(HolmXcIsland &island)
 {
-    if (island.sessionHandle == 0) {
+    if (island.sessionHandle == 0 || !EnsureBridgeResolved()) {
         return;
     }
+    const int64_t handle = static_cast<int64_t>(island.sessionHandle);
     std::string trimmed = TrimCopy(island.fragmentShader);
     if (trimmed.empty()) {
-        holm_runtime_session_set_custom_fs(island.sessionHandle, "");
+        Bridge().setCustomFs(handle, "");
         if (!island.scene.empty()) {
-            holm_runtime_session_set_scene(island.sessionHandle, island.scene.c_str());
+            Bridge().setScene(handle, island.scene.c_str());
         }
         // 空片元 ClearTri：ok=false，对齐 Lite 拒绝语义（审查 P2）
-        FireShaderCompiled(island, false, 0.0, 0.0, kExecutorRuntime);
+        FireShaderCompiled(island, false, 0.0, 0.0, kExecutorWgpu);
         return;
     }
     if (!LooksLikeWgsl(trimmed)) {
-        FireShaderCompiled(island, false, 0.0, 0.0, kExecutorRuntime);
+        FireShaderCompiled(island, false, 0.0, 0.0, kExecutorWgpu);
         return;
     }
     using Clock = std::chrono::steady_clock;
     auto t0 = Clock::now();
-    int ok = holm_runtime_session_set_custom_fs(island.sessionHandle, trimmed.c_str());
+    int ok = Bridge().setCustomFs(handle, trimmed.c_str());
     double compileMs = std::chrono::duration<double, std::milli>(Clock::now() - t0).count();
     if (ok == 0) {
         char codeBuf[64] = {0};
         char msgBuf[512] = {0};
-        holm_runtime_session_last_error_code(island.sessionHandle, codeBuf, sizeof(codeBuf));
-        holm_runtime_session_last_error_message(island.sessionHandle, msgBuf, sizeof(msgBuf));
+        Bridge().lastErrorCode(handle, codeBuf, static_cast<int32_t>(sizeof(codeBuf)));
+        Bridge().lastErrorMessage(handle, msgBuf, static_cast<int32_t>(sizeof(msgBuf)));
         const char *code = codeBuf[0] ? codeBuf : "SHADER_CUSTOM";
         const char *msg = msgBuf[0] ? msgBuf : "Runtime setCustomFs failed";
         FireError(island, code, msg);
-        FireShaderCompiled(island, false, 0.0, compileMs, kExecutorRuntime);
+        FireShaderCompiled(island, false, 0.0, compileMs, kExecutorWgpu);
     } else {
-        FireShaderCompiled(island, true, 0.0, compileMs, kExecutorRuntime);
+        FireShaderCompiled(island, true, 0.0, compileMs, kExecutorWgpu);
     }
 }
 
@@ -407,20 +430,23 @@ bool ApplyLiteShaders(HolmXcIsland &island, bool reportDialectError)
 {
     if (!island.liteGl.ready) {
         // Surface 未就绪也结束本次尝试，避免业务干等（审查 P2）
-        FireShaderCompiled(island, false, 0.0, 0.0, kExecutorLite);
+        FireShaderCompiled(island, false, 0.0, 0.0, kExecutorGl);
         return false;
     }
     std::string trimmed = TrimCopy(island.fragmentShader);
     if (trimmed.empty()) {
-        FireError(island, "FRAGMENT_REQUIRED", "fragmentShader required (Shadertoy body)");
-        FireShaderCompiled(island, false, 0.0, 0.0, kExecutorLite);
+        // 首包未到：不抢报；已 onReady 后被清空才 FRAGMENT_REQUIRED（对齐 iOS）
+        if (island.readyFired) {
+            FireError(island, "FRAGMENT_REQUIRED", "fragmentShader required (Shadertoy body)");
+            FireShaderCompiled(island, false, 0.0, 0.0, kExecutorGl);
+        }
         return false;
     }
     if (LooksLikeWgsl(trimmed)) {
         if (reportDialectError) {
             FireError(island, "SHADER_DIALECT",
                       "Lite fragmentShader must be GLSL Shadertoy body (WGSL ignored)");
-            FireShaderCompiled(island, false, 0.0, 0.0, kExecutorLite);
+            FireShaderCompiled(island, false, 0.0, 0.0, kExecutorGl);
         }
         // 切轨暂态仍持 WGSL：不报 compile fail，等 Compose 换成 LITE_BODY
         return false;
@@ -431,11 +457,11 @@ bool ApplyLiteShaders(HolmXcIsland &island, bool reportDialectError)
     double compileMs = 0.0;
     if (!HolmXcLiteGlSetFragmentBody(island.liteGl, trimmed, &errCode, &errMsg, &wrapMs, &compileMs)) {
         FireError(island, errCode.c_str(), errMsg.c_str());
-        FireShaderCompiled(island, false, wrapMs, compileMs, kExecutorLite);
+        FireShaderCompiled(island, false, wrapMs, compileMs, kExecutorGl);
         return false;
     }
     HolmXcLiteGlSetLiquid(island.liteGl, island.liquidBoost, island.liquidBend);
-    FireShaderCompiled(island, true, wrapMs, compileMs, kExecutorLite);
+    FireShaderCompiled(island, true, wrapMs, compileMs, kExecutorGl);
     return true;
 }
 
@@ -489,18 +515,19 @@ void OnFramePump(OH_NativeXComponent *component, uint64_t timestamp, uint64_t /*
     }
 
     if (IsRuntime(island)) {
-        if (island.sessionHandle == 0) {
+        if (island.sessionHandle == 0 || !EnsureBridgeResolved()) {
             return;
         }
-        if (!holm_runtime_session_tick(island.sessionHandle, static_cast<float>(dt))) {
+        const int64_t handle = static_cast<int64_t>(island.sessionHandle);
+        if (Bridge().tick(handle, static_cast<float>(dt)) == 0) {
             if (!island.blockedNotified) {
                 island.blockedNotified = true;
                 char codeBuf[64] = {0};
                 char msgBuf[512] = {0};
-                holm_runtime_session_last_error_code(island.sessionHandle, codeBuf, sizeof(codeBuf));
-                holm_runtime_session_last_error_message(island.sessionHandle, msgBuf, sizeof(msgBuf));
+                Bridge().lastErrorCode(handle, codeBuf, static_cast<int32_t>(sizeof(codeBuf)));
+                Bridge().lastErrorMessage(handle, msgBuf, static_cast<int32_t>(sizeof(msgBuf)));
                 const char *code = codeBuf[0] ? codeBuf : "TICK";
-                const char *msg = msgBuf[0] ? msgBuf : "holm_runtime tick failed";
+                const char *msg = msgBuf[0] ? msgBuf : "kmp_wgpu tick failed";
                 FireError(island, code, msg);
             }
             return;
@@ -541,6 +568,21 @@ void StartLiteIfNeeded(HolmXcIsland &island, void *window)
     if (window == nullptr) {
         FireError(island, "BLOCKED", "OHNativeWindow null");
         return;
+    }
+    if (!EnsureBridgeResolved()) {
+        FireError(island, "BLOCKED",
+            "holm_ohos_bridge unresolved (libshared not loaded / missing @CName). No silent GLES stand-in.");
+        island.blockedNotified = true;
+        return;
+    }
+    {
+        char errBuf[512] = {0};
+        if (Bridge().requireProvider(kExecutorGl, errBuf, static_cast<int>(sizeof(errBuf))) != 0) {
+            const char *msg = errBuf[0] ? errBuf : "HolmProvider missing for renderer-gl";
+            FireError(island, "BLOCKED", msg);
+            island.blockedNotified = true;
+            return;
+        }
     }
     island.nativeWindow = window;
 
@@ -619,8 +661,23 @@ void StartRuntimeIfNeeded(HolmXcIsland &island, void *window)
     if (island.sessionHandle != 0) {
         return;
     }
-    if (holm_runtime_has_wgpu() == 0) {
-        FireError(island, "BLOCKED", "holm_runtime has_wgpu=0. No silent GLES stand-in.");
+    if (!EnsureBridgeResolved()) {
+        FireError(island, "BLOCKED",
+            "holm_ohos_bridge unresolved (libshared not loaded / missing @CName). No silent GLES stand-in.");
+        island.blockedNotified = true;
+        return;
+    }
+    {
+        char errBuf[512] = {0};
+        if (Bridge().requireProvider(kExecutorWgpu, errBuf, static_cast<int>(sizeof(errBuf))) != 0) {
+            const char *msg = errBuf[0] ? errBuf : "HolmProvider missing for renderer-wgpu";
+            FireError(island, "BLOCKED", msg);
+            island.blockedNotified = true;
+            return;
+        }
+    }
+    if (Bridge().hasWgpu() == 0) {
+        FireError(island, "BLOCKED", "kmp_wgpu has_wgpu=0. No silent GLES stand-in.");
         island.blockedNotified = true;
         return;
     }
@@ -629,37 +686,37 @@ void StartRuntimeIfNeeded(HolmXcIsland &island, void *window)
     uint32_t h = 1;
     GetSurfaceSize(island, window, w, h);
 
-    uint64_t handle = holm_runtime_session_create_ohos(window, w, h);
+    int64_t handle = Bridge().create(window, static_cast<int32_t>(w), static_cast<int32_t>(h));
     if (handle == 0) {
         char createErr[512] = {0};
-        holm_runtime_last_create_error(createErr, sizeof(createErr));
+        Bridge().lastCreateError(createErr, static_cast<int32_t>(sizeof(createErr)));
         const char *msg = createErr[0]
             ? createErr
-            : "holm_runtime_session_create_ohos failed. No silent GLES stand-in.";
-        OH_LOG_ERROR(LOG_APP, "create_ohos failed: %{public}s", msg);
+            : "holm_ohos_bridge_create failed. No silent GLES stand-in.";
+        OH_LOG_ERROR(LOG_APP, "create_ohos via bridge failed: %{public}s", msg);
         FireError(island, "BLOCKED", msg);
         island.blockedNotified = true;
         return;
     }
-    island.sessionHandle = handle;
+    island.sessionHandle = static_cast<uint64_t>(handle);
     island.nativeWindow = window;
-    holm_runtime_session_set_liquid(island.sessionHandle, island.liquidBoost, island.liquidBend);
-    holm_runtime_session_set_playing(island.sessionHandle, island.playing ? 1u : 0u);
+    Bridge().setLiquid(handle, island.liquidBoost, island.liquidBend);
+    Bridge().setPlaying(handle, island.playing ? 1 : 0);
     ApplyRuntimeShaders(island);
 
     char backendBuf[64] = {0};
-    holm_runtime_session_backend_id(island.sessionHandle, backendBuf, sizeof(backendBuf));
+    Bridge().backendId(handle, backendBuf, static_cast<int32_t>(sizeof(backendBuf)));
     const char *backend = backendBuf[0] != '\0' ? backendBuf : "wgpu-m0";
 
-    if (!holm_runtime_session_tick(island.sessionHandle, 1.f / 60.f)) {
+    if (Bridge().tick(handle, 1.f / 60.f) == 0) {
         char codeBuf[64] = {0};
         char msgBuf[512] = {0};
-        holm_runtime_session_last_error_code(island.sessionHandle, codeBuf, sizeof(codeBuf));
-        holm_runtime_session_last_error_message(island.sessionHandle, msgBuf, sizeof(msgBuf));
+        Bridge().lastErrorCode(handle, codeBuf, static_cast<int32_t>(sizeof(codeBuf)));
+        Bridge().lastErrorMessage(handle, msgBuf, static_cast<int32_t>(sizeof(msgBuf)));
         const char *code = codeBuf[0] ? codeBuf : "TICK";
         const char *msg = msgBuf[0]
             ? msgBuf
-            : "holm_runtime tick failed after create. No silent GLES stand-in.";
+            : "kmp_wgpu tick failed after create. No silent GLES stand-in.";
         DestroyRuntimeSession(island);
         FireError(island, code, msg);
         island.blockedNotified = true;
@@ -736,7 +793,10 @@ void OnSurfaceChanged(OH_NativeXComponent *component, void *window)
             StartRuntimeIfNeeded(island, window);
             return;
         }
-        holm_runtime_session_resize(island.sessionHandle, w, h);
+        if (EnsureBridgeResolved()) {
+            Bridge().resize(static_cast<int64_t>(island.sessionHandle), static_cast<int32_t>(w),
+                static_cast<int32_t>(h));
+        }
         return;
     }
 
@@ -795,14 +855,19 @@ HolmXcIsland *IslandFromArg0(napi_env env, napi_callback_info info, size_t minAr
 napi_value NapiHasWgpu(napi_env env, napi_callback_info /*info*/)
 {
     napi_value result = nullptr;
-    napi_create_int32(env, static_cast<int32_t>(holm_runtime_has_wgpu()), &result);
+    int32_t value = 0;
+    if (EnsureBridgeResolved()) {
+        value = Bridge().hasWgpu();
+    }
+    napi_create_int32(env, value, &result);
     return result;
 }
 
 napi_value NapiAbiVersion(napi_env env, napi_callback_info /*info*/)
 {
+    // Present 经 KN；壳不再直读 kmp_wgpu_abi_version。未知时回 0。
     napi_value result = nullptr;
-    napi_create_int32(env, static_cast<int32_t>(holm_runtime_abi_version()), &result);
+    napi_create_int32(env, 0, &result);
     return result;
 }
 
@@ -832,8 +897,8 @@ napi_value NapiSetExecutor(napi_env env, napi_callback_info info)
     for (auto &c : exec) {
         c = static_cast<char>(tolower(c));
     }
-    if (exec != kExecutorRuntime) {
-        exec = kExecutorLite;
+    if (exec != kExecutorWgpu) {
+        exec = kExecutorGl;
     }
     if (exec == island->executor) {
         return undefined;
@@ -896,8 +961,8 @@ napi_value NapiSetPlaying(napi_env env, napi_callback_info info)
     bool playing = true;
     napi_get_value_bool(env, args[1], &playing);
     island->playing = playing;
-    if (island->sessionHandle != 0) {
-        holm_runtime_session_set_playing(island->sessionHandle, playing ? 1u : 0u);
+    if (island->sessionHandle != 0 && EnsureBridgeResolved()) {
+        Bridge().setPlaying(static_cast<int64_t>(island->sessionHandle), playing ? 1 : 0);
     }
     return undefined;
 }
@@ -961,8 +1026,8 @@ napi_value NapiSetScene(napi_env env, napi_callback_info info)
         return undefined;
     }
     ReadUtf8Arg(env, args[1], island->scene);
-    if (island->sessionHandle != 0) {
-        holm_runtime_session_set_scene(island->sessionHandle, island->scene.c_str());
+    if (island->sessionHandle != 0 && EnsureBridgeResolved()) {
+        Bridge().setScene(static_cast<int64_t>(island->sessionHandle), island->scene.c_str());
     }
     return undefined;
 }
@@ -985,8 +1050,9 @@ napi_value NapiSetLiquid(napi_env env, napi_callback_info info)
     napi_get_value_double(env, args[2], &bend);
     island->liquidBoost = static_cast<float>(boost);
     island->liquidBend = static_cast<float>(bend);
-    if (island->sessionHandle != 0) {
-        holm_runtime_session_set_liquid(island->sessionHandle, island->liquidBoost, island->liquidBend);
+    if (island->sessionHandle != 0 && EnsureBridgeResolved()) {
+        Bridge().setLiquid(static_cast<int64_t>(island->sessionHandle), island->liquidBoost,
+            island->liquidBend);
     }
     if (island->liteGl.ready) {
         HolmXcLiteGlSetLiquid(island->liteGl, island->liquidBoost, island->liquidBend);

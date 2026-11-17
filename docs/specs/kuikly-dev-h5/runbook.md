@@ -5,7 +5,7 @@
 ## 结论
 
 本仓 H5 可冒烟：**双进程 + 双端口**；业务包走精简 Node 静态服（**不用** Kuikly 官方 whistle / npm serve）。  
-已验证（本机）：`8080` / `8083` 均 200；入口 `?page_name=home` → **示例1 / 双轨** / `holm_runtime_m0`。
+已验证（本机）：`8080` / `8083` 均 200；入口 `?page_name=home` → **示例1 / 双轨** / `holm_dualtrack`。
 
 ## 拓扑
 
@@ -61,7 +61,7 @@ node static_server/serve/index.js
 | pageName | 角色 |
 |---|---|
 | `home` | 入口 |
-| `holm_runtime_m0` | 示例1（隧道）/ Lite↔Runtime 双轨 |
+| `holm_dualtrack` | 示例1（隧道）/ Lite↔Runtime 双轨 |
 
 | 改了什么 | 重跑什么 |
 |---|---|
@@ -96,7 +96,7 @@ node static_server/serve/index.js
 5. **Windows + 未装 CocoaPods**  
    `gradle.properties` 可设 `kotlin.native.ignoreDisabledTargets=true`，避免无关 native 目标拖死配置。
 
-## Holm 示例1 目视（holm_runtime_m0）
+## Holm 示例1 目视（holm_dualtrack）
 
 - 示例1：霓虹隧道（Lite GLSL / Runtime WGSL）  
 - `maxFps`：`0 / 30 / 60 / 120`
@@ -122,7 +122,7 @@ node static_server/serve/index.js
 | pack 卡在 Yarn | GitHub 超时 | `node static_server/fetch-yarn-ivy.js` 后再 pack |
 | 改了 config.d 无效 | 旧 webpack 进程仍在 | 杀 8080 占用进程后重跑 `jsBrowserDevelopmentRun` |
 | `Cannot expand ZIP … kotlin_resources.zip` | 缓存里的 zip 实为反爬 HTML，或真损坏 | 见下节；**勿只删了再 `--refresh-dependencies`**（会再下到 HTML） |
-| Runtime 岛黑屏 / 深蓝清屏，Lite 正常 | 坏 WGSL 编译失败未接 onError（旧 wasm）或业务未看错误条 | 先看页内 `onError SHADER_CUSTOM` / `WGPU_*`；改 `holm-runtime` 后须重跑 `holm-runtime/build-wasm.ps1` 再 pack H5 |
+| Runtime 岛黑屏 / 深蓝清屏，Lite 正常 | 坏 WGSL 编译失败未接 onError（旧 wasm）或业务未看错误条 | 先看页内 `onError SHADER_CUSTOM` / `WGPU_*`；改 `kmp-wgpu-native` 后须重跑 `kmp-wgpu-native/build-wasm.ps1` 再 pack H5 |
 
 ### compose-js `kotlin_resources.zip`（pack / webpack 失败）
 
@@ -176,7 +176,7 @@ Copy-Item $out "$dest\compose-$ver.kotlin_resources.zip" -Force
 
 - `http://127.0.0.1:8080/`、`/h5App.js`、`http://127.0.0.1:8083/nativevue2.js` 均 200  
 - `h5App.js` **不含** `webpackUniversalModuleDefinition`  
-- 浏览器：`#root` 下出现业务节点；可进 `holm_runtime_m0`
+- 浏览器：`#root` 下出现业务节点；可进 `holm_dualtrack`
 
 ## 相关路径
 
@@ -185,5 +185,5 @@ Copy-Item $out "$dest\compose-$ver.kotlin_resources.zip" -Force
 | `h5App/` | 宿主壳；`webpack.config.d/output.js` |
 | `static_server/serve/index.js` | 8083 业务包静态服 |
 | `KuiklyHolmCore/src/jsMain/.../HolmGlPumpSource.kt` | WebGL 泵 / maxFps |
-| `holmDemo/.../HolmRuntimeM0Pager.kt` | `holm_runtime_m0`（示例1） |
+| `holmDemo/.../HolmDualTrackPager.kt` | `holm_dualtrack`（示例1） |
 | `docs/specs/holm-render-substrate/changelog.md` | 底座 / 删五席 changelog |

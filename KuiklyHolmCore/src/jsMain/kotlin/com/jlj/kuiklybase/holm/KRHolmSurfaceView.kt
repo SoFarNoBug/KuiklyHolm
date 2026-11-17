@@ -33,6 +33,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
     private var _runtimeLoadWaiting: Boolean = false
     private var _runtimeLoadPollId: Int = 0
     private var _runtimeSession: dynamic = null
+    private var _runtimePass: HolmFullscreenPass? = null
     private var _runtimeRafId: Int = 0
     private var _runtimeTimerId: Int = 0
     private var _runtimeLastTs: Double = 0.0
@@ -92,7 +93,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                 val next = propValue.toString()
                 if (next != _vertexShader) {
                     _vertexShader = next
-                    if (!HolmExecutor.isRuntime(_executor)) {
+                    if (!HolmExecutor.isWgpu(_executor)) {
                         postScene()
                     }
                 }
@@ -127,7 +128,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                 _maxFps = propValue.toHolmInt(HolmSurfaceAttr.DEFAULT_MAX_FPS).coerceAtLeast(0)
                 postSet()
                 // 主线程 Runtime：跨 60 切换 rAF/timer 须立刻重调度
-                if (HolmExecutor.isRuntime(_executor) && !_runtimeUsesWorker && _runtimeSession != null) {
+                if (HolmExecutor.isWgpu(_executor) && !_runtimeUsesWorker && _runtimeSession != null) {
                     startRuntimeLoop()
                 }
                 true
@@ -165,8 +166,11 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
             }
             HolmSurfaceEvent.ON_ERROR -> {
                 _onError = propValue.unsafeCast<KuiklyRenderCallback>()
-                // Attr 可能先于 Event 触发 BLOCKED；与 onReady 对称重放
-                replayPendingError()
+                // Attr 可能先于 Event 触发 BLOCKED；仅重放创建期 BLOCKED。
+                // SHADER_*/TICK 等若每轮 Compose 重绑都 replay，会在成功换档后把旧红字打回（P2-h5-error-sticky-ui）。
+                if (_pendingErrorCode == HolmExecutor.ERROR_BLOCKED) {
+                    replayPendingError()
+                }
                 true
             }
             HolmSurfaceEvent.ON_PERF -> {
@@ -184,13 +188,13 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
 
     override fun onAddToParent(parent: Element) {
         _attached = true
-        if (HolmExecutor.isRuntime(_executor)) {
+        if (HolmExecutor.isWgpu(_executor)) {
             applyExecutorMode()
         } else if (!_started) {
             startPump()
         }
         attachObservers()
-        if (!HolmExecutor.isRuntime(_executor)) {
+        if (!HolmExecutor.isWgpu(_executor)) {
             postPlaying(effectivePlaying())
         }
     }
@@ -359,7 +363,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
     }
 
     private fun postSet() {
-        if (HolmExecutor.isRuntime(_executor)) {
+        if (HolmExecutor.isWgpu(_executor)) {
             if (_runtimeUsesWorker) {
                 if (!_started) return
                 val msg = js("{}")
@@ -371,7 +375,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                 return
             }
             val session = _runtimeSession ?: return
-            HolmRuntimeNative.sessionSetLiquid(session, _liquidBoost, _liquidBend)
+            HolmWgpuNative.sessionSetLiquid(session, _liquidBoost, _liquidBend)
             return
         }
         if (!_started) return
@@ -386,7 +390,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
     }
 
     private fun postScene() {
-        if (HolmExecutor.isRuntime(_executor)) {
+        if (HolmExecutor.isWgpu(_executor)) {
             if (_runtimeUsesWorker) {
                 if (!_started) return
                 val msg = js("{}")
@@ -425,7 +429,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                 .unsafeCast<Double>()
             _lastLiteWrapMs = (t1 - t0).toFloat()
             fireError("SHADER_WRAP", t.message ?: "wrap failed")
-            fireShaderCompiled(false, _lastLiteWrapMs, 0f, HolmExecutor.LITE)
+            fireShaderCompiled(false, _lastLiteWrapMs, 0f, HolmExecutor.GL)
             ""
         }
     }
@@ -433,54 +437,113 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
     private fun fragmentMatchesCurrentExecutor(src: String): Boolean {
         if (src.isBlank()) return true
         val wgsl = HolmShaderResolve.looksLikeWgslFragment(src)
-        return if (HolmExecutor.isRuntime(_executor)) wgsl else !wgsl
+        return if (HolmExecutor.isWgpu(_executor)) wgsl else !wgsl
+    }
+
+    
+    private fun applyRuntimeShaders(pass: HolmFullscreenPass) {
+        val custom = _fragmentShader.trim()
+        pass.setCustomFs("")
+        if (custom.isNotEmpty()) {
+            if (!HolmShaderResolve.looksLikeWgslFragment(custom)) {
+                pass.setScene(_scene)
+                fireError(
+                    "SHADER_CUSTOM",
+                    "Runtime fragmentShader must be WGSL (non-WGSL custom ignored)",
+                )
+                fireShaderCompiled(false, 0f, 0f, HolmExecutor.WGPU)
+                return
+            }
+            val t0 = js("typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()")
+                .unsafeCast<Double>()
+            val ok = pass.setCustomFs(custom)
+            val t1 = js("typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()")
+                .unsafeCast<Double>()
+            val compileMs = (t1 - t0).toFloat()
+            flushRuntimePassErrors(pass)
+            if (!ok) {
+                pass.setPlaying(false)
+                _playing = false
+                fireError("SHADER_CUSTOM", "Runtime setCustomFs failed")
+                fireShaderCompiled(false, 0f, compileMs, HolmExecutor.WGPU)
+            } else {
+                discardRuntimeSessionErrors(pass.device.handle.asDynamic())
+                clearPendingError()
+                pass.setPlaying(effectivePlaying())
+                if (effectivePlaying() && _runtimeRafId == 0 && _runtimeTimerId == 0) {
+                    startRuntimeLoop()
+                }
+                fireShaderCompiled(true, 0f, compileMs, HolmExecutor.WGPU)
+            }
+        } else {
+            pass.setScene(_scene)
+            fireShaderCompiled(false, 0f, 0f, HolmExecutor.WGPU)
+        }
+    }
+
+    private fun flushRuntimePassErrors(pass: HolmFullscreenPass) {
+        for ((code, message) in pass.drainErrors()) {
+            fireError(code.ifBlank { "WGPU_VALIDATION" }, message)
+        }
     }
 
     private fun applyRuntimeShaders(session: dynamic) {
         val custom = _fragmentShader.trim()
         // 切换样本/轨：先卸上一档，再装新；失败停 ClearTri
-        HolmRuntimeNative.sessionSetCustomFs(session, "")
+        HolmWgpuNative.sessionSetCustomFs(session, "")
         if (custom.isNotEmpty()) {
             if (!HolmShaderResolve.looksLikeWgslFragment(custom)) {
                 // 仍持 GLSL 正文时跳过，等 Attr 换成 WGSL（已卸旧 custom）
-                HolmRuntimeNative.sessionSetScene(session, _scene)
-                flushRuntimeSessionErrors(session)
-                fireShaderCompiled(false, 0f, 0f, HolmExecutor.RUNTIME)
+                HolmWgpuNative.sessionSetScene(session, _scene)
+                discardRuntimeSessionErrors(session)
+                fireShaderCompiled(false, 0f, 0f, HolmExecutor.WGPU)
                 return
             }
             val t0 = js("typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()")
                 .unsafeCast<Double>()
-            val err = HolmRuntimeNative.sessionSetCustomFs(session, custom)
+            val err = HolmWgpuNative.sessionSetCustomFs(session, custom)
             val t1 = js("typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()")
                 .unsafeCast<Double>()
             val compileMs = (t1 - t0).toFloat()
-            val drained = flushRuntimeSessionErrors(session)
             if (err != null) {
                 // wasm 已 present_clear_only + playing=false；主线程泵对齐停
-                HolmRuntimeNative.sessionSetPlaying(session, false)
+                val drained = flushRuntimeSessionErrors(session)
+                HolmWgpuNative.sessionSetPlaying(session, false)
                 _playing = false
                 postPlaying(false)
                 if (drained == 0) {
                     fireError("SHADER_CUSTOM", err)
                 }
-                fireShaderCompiled(false, 0f, compileMs, HolmExecutor.RUNTIME)
+                fireShaderCompiled(false, 0f, compileMs, HolmExecutor.WGPU)
             } else {
+                // 成功：丢掉上一失败/迟到 uncaptured，禁止再 fireError 盖住新特效（P2-h5-error-sticky-ui）
+                discardRuntimeSessionErrors(session)
                 clearPendingError()
-                fireShaderCompiled(true, 0f, compileMs, HolmExecutor.RUNTIME)
+                HolmWgpuNative.sessionSetPlaying(session, effectivePlaying())
+                if (effectivePlaying() && _runtimeRafId == 0 && _runtimeTimerId == 0) {
+                    startRuntimeLoop()
+                }
+                fireShaderCompiled(true, 0f, compileMs, HolmExecutor.WGPU)
             }
         } else {
-            HolmRuntimeNative.sessionSetScene(session, _scene)
-            flushRuntimeSessionErrors(session)
+            HolmWgpuNative.sessionSetScene(session, _scene)
+            discardRuntimeSessionErrors(session)
             clearPendingError()
             // 空片元 ClearTri：ok=false，对齐 Lite 拒绝语义（审查 P2）
-            fireShaderCompiled(false, 0f, 0f, HolmExecutor.RUNTIME)
+            fireShaderCompiled(false, 0f, 0f, HolmExecutor.WGPU)
         }
+    }
+
+    /** 取出 pending 但不投递 onError（成功换档 / 成功 tick 清残留） */
+    private fun discardRuntimeSessionErrors(session: dynamic) {
+        if (session == null) return
+        HolmWgpuNative.sessionDrainErrors(session)
     }
 
     /** @return 已投递条数 */
     private fun flushRuntimeSessionErrors(session: dynamic): Int {
         if (session == null) return 0
-        val errs = HolmRuntimeNative.sessionDrainErrors(session)
+        val errs = HolmWgpuNative.sessionDrainErrors(session)
         if (errs.isEmpty()) return 0
         for (item in errs) {
             val code = (item.code as? String)?.ifBlank { null } ?: "WGPU_VALIDATION"
@@ -494,7 +557,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
         if (w == _lastW && h == _lastH) return
         _lastW = w
         _lastH = h
-        if (HolmExecutor.isRuntime(_executor)) {
+        if (HolmExecutor.isWgpu(_executor)) {
             if (_runtimeUsesWorker) {
                 if (!_started) return
                 val msg = js("{}")
@@ -508,7 +571,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
             // 与 Lite 一致：CSS 像素缓冲，不乘 DPR
             _canvas.width = w.coerceAtLeast(1)
             _canvas.height = h.coerceAtLeast(1)
-            HolmRuntimeNative.sessionResize(session, w.coerceAtLeast(1), h.coerceAtLeast(1))
+            HolmWgpuNative.sessionResize(session, w.coerceAtLeast(1), h.coerceAtLeast(1))
             return
         }
         if (!_started) return
@@ -520,7 +583,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
     }
 
     private fun postPlaying(playing: Boolean) {
-        if (HolmExecutor.isRuntime(_executor)) {
+        if (HolmExecutor.isWgpu(_executor)) {
             if (_runtimeUsesWorker) {
                 if (!_started) return
                 val msg = js("{}")
@@ -530,7 +593,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                 return
             }
             val session = _runtimeSession ?: return
-            HolmRuntimeNative.sessionSetPlaying(session, playing)
+            HolmWgpuNative.sessionSetPlaying(session, playing)
             if (playing) {
                 if (_runtimeRafId == 0) startRuntimeLoop()
             } else {
@@ -582,7 +645,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                 val code = (data.code as? Any)?.toString() ?: "PUMP_ERROR"
                 val message = (data.message as? Any)?.toString() ?: "pump error"
                 // Runtime Worker 异步建 Session 失败：与主线程 onError 同契约 + 尝试主线程回退
-                if (_runtimeUsesWorker && HolmExecutor.isRuntime(_executor) &&
+                if (_runtimeUsesWorker && HolmExecutor.isWgpu(_executor) &&
                     (code == "CREATE_SESSION" || code == "IMPORT_SCRIPTS" || code == "NO_BINDGEN" ||
                         code == "NO_WASM_URL" || code == "TICK")
                 ) {
@@ -667,13 +730,17 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
 
     private fun destroyRuntimeSession() {
         stopRuntimeLoop()
+        val pass = _runtimePass
+        _runtimePass = null
         val session = _runtimeSession
         _runtimeSession = null
         _runtimeSessionStarted = false
         _runtimeUsesWorker = false
         _runtimeMainFallbackTried = false
-        if (session != null) {
-            HolmRuntimeNative.sessionDestroy(session)
+        if (pass != null) {
+            pass.destroy()
+        } else if (session != null) {
+            HolmWgpuNative.sessionDestroy(session)
         }
     }
 
@@ -697,7 +764,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
      * Worker 建 Session 失败：拆 Worker、换 canvas，优先主线程回退一次；再失败则 BLOCKED+ready。
      */
     private fun handleRuntimeWorkerFatal(code: String, message: String) {
-        if (!_attached || !HolmExecutor.isRuntime(_executor)) {
+        if (!_attached || !HolmExecutor.isWgpu(_executor)) {
             _runtimeSessionStarted = false
             _backend = HolmExecutor.BACKEND_WGPU_BLOCKED
             if (!_runtimeBlockedNotified) {
@@ -756,7 +823,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
         onFrame = frame@{ now ->
             _runtimeRafId = 0
             _runtimeTimerId = 0
-            if (!HolmExecutor.isRuntime(_executor) || _runtimeSession == null || _runtimeUsesWorker) {
+            if (!HolmExecutor.isWgpu(_executor) || _runtimeSession == null || _runtimeUsesWorker) {
                 return@frame
             }
             if (!effectivePlaying()) {
@@ -773,22 +840,24 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                 val dtSecs = (_runtimeAccMs / 1000.0).toFloat()
                 _runtimeAccMs = 0.0
                 val session = _runtimeSession
-                val tickErr = HolmRuntimeNative.sessionTick(session, dtSecs)
-                val drained = flushRuntimeSessionErrors(session)
+                val tickErr = HolmWgpuNative.sessionTick(session, dtSecs)
                 if (tickErr != null) {
+                    val drained = flushRuntimeSessionErrors(session)
                     _backend = HolmExecutor.BACKEND_WGPU_BLOCKED
                     if (!_runtimeBlockedNotified) {
                         _runtimeBlockedNotified = true
                         if (drained == 0) {
                             fireError(
                                 "TICK",
-                                tickErr.ifBlank { "holm-runtime tick failed" },
+                                tickErr.ifBlank { "kmp-wgpu-native tick failed" },
                             )
                         }
                     }
                     stopRuntimeLoop()
                     return@frame
                 }
+                // 成功帧：丢弃迟到 uncaptured，勿把上一档 SHADER_* 再打到业务
+                discardRuntimeSessionErrors(session)
                 // 与 Lite 对齐：有 onPerf 时约 1s 汇总一次，禁止每帧打穿 Compose
                 if (_onPerf != null) {
                     if (_runtimePerfWindowMs == 0.0) {
@@ -832,10 +901,10 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
 
     /** Runtime Worker 路径：OffscreenCanvas + wasm Session，主线程只转发。 */
     private fun startRuntimeWorkerPath(w: Int, h: Int): Boolean {
-        val script = HolmRuntimePumpSource.SCRIPT
-        val glueUrl = js("new URL('holm-runtime/holm_runtime.js', location.href).href")
+        val script = HolmWgpuPumpSource.SCRIPT
+        val glueUrl = js("new URL('kmp-wgpu-native/kmp_wgpu_native.js', location.href).href")
             .unsafeCast<String>()
-        val wasmUrl = js("new URL('holm-runtime/holm_runtime_bg.wasm', location.href).href")
+        val wasmUrl = js("new URL('kmp-wgpu-native/kmp_wgpu_native_bg.wasm', location.href).href")
             .unsafeCast<String>()
         val init = js("{}")
         init.type = "init"
@@ -997,15 +1066,30 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
     }
 
     private fun applyExecutorMode() {
-        if (HolmExecutor.isRuntime(_executor)) {
+        HolmUmbrellaBootstrap.ensure()
+        try {
+            HolmProviders.requireForExecutor(_executor)
+        } catch (e: IllegalStateException) {
+            _backend = HolmExecutor.BACKEND_WGPU_BLOCKED
+            if (!_runtimeBlockedNotified) {
+                _runtimeBlockedNotified = true
+                fireError(HolmExecutor.ERROR_BLOCKED, e.message ?: HolmProviders.missingDefaultMessage())
+            }
+            if (!_readyFired) {
+                _readyFired = true
+                fireReady()
+            }
+            return
+        }
+        if (HolmExecutor.isWgpu(_executor)) {
             if (_started) {
                 destroyPump()
             }
             runCatching {
                 _canvas.style.setProperty("background", "#1E2A4A")
             }
-            if (!HolmRuntimeNative.isAvailable()) {
-                if (HolmRuntimeNative.isLoadPending()) {
+            if (!HolmWgpuNative.isAvailable()) {
+                if (HolmWgpuNative.isLoadPending()) {
                     if (!_runtimeLoadWaiting) {
                         _runtimeLoadWaiting = true
                         // wasm 仍在 init：短轮询，避免首屏永久 BLOCKED；保存 id 便于卸岛取消
@@ -1015,9 +1099,9 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                               var n = 0;
                               var t = setInterval(function() {
                                 n++;
-                                if (window.__holmRuntime && window.__holmRuntime.ready === true) {
+                                if (window.__kmpWgpu && window.__kmpWgpu.ready === true) {
                                   clearInterval(t); retry(t);
-                                } else if (window.__holmRuntime && window.__holmRuntime.error) {
+                                } else if (window.__kmpWgpu && window.__kmpWgpu.error) {
                                   clearInterval(t); retry(t);
                                 } else if (n >= 40) {
                                   clearInterval(t); retry(t);
@@ -1031,7 +1115,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                                 _runtimeLoadPollId = 0
                             }
                             _runtimeLoadWaiting = false
-                            if (_attached && HolmExecutor.isRuntime(_executor)) {
+                            if (_attached && HolmExecutor.isWgpu(_executor)) {
                                 applyExecutorMode()
                             }
                         })
@@ -1041,7 +1125,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                 _backend = HolmExecutor.BACKEND_WGPU_BLOCKED
                 if (!_runtimeBlockedNotified) {
                     _runtimeBlockedNotified = true
-                    fireError(HolmExecutor.ERROR_BLOCKED, HolmRuntimeNative.blockedMessage())
+                    fireError(HolmExecutor.ERROR_BLOCKED, HolmWgpuNative.blockedMessage())
                 }
                 if (!_readyFired) {
                     _readyFired = true
@@ -1081,7 +1165,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
 
     /** 主线程 Runtime Session（Worker 不可用或 Worker 异步失败回退）。 */
     private fun startRuntimeMainSession() {
-        if (!_attached || !HolmExecutor.isRuntime(_executor)) {
+        if (!_attached || !HolmExecutor.isWgpu(_executor)) {
             _runtimeSessionStarted = false
             return
         }
@@ -1089,29 +1173,31 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
         val size = readBufferSize()
         _lastW = size.first
         _lastH = size.second
-        HolmRuntimeNative.createSession(
+        HolmWgpuNative.createFullscreenPass(
             canvas = _canvas,
             width = size.first,
             height = size.second,
-            onSuccess = { session, backend ->
-                if (!_attached || !HolmExecutor.isRuntime(_executor)) {
-                    HolmRuntimeNative.sessionDestroy(session)
-                    return@createSession
+            onSuccess = { pass ->
+                if (!_attached || !HolmExecutor.isWgpu(_executor)) {
+                    pass.destroy()
+                    return@createFullscreenPass
                 }
-                _runtimeSession = session
+                _runtimePass = pass
+                _runtimeSession = pass.device.handle.asDynamic()
                 _runtimeUsesWorker = false
+                val backend = pass.backendId()
                 _backend = if (backend.isNotBlank()) backend else HolmExecutor.BACKEND_WGPU_M0
                 runCatching { _canvas.style.removeProperty("background") }
-                applyRuntimeShaders(session)
-                HolmRuntimeNative.sessionSetLiquid(session, _liquidBoost, _liquidBend)
-                HolmRuntimeNative.sessionSetPlaying(session, effectivePlaying())
+                applyRuntimeShaders(pass)
+                pass.setLiquid(_liquidBoost, _liquidBend)
+                pass.setPlaying(effectivePlaying())
                 clearPendingError()
                 _readyFired = true
                 fireReady()
                 startRuntimeLoop()
             },
             onError = { message ->
-                if (!_attached || !HolmExecutor.isRuntime(_executor)) return@createSession
+                if (!_attached || !HolmExecutor.isWgpu(_executor)) return@createFullscreenPass
                 _runtimeSessionStarted = false
                 _backend = HolmExecutor.BACKEND_WGPU_BLOCKED
                 if (!_runtimeBlockedNotified) {

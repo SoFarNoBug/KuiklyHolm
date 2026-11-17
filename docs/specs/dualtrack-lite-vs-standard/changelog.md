@@ -1,5 +1,145 @@
 # dualtrack-lite-vs-standard · changelog
 
+## 2026-11-17（文案 · 后端→渲染后端）
+
+- [MODIFY] Demo/SoT：「双后端」→「双渲染后端」；chip 标签「渲染后端」
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：避免误读服务器后端｜待批 0
+
+## 2026-11-17（Attr/文案 · Lite·Runtime → renderer-gl / renderer-wgpu）
+
+- [MODIFY] `HolmExecutor`：`GL`/`WGPU` 线值 `renderer-gl`/`renderer-wgpu`；废 `lite`/`runtime`（无兼容）
+- [MODIFY] Demo chip/标题/Home；四端壳与 Provider key；活 SoT/runbook/device-check 描述
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：按确认放行 1｜待批 0
+
+## 2026-11-17（ADR 0014 · 消灭 holm-runtime 命名）
+
+- [MODIFY] 目录 `holm-runtime/` → `kmp-wgpu-native/`；crate/产物 `kmp_wgpu_native`；C ABI `kmp_wgpu_*`；H5 `__kmpWgpu` / `KmpWgpuSession`
+- [MODIFY] Holm 适配：`HolmWgpuNative` / `HolmWgpu*Bridge` / `HolmWgpuPumpSource`；Demo `@Page("holm_dualtrack")`
+- [ADD] ADR 0014（故意 ABI break，无兼容 shim）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan 改名｜待批 0
+
+## 2026-11-17（iOS ADD · kmp-wgpu Compute 回读）
+
+- [ADD] iOS：`holm_runtime_headless_*` + `ComputeReadback.ios`；Demo 页不再 stub FAIL
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改｜待批 0
+
+## 2026-11-17（Ohos ADD · kmp-wgpu Compute 回读）
+
+- [ADD] Ohos：`holm_runtime_headless_*` C ABI + `ComputeReadback.ohos`；Demo 页不再 stub FAIL
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改｜待批 0
+
+## 2026-11-17（Ohos FIX · bridge dlopen libshared）
+
+- [FIX] Lite/Runtime 同挂 `holm_ohos_bridge unresolved`：壳改显式 dlopen `libshared.so` + 可重试 resolve
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改｜待批 0
+
+## 2026-11-16（Ohos 对齐审查整改 · 可修 P2 口径）
+
+- [NOTE] setters / Provider 负向 / Lite+bridge / worktree：与 `kuikly-dev-ohos` 同日条；无行为回归改动
+- [NOTE] 真机 DualTrack 仍挂 `P1-device-verify`（签名装机）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：清审查可修口径｜待批 0
+
+## 2026-11-16（Ohos 三包对齐 · Present 经 KN Bridge）
+
+- [ADD] Ohos：`kmp-wgpu*` / `holm-renderer-*` ohosArm64；`HolmRuntimeOhosBridge` + `holm_ohos_bridge_*`；壳停直调 C
+- [MODIFY] ADR 0008/0010/0013 + D13：四端 Present 对齐；Maven/拆仓仍另单
+- 自测：`ohos_build.sh` + `assembleHap`；真机 DualTrack 待签名装机勾表
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan｜待批 0
+
+## 2026-11-16（Duo Sim Lite 冷启 + Runtime 出画）
+
+- [FIX] iOS Lite 冷启：空片元 defer + 晚到 shader 补 `onReady`（修 FRAGMENT_REQUIRED 粘住）
+- [NOTE] Duo：`_holm-ios-duo-lite.png` / `_holm-ios-duo-runtime.png`；热切未自动化；真机表 #5–#8 仍待
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改 DualTrack 出画｜待批 0
+
+## 2026-11-16（iOS 对齐审查整改 · Holm set* 分层）
+
+- [FIX] P2：`HolmIosNative` 独立 cinterop set*；kmp-wgpu ios 仅 Present 粗块
+- [NOTE] ohos 签名材料已从工作区还原；Sim Duo DualTrack 待勾真机表
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改审查项｜待批 0
+
+## 2026-11-16（iOS 架构对齐 Android · 三包 + kmp-wgpu Present）
+
+- [ADD] `:kmp-wgpu` / `:kmp-wgpu-surface` ios 目标：cinterop `holm_runtime.h`；`IosWgpuPlatform` / `IosSurfaces`
+- [ADD] `:holm-renderer-wgpu` ios：`HolmFullscreenPass` / `HolmIosNative` / `HolmRuntimeNative`；`:holm-renderer-gl` ios 目标
+- [ADD] `KuiklyHolmCore` ios：`api` 两 renderer；`HolmUmbrellaBootstrap`；`HolmRuntimeIosBridge`（ObjC：`HolmDemoHolmRuntimeIosBridge`）
+- [MODIFY] `KRHolmSurface.m`：Present 停直调 `holm_runtime_session_*`；经 bridge；切轨/start `requireProvider`；`HolmIosBridge.configure` 显式 register
+- [MODIFY] ADR 0008/0009 / CONTEXT / 00 D13·D14 / AGENTS / file-map / ios runbook
+- [NOTE] 泵仍 ObjC CADisplayLink（ADR 0009）；App 仍链 xcframework；iOS Compute 仍 stub；Ohos 另单
+- 自测：`:kmp-wgpu`…`:holmDemo:linkPodDebugFrameworkIosSimulatorArm64` 通过；`iosApp` 无 `holm_runtime_session_*`
+- 真机验证表：本单编译门禁已过；Sim/真机 DualTrack DoD 待审核员表 `docs/reviews/device-check-list/holm-ios-android-align.md`
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan 对齐 iOS｜待批 0
+
+## 2026-11-16（三包拆 · 清审查 P1/P2 可修项）
+
+- [FIX] P1-doc-drift：`docs/product/README` / ADR 0008 / D11 对齐 `holm-renderer-*`；写明 umbrella 自动注册为例外
+- [FIX] P1-plan-soft-drift（Demo 半）：`HolmDemoBootstrap` + `HomePager` / `KRApplication` / H5 `Main` 显式 `HolmProviders.register`
+- [FIX] P2-provider-ready-backend：Android Provider 失败设 `_providerBlocked`，`onReady.backend=wgpu-blocked`（对齐 H5）
+- [NOTE] 未做：Provider 真正分发 View 半部；H5 Worker 双路径收敛；worktree noise
+- 自测：`:KuiklyHolmCore` / `:holmDemo` / `:androidApp` Android + `:KuiklyHolmCore`/`:holmDemo` JS compile 通过
+- 真机验证表：`docs/reviews/device-check-list/holm-three-package-split.md`（仍挂 P1-device-verify）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：审查打回项整改｜待批 0
+
+## 2026-11-16（Holm 三包物理拆 · Android+H5 + kmp-wgpu 抽芯收尾）
+
+- [ADD] Gradle：`:holm-core` / `:holm-renderer-gl` / `:holm-renderer-wgpu`；`:KuiklyHolmCore` 改 umbrella（`api` 三包；iOS/Ohos 源暂留）
+- [ADD] `HolmBackendProvider` + `HolmProviders`（必设 / 缺则 BLOCKED）；`GlBackendProvider` / `WgpuBackendProvider`；umbrella `HolmUmbrellaBootstrap` 自动注册
+- [MODIFY] ADR 0008 / CONTEXT / 00 / glossary / AGENTS / file-map：包名 `holm-renderer-gl` / `holm-renderer-wgpu`（取代草案 `holm-gl` / `holm-wgpu`）
+- [MODIFY] Android Present 唯一入口：`KRHolmSurfaceView` → `HolmFullscreenPass`；Holm 语义 JNI → `HolmAndroidJni`（迁出 `AndroidWgpuPlatform`）
+- [MODIFY] H5 Runtime 主路径经 `createFullscreenPass`；Worker 仍经 `HolmRuntimeNative.sessionSet*`（符号名未改）
+- [NOTE] 本波不做 crate/so/wasm/`HolmRuntimeSession` 改名；不做 iOS/Ohos 物理拆；不做 Maven 独立坐标
+- 自测：`:holm-core` / `:holm-renderer-gl` / `:holm-renderer-wgpu` / `:KuiklyHolmCore` / `:holmDemo` / `:kmp-wgpu` Android+JS compile 通过；so 含 `HolmAndroidJni_nativeSet*`
+- 真机验证表：本单编译门禁已过；真机 DualTrack DoD 待审核员表 `docs/reviews/device-check-list/holm-three-package-split.md`
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan 物理拆｜待批 0
+
+## 2026-11-16（kmp-wgpu v1.1 · Headless Compute + 回读）
+
+- [ADD] `holm-runtime`：`compute_readback` / `HeadlessCompute`；Android JNI `nativeCreateHeadless`/`nativeComputeReadback`；wasm `HeadlessComputeSession`
+- [ADD] `:kmp-wgpu`：`createHeadlessDevice*` / `computeReadback*` / `ComputeReadbackSample`（方案 B 粗块；与 Present 分表）
+- [ADD] Demo：`kmp_wgpu_compute` 页（无 HolmSurface）；Home 入口；H5 `__holmRuntime.createHeadless`
+- [NOTE] 范围 Android+H5；iOS/Ohos stub「TBD」；未拆 Holm 三包
+- 自测：`:kmp-wgpu` / `:holmDemo` Android+JS compile；so 含 `nativeCreateHeadless`；wasm glue 含 `HeadlessComputeSession`
+- 真机：H5 Compute `ok size=8 sample=2…10` + Present `fps=60 wgpu-m0`；vivo V2545A Compute 同结果 + Present `fps=60 compile ok backend=wgpu-m0`
+- 真机验证表：见审查 `docs/reviews/review-kmp-wgpu-compute-v1.1.md` / 可执行档待审核员补 `device-check-list/kmp-wgpu-compute-v1.1.md`
+- 审查跟进：README 标短同步 / WGSL 双份同步义务
+- [FIX] review P1-main-thread-io：Android `*Async` 真下沉到 `kmp-wgpu-headless` 线程；Demo 回主线程再改 UI
+- [FIX] review P2-destroy-not-idempotent：`HeadlessDevice.destroy` 幂等
+- [FIX] review P2-wgsl-dual-copy：Rust/Kotlin 双侧交叉引用注释
+- [NOTE] P2-worktree-noise：本单提交勿带 `iosApp`/`ohosApp`/`static_server` 无关改动
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：审查打回项整改｜待批 0
+
+## 2026-11-16（H5 · 清 P2-h5-error-sticky-ui）
+
+- [FIX] H5 Runtime：成功 `setCustomFs` / 成功 `tick` 只 discard drain，不再把上一档 pending/`uncaptured` 打到 `onError`；成功装载后按 Attr 恢复泵
+- [FIX] H5 Worker `scene` 成功路径：若 `playing` 仍为 true 则 `start()` 自愈
+- [FIX] H5/Android `ON_ERROR` 重绑：只 replay `BLOCKED`，禁止把旧 `SHADER_*` 在 Compose 重绑时打回
+- [FIX] Demo：`shaderSeq`/`compiledOkSeq` 忽略迟到 SHADER_*；`onShaderCompiled(ok)` 清红字并恢复泵；`onPerf` 本代 ok 出帧清 sticky
+- 自测：`:holmDemo:packLocalJsBundleDebug` + H5「故意失败→隧道」→ `compile ok` / `fps≈60` / 无红字
+- 真机验证表：本单无新建表（复用 `docs/reviews/device-check-list/kmp-wgpu-extract-v1.md` #7）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改清审查 P2｜待批 0
+
+## 2026-11-16（kmp-wgpu v1 · 修审查 P0/P1）
+
+- [FIX] H5 `Device.sessionTick` / 装载路径：成败只信 wasm throw/`Result`，不再用 sticky `lastErrorCode` 否决成功帧（review P0-silent-fail）
+- [MODIFY] `sessionSetCustomFs`/`setScene`/`liquid`/`playing` 迁出 `kmp-wgpu` DeviceSession → Holm 适配（review P1-plan-soft-drift）
+- [FIX] Android `abiVersion()` 调 `nativeAbiVersion`
+- 自测：`:kmp-wgpu` / `:KuiklyHolmCore` Android+JS compile；本单无真机验证
+- 真机验证表：见 `docs/reviews/device-check-list/kmp-wgpu-extract-v1.md`（修后待勾）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：审查打回项整改｜待批 0
+
+## 2026-11-16（kmp-wgpu 抽芯 v1 · 方案 B）
+
+- [ADD] `:kmp-wgpu` / `:kmp-wgpu-surface`（Kotlin 近 wgpu 类型壳；粗粒度 Session 能力块；无逐 draw FFI）
+- [MODIFY] `holm-runtime`：`session_core` → `holm_fullscreen`；增 `primitives`；Cargo 叙事 `kmp_wgpu_native`；产物名仍 `holm_runtime`
+- [MODIFY] Android JNI 类 → `com.jlj.kmp.wgpu.AndroidWgpuPlatform`；增 `build-android.sh`（macOS）
+- [MODIFY] `HolmRuntimeNative`（Android/H5）门面改走 surface + Device；增 `HolmFullscreenPass`
+- [MODIFY] 已重编 `androidApp/.../libholm_runtime.so`（arm64 · ~4.0 MiB · 含新 JNI）
+- [NOTE] iOS / Ohos C ABI 未迁；Compute+回读 → v1.1；未物理拆 holm-core/gl/wgpu；H5 wasm 符号未改（仍 `HolmRuntimeSession`）
+- 自测：`:kmp-wgpu` / `:kmp-wgpu-surface` / `:KuiklyHolmCore` Android+JS compile 通过；`cargo ndk` 重编 so 成功；本单无真机验证
+- 真机验证表：本单无真机验证（装包验收另单）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan ADR 0013 抽芯｜待批 0
+- carried-over: DeviceSession 仍暴露 sessionSetCustomFs 等过渡粗块｜不修理由：v1 Holm 适配必需；README 已标明非长期公共面
+
 ## 2026-11-16（renderScale 可配置缓冲）
 
 - [ADD] `HolmSurfaceAttr.renderScale` / Compose 参数：相对**平台基线**，默认 `1`；夹紧 `(0,1]`；与 `maxFps` 正交

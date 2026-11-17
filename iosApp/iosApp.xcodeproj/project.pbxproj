@@ -21,7 +21,7 @@
 		A1B2C3D429A2B001009349F1 /* KRHolmSurface.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D329A2B001009349F1 /* KRHolmSurface.m */; };
 		A1B2C3D829A2B001009349F1 /* KRHolmMetalHostView.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D629A2B001009349F1 /* KRHolmMetalHostView.m */; };
 		A1B2C3F229A2B001009349F1 /* KRHolmGlesHostView.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3F029A2B001009349F1 /* KRHolmGlesHostView.m */; };
-		A1B2C3E129A2B001009349F1 /* HolmRuntime.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1B2C3E029A2B001009349F1 /* HolmRuntime.xcframework */; };
+		A1B2C3E129A2B001009349F1 /* KmpWgpuNative.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1B2C3E029A2B001009349F1 /* KmpWgpuNative.xcframework */; };
 		A1B2C3E329A2B001009349F1 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1B2C3E229A2B001009349F1 /* Metal.framework */; };
 		A1B2C3E529A2B001009349F1 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1B2C3E429A2B001009349F1 /* QuartzCore.framework */; };
 		A1B2C3F429A2B001009349F1 /* OpenGLES.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1B2C3F329A2B001009349F1 /* OpenGLES.framework */; };
@@ -55,7 +55,7 @@
 		A1B2C3D729A2B001009349F1 /* KRHolmMetalHostView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KRHolmMetalHostView.h; sourceTree = "<group>"; };
 		A1B2C3F029A2B001009349F1 /* KRHolmGlesHostView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KRHolmGlesHostView.m; sourceTree = "<group>"; };
 		A1B2C3F129A2B001009349F1 /* KRHolmGlesHostView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KRHolmGlesHostView.h; sourceTree = "<group>"; };
-		A1B2C3E029A2B001009349F1 /* HolmRuntime.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = HolmRuntime.xcframework; path = ../holm-runtime/dist/ios/HolmRuntime.xcframework; sourceTree = "<group>"; };
+		A1B2C3E029A2B001009349F1 /* KmpWgpuNative.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = KmpWgpuNative.xcframework; path = ../kmp-wgpu-native/dist/ios/KmpWgpuNative.xcframework; sourceTree = "<group>"; };
 		A1B2C3E229A2B001009349F1 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		A1B2C3E429A2B001009349F1 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
 		A1B2C3F329A2B001009349F1 /* OpenGLES.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGLES.framework; path = System/Library/Frameworks/OpenGLES.framework; sourceTree = SDKROOT; };
@@ -66,7 +66,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A1B2C3E129A2B001009349F1 /* HolmRuntime.xcframework in Frameworks */,
+				A1B2C3E129A2B001009349F1 /* KmpWgpuNative.xcframework in Frameworks */,
 				A1B2C3E329A2B001009349F1 /* Metal.framework in Frameworks */,
 				A1B2C3E529A2B001009349F1 /* QuartzCore.framework in Frameworks */,
 				A1B2C3F429A2B001009349F1 /* OpenGLES.framework in Frameworks */,
@@ -105,7 +105,7 @@
 		254BBAA1096EC0C0491EF8C3 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				A1B2C3E029A2B001009349F1 /* HolmRuntime.xcframework */,
+				A1B2C3E029A2B001009349F1 /* KmpWgpuNative.xcframework */,
 				A1B2C3E229A2B001009349F1 /* Metal.framework */,
 				A1B2C3E429A2B001009349F1 /* QuartzCore.framework */,
 				A1B2C3F329A2B001009349F1 /* OpenGLES.framework */,
@@ -478,12 +478,12 @@
 				ENABLE_PREVIEWS = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(SRCROOT)/../holm-runtime/dist/ios",
+					"$(SRCROOT)/../kmp-wgpu-native/dist/ios",
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(SRCROOT)/../holm-runtime/dist/ios/Headers",
-					"$(SRCROOT)/../holm-runtime/include",
+					"$(SRCROOT)/../kmp-wgpu-native/dist/ios/Headers",
+					"$(SRCROOT)/../kmp-wgpu-native/include",
 				);
 				INFOPLIST_FILE = iosApp/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -514,12 +514,12 @@
 				ENABLE_PREVIEWS = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(SRCROOT)/../holm-runtime/dist/ios",
+					"$(SRCROOT)/../kmp-wgpu-native/dist/ios",
 				);
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(SRCROOT)/../holm-runtime/dist/ios/Headers",
-					"$(SRCROOT)/../holm-runtime/include",
+					"$(SRCROOT)/../kmp-wgpu-native/dist/ios/Headers",
+					"$(SRCROOT)/../kmp-wgpu-native/include",
 				);
 				INFOPLIST_FILE = iosApp/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

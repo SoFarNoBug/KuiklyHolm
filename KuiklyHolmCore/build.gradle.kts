@@ -41,22 +41,22 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                // 公开签名暴露 Kuikly Compose 类型（Modifier/Color 等），必须用 api 传递，消费方才能解析。
-                api("com.tencent.kuikly-open:core:${Version.getKuiklyVersion()}")
-                api("com.tencent.kuikly-open:core-annotations:${Version.getKuiklyVersion()}")
-                api("com.tencent.kuikly-open:compose:${Version.getKuiklyVersion()}")
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
+                api(project(":holm-core"))
             }
         }
 
         val androidMain by getting {
             dependencies {
                 compileOnly("com.tencent.kuikly-open:core-render-android:${Version.getKuiklyVersion()}")
+                api(project(":holm-renderer-gl"))
+                api(project(":holm-renderer-wgpu"))
             }
         }
         val jsMain by getting {
             dependencies {
                 implementation("com.tencent.kuikly-open.core-render-web:base:${Version.getKuiklyVersion()}")
+                api(project(":holm-renderer-gl"))
+                api(project(":holm-renderer-wgpu"))
             }
         }
         val iosX64Main by getting
@@ -64,6 +64,10 @@ kotlin {
         val iosSimulatorArm64Main by getting
         val iosMain by creating {
             dependsOn(commonMain)
+            dependencies {
+                api(project(":holm-renderer-gl"))
+                api(project(":holm-renderer-wgpu"))
+            }
             iosX64Main.dependsOn(this)
             iosArm64Main.dependsOn(this)
             iosSimulatorArm64Main.dependsOn(this)
@@ -88,7 +92,6 @@ android {
     }
 }
 
-// 可选：显式传入 mavenRepoUrl 时启用 GitHub Packages（不影响 Central）
 publishing {
     repositories {
         val gpUrl = findProperty("mavenRepoUrl") as? String
@@ -104,7 +107,6 @@ publishing {
     }
 }
 
-// ---- Maven Central（vanniktech：坐标 / POM / 签名 / 上传）----
 mavenPublishing {
     coordinates("io.github.sofarnobug", "KuiklyHolmCore", project.version.toString())
     publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL, automaticRelease = true)
@@ -112,7 +114,7 @@ mavenPublishing {
 
     pom {
         name.set("KuiklyHolmCore")
-        description.set("Holm Kuikly local GPU effects core (KMP shell)")
+        description.set("Holm Kuikly local GPU effects umbrella (holm-core + renderers)")
         url.set("https://github.com/SoFarNoBug/KuiklyHolm")
         licenses {
             license {

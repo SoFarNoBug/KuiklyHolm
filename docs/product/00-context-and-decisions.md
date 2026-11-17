@@ -3,8 +3,8 @@
 > SoT：凡与本文冲突的口头约定 / 临时想法，以本文为准，先改本文再改代码。  
 > 产品名：**Holm**（命名已定，不改）。  
 > **产品身份（已定 · ADR 0007）**：**通用渲染底座**（shader-in / surface-out）——业务定岛区域，传入上色 shader，库出呈现面。  
-> **目标拆包（已定 · ADR 0008）**：`holm-core` / `holm-gl` / `holm-wgpu`；**Provider 必设**；可共存、显式选用。  
-> **下沉原语（已定 · ADR 0013）**：`kmp-wgpu`（+可选 `kmp-wgpu-surface`）= 与 Holm/Kuikly 无关的 wgpu 原语层；`holm-wgpu` 为其上薄适配；自 `holm-runtime` 抽芯。  
+> **目标拆包（已定 · ADR 0008）**：`holm-core` / `holm-renderer-gl` / `holm-renderer-wgpu`；**Provider 必设**；可共存、显式选用。
+> **下沉原语（已定 · ADR 0013）**：`kmp-wgpu`（+可选 `kmp-wgpu-surface`）= 与 Holm/Kuikly 无关的 wgpu 原语层；`holm-renderer-wgpu` 为其上薄适配；自 `kmp-wgpu-native` 抽芯。
 > **不是**「Kuikly 局部特效产品」；**不是**绑定某一业务。  
 > 第一宿主桥接仍走 Kuikly `expand-native-ui`；物理拆包另单。
 
@@ -22,7 +22,7 @@
 | --- | --- |
 | Kuikly 主路线原生 View；扩展走 expand-native-ui | Compose overview / 渲染博客 |
 | 岛上可喂业务片元 | ADR 0005；Demo `fragmentShader` |
-| 双后端通面（Lite GLES + Runtime wgpu） | DualTrack；ADR 0006 / 0009 / 0010 |
+| 双渲染后端通面（renderer-gl GLES + renderer-wgpu） | DualTrack；ADR 0006 / 0009 / 0010 |
 | 旧「特效产品」身份已推翻 | ADR 0007 |
 | 三包 + Provider 目标架构 | ADR 0008 |
 | kmp-wgpu 原语层在 Holm 之下 | ADR 0013 / D14 |
@@ -32,7 +32,7 @@
 
 1. **通用 shader 契约**：宿主可传入片元（及约定顶点/壳）；库负责上色与 present。  
 2. **局部 GPU 岛**：布局决定位置与大小；不替换 Kuikly 主 UI 树。  
-3. **可插拔后端（目标三包）**：`holm-gl`（小）/ `holm-wgpu`（冲性能）；`holm-core` 只提供统一 API；**须显式 Provider**。  
+3. **可插拔后端（目标三包）**：`holm-renderer-gl`（小）/ `holm-renderer-wgpu`（冲性能）；`holm-core` 只提供统一 API；**须显式 Provider**。  
 4. **Kuikly 可调用**：DSL + Compose；viewName `KRHolmSurface`。  
 5. **诚实失败**：无 Provider / 缺后端 → 明确报错，禁止静默假画。  
 6. **少岛纪律**：列表默认禁重实时岛；Backdrop 见 `07`。
@@ -60,20 +60,20 @@
 | 目标包 | 含义 | 包体直觉 |
 | --- | --- | --- |
 | **holm-core** | 岛 API + 生命周期 + Provider 槽 | 极小 |
-| **holm-gl** | GL 族后端（含 iOS GLES / H5 WebGL） | 小 |
-| **holm-wgpu** | Holm wgpu Provider（薄适配；依赖 `kmp-wgpu`） | 中（须实测） |
+| **holm-renderer-gl** | GL 族后端（含 iOS GLES / H5 WebGL） | 小 |
+| **holm-renderer-wgpu** | Holm wgpu Provider（薄适配；依赖 `kmp-wgpu`） | 中（须实测） |
 | **kmp-wgpu**（ADR 0013） | 通用 wgpu 原语（Kotlin 脸；与 Holm 无关） | 中 |
 | **kmp-wgpu-surface** | 可选 Present | 随端 |
 
-历史称 Lite/Standard = 上述后端档口语；**对外目标名以 ADR 0008 为准**。  
+历史口语 Lite/Standard/Runtime 已废；**对外 Attr/文档以 `renderer-gl` / `renderer-wgpu`（ADR 0008 包）为准**。  
 五席叙事**废弃**；官方五席源码**已删**（2026-11-14）；Demo **主推隧道**示例1。
 
 ### 4.1 路径对比（诚实）
 
 | 路径 | 做法 | 结论 |
 | --- | --- | --- |
-| **Lite** | 各端轻量后端执行约定 shader | 默认轻量档 |
-| **Standard+** | Holm Runtime + 桥接 | 需要统一 Runtime / 热换 WGSL 时用 |
+| **renderer-gl**（历史称 Lite） | 各端轻量 GL 族执行约定 shader | 默认轻量档 |
+| **renderer-wgpu**（历史称 Standard/Runtime） | holm-renderer-wgpu + kmp-wgpu Present | 需要统一 wgpu / 热换 WGSL 时用 |
 | **C** | WebView+Three | 仅验证，非生产底座 |
 
 ### 4.2 Stage 0（历史门禁 · 产品结论已取代）
@@ -93,7 +93,7 @@ Stage 0 曾在 2026-11-12 选 **Lite(A)**（ADR 0002），目标是「特效尖�
 ### 4.4 交付顺序（底座）
 
 1. **先**：稳定岛生命周期 + shader 喂入契约 + 至少一档后端通面。  
-2. **再**：双后端对照、Caps、包体/符号瘦身。  
+2. **再**：双渲染后端对照、Caps、包体/符号瘦身。  
 3. **然后**：按宿主需求加深 Runtime / 自定义 Pass。  
 4. **最后**（若需要）：简单 3D（Full）。  
 
@@ -114,10 +114,10 @@ Stage 0 曾在 2026-11-12 选 **Lite(A)**（ADR 0002），目标是「特效尖�
 | D8 | Web：WebGPU→WebGL 降级须登记 | 锁定 |
 | D9 | 鸿蒙能力子集 + Caps；ABI 形稳；Runtime 形态见 ADR 0010 | 锁定 |
 | D10 | 命名 Holm / HolmSurface / KRHolmSurface / holm_* | 锁定 |
-| D11 | 目标默认后端叙事对齐 ADR 0008（Provider 必设；显式选 gl/wgpu） | **修订锁定** |
+| D11 | 目标默认后端叙事对齐 ADR 0008（Provider 必设；显式选 renderer-gl / renderer-wgpu；umbrella 可自动注册为例外） | **修订锁定** |
 | D12 | **身份：通用渲染底座**（ADR 0007）；不绑定单一业务 | **修订锁定** |
-| D13 | **目标拆包** holm-core/gl/wgpu + Provider（ADR 0008）；物理拆包另单 | **锁定** |
-| D14 | **kmp-wgpu** 原语层在 Holm 之下（ADR 0013）：Kotlin 脸、Present 可选、抽芯自 holm-runtime；v1=Android+H5 Present 对等；v1.1=Compute+回读硬门禁 | **锁定** |
+| D13 | **目标拆包** holm-core / holm-renderer-gl / holm-renderer-wgpu + Provider（ADR 0008）；Android+H5+iOS+Ohos Present 已对齐；Maven/拆仓另单 | **锁定** |
+| D14 | **kmp-wgpu** 原语层在 Holm 之下（ADR 0013 + **0014**）：Kotlin 脸、Present 可选；native 目录/crate/产物/C ABI 为 `kmp-wgpu-native` / `kmp_wgpu_native` / `kmp_wgpu_*`（旧名 holm-runtime 已废）；v1 Present 四端；v1.1 Compute+回读四端 | **锁定** |
 
 ## 6. 成功标准
 

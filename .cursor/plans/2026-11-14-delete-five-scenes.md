@@ -5,7 +5,7 @@
 
 ## 目标
 
-从 **Core / holm-runtime / iOS 壳 / Demo / 根目录 shaders** 去掉官方五席实现（`frost` / `glow` / `liquid_approx` / `gradient_bg` / `fullscreen_warp`），只保留：
+从 **Core / kmp-wgpu-native / iOS 壳 / Demo / 根目录 shaders** 去掉官方五席实现（`frost` / `glow` / `liquid_approx` / `gradient_bg` / `fullscreen_warp`），只保留：
 
 - 宿主 **`fragmentShader`（+ 壳）** 出画（隧道等）
 - Runtime **custom WGSL** / 清屏占位
@@ -41,10 +41,10 @@
 - Android/JS [`KRHolmSurfaceView`](KuiklyHolmCore/src/androidMain/kotlin/com/jlj/kuiklybase/holm/KRHolmSurfaceView.kt)：默认 `_scene` 不再依赖 `SCENE_FROST`；空 fragment → error/clear
 - [`HolmGlPumpSource.kt`](KuiklyHolmCore/src/jsMain/kotlin/com/jlj/kuiklybase/holm/HolmGlPumpSource.kt)：默认 `scene=frost` 及内置五席字符串去掉
 
-### B. holm-runtime（必删/必改）
+### B. kmp-wgpu-native（必删/必改）
 
-- [`shaders.rs`](holm-runtime/src/shaders.rs)：删 `FROST_FS` / `GLOW_FS` / `LIQUID_FS`；保留 `FULLSCREEN_VS` + clear/custom 所需
-- [`session_core.rs`](holm-runtime/src/session_core.rs)：`SceneKind` 去掉 Frost/Glow/Liquid；创建时不建三套 pipe；`set_scene` / 清 custom 回 **Clear** 而非 Frost
+- [`shaders.rs`](kmp-wgpu-native/src/shaders.rs)：删 `FROST_FS` / `GLOW_FS` / `LIQUID_FS`；保留 `FULLSCREEN_VS` + clear/custom 所需
+- [`session_core.rs`](kmp-wgpu-native/src/session_core.rs)：`SceneKind` 去掉 Frost/Glow/Liquid；创建时不建三套 pipe；`set_scene` / 清 custom 回 **Clear** 而非 Frost
 - 重建 Android `.so`（`build-android.ps1`）并更新 `jniLibs`（若本机可编）
 
 ### C. iOS 壳（必改）
@@ -54,7 +54,7 @@
 ### D. Demo（必删/必改）
 
 - 删除 [`HolmSpikePager.kt`](holmDemo/src/commonMain/kotlin/com/jlj/kuiklyholmui/HolmSpikePager.kt) 与 Home「五席」入口
-- [`HolmRuntimeM0Pager.kt`](holmDemo/src/commonMain/kotlin/com/jlj/kuiklyholmui/HolmRuntimeM0Pager.kt)：去掉霜化/柔光/液态 chip 与液态旋钮；只留 **「示例1」** chip（原 custom/隧道按钮文案；仍绑定 `NeonTunnelShaders`）+ 双轨 + maxFps/采集
+- [`HolmDualTrackPager.kt`](holmDemo/src/commonMain/kotlin/com/jlj/kuiklyholmui/HolmDualTrackPager.kt)：去掉霜化/柔光/液态 chip 与液态旋钮；只留 **「示例1」** chip（原 custom/隧道按钮文案；仍绑定 `NeonTunnelShaders`）+ 双轨 + maxFps/采集
 - 默认场景仍为隧道样本（`SCENE_CUSTOM`）；按钮对用户显示 **示例1**（便于以后加示例2…）
 - Home 主按钮文案可与「示例1 / 双轨」对齐（避免再写「custom」）
 

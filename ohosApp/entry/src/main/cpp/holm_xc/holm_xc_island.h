@@ -19,7 +19,7 @@ struct OH_NativeXComponent;
 
 struct HolmXcIsland {
     std::string id;
-    std::string executor = "lite";
+    std::string executor = "renderer-gl";
     std::string fragmentShader;
     std::string scene;
     bool playing = true;

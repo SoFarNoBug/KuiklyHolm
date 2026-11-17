@@ -19,7 +19,7 @@
 5. **失败**：先走现有 `onError`（若该路径本来会发），再发 `onShaderCompiled(ok=false)`；未跑到的步骤填 `0`。静默 skip 的方言路径不新造错误码，仍可只发本事件。
 6. **空片元（Runtime）**：卸 custom / ClearTri 路径仍回调，**`ok=false`**（与 Lite 空串拒绝对齐；不表示 GPU 崩溃）。
 7. **范围**：Android / H5 / iOS / 鸿蒙 × Lite + Runtime 一版对齐。
-8. **非目标**：不改 `holm-runtime` 分阶段 ABI；不报 GPU 异步编译完成时间。
+8. **非目标**：不改 `kmp-wgpu-native` 分阶段 ABI；不报 GPU 异步编译完成时间。
 
 ## Consequences
 
