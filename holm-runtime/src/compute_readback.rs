@@ -41,13 +41,33 @@ impl HeadlessCompute {
             desc.backends = wgpu::Backends::VULKAN | wgpu::Backends::GL;
             wgpu::Instance::new(desc)
         };
+        #[cfg(target_env = "ohos")]
+        let instance = {
+            // Ohos headless：与 Present 同需 DisplayHandle 标记（target_os=linux + env=ohos）
+            let mut desc =
+                wgpu::InstanceDescriptor::new_with_display_handle(Box::new(OhosDisplayOwner));
+            desc.backends = wgpu::Backends::VULKAN | wgpu::Backends::GL;
+            wgpu::Instance::new(desc)
+        };
+        #[cfg(target_os = "ios")]
+        let instance = {
+            // iOS headless：无 CAMetalLayer；仅 Metal
+            let mut desc = wgpu::InstanceDescriptor::new_without_display_handle();
+            desc.backends = wgpu::Backends::METAL;
+            wgpu::Instance::new(desc)
+        };
         #[cfg(target_arch = "wasm32")]
         let instance = {
             let mut desc = wgpu::InstanceDescriptor::new_without_display_handle();
             desc.backends = wgpu::Backends::BROWSER_WEBGPU | wgpu::Backends::GL;
             wgpu::Instance::new(desc)
         };
-        #[cfg(all(not(target_os = "android"), not(target_arch = "wasm32")))]
+        #[cfg(all(
+            not(target_os = "android"),
+            not(target_env = "ohos"),
+            not(target_os = "ios"),
+            not(target_arch = "wasm32")
+        ))]
         let instance = {
             let mut desc = wgpu::InstanceDescriptor::new_without_display_handle();
             desc.backends = wgpu::Backends::all();
@@ -293,6 +313,23 @@ impl raw_window_handle::HasDisplayHandle for AndroidDisplayOwner {
         Ok(unsafe {
             raw_window_handle::DisplayHandle::borrow_raw(raw_window_handle::RawDisplayHandle::Android(
                 raw_window_handle::AndroidDisplayHandle::new(),
+            ))
+        })
+    }
+}
+
+#[cfg(target_env = "ohos")]
+#[derive(Debug)]
+struct OhosDisplayOwner;
+
+#[cfg(target_env = "ohos")]
+impl raw_window_handle::HasDisplayHandle for OhosDisplayOwner {
+    fn display_handle(
+        &self,
+    ) -> Result<raw_window_handle::DisplayHandle<'_>, raw_window_handle::HandleError> {
+        Ok(unsafe {
+            raw_window_handle::DisplayHandle::borrow_raw(raw_window_handle::RawDisplayHandle::Ohos(
+                raw_window_handle::OhosDisplayHandle::new(),
             ))
         })
     }

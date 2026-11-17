@@ -1,10 +1,18 @@
 package com.jlj.kuiklyholmui
 
+import com.jlj.kmp.wgpu.ComputeReadbackSample
+
 /**
- * @CreateDate: 2026/11/16
+ * @CreateDate: 2026/11/17
  * @Author: jlj
- * @Description: Ohos 未纳入 ADR 0013 v1.1 范围。
+ * @Description: Ohos headless Compute 冒烟 → kmp-wgpu C ABI（短样本同步）。
  */
 actual fun runComputeReadbackSample(onDone: (Result<String>) -> Unit) {
-    onDone(Result.failure(IllegalStateException("ComputeReadback v1.1: Android+H5 only (Ohos TBD)")))
+    ComputeReadbackSample.run { result ->
+        onDone(
+            result.map { out ->
+                "ok size=${out.size} sample=${out.take(8).joinToString(",")}"
+            },
+        )
+    }
 }

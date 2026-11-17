@@ -1,5 +1,12 @@
 # changelog · kuikly-dev-ios
 
+## 2026-11-17（ADD · iOS headless Compute 回读）
+
+- [ADD] C ABI：`ios_c_api` 导出 `holm_runtime_headless_*`；`HeadlessCompute` 仅 Metal
+- [ADD] `kmp-wgpu` / Demo：`ComputeReadback.ios`（串行队列）+ `ComputeReadbackBridge.ios`
+- 自测：`./build-ios.sh`；`:holmDemo:linkPodDebugFrameworkIosSimulatorArm64`；**iPhone Duo** `kmp_wgpu_compute` → 用户验过 OK
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改 iOS Compute｜待批 0
+
 ## 2026-11-16（Lite 冷启 defer FRAGMENT_REQUIRED + Duo 出画）
 
 - [FIX] `KRHolmSurface` Lite：`didMoveToWindow` 早于 Compose attr 时不抢报 `FRAGMENT_REQUIRED`；晚到 `setCss_fragmentShader` 成功后补 `onReady`

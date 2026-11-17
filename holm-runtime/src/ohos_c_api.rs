@@ -1,6 +1,8 @@
 //! Ohos C Session ABI（ADR 0010）：OHNativeWindow → wgpu Vulkan Surface；宿主 OnFrame 外泵 tick。
+//! Headless Compute（ADR 0013 v1.1）同文件导出，与 Present Session 分表。
 //! 所有对外 C 入口 `catch_unwind`：非法 WGSL 等 panic 不得穿 FFI 把进程 abort。
 
+use crate::compute_readback::HeadlessCompute;
 use crate::holm_fullscreen::HolmRuntimeSessionCore;
 use raw_window_handle::{
     DisplayHandle, HandleError, HasDisplayHandle, HasWindowHandle, OhosDisplayHandle,
@@ -321,5 +323,122 @@ pub extern "C" fn holm_runtime_session_last_error_message(
     match result {
         Ok(v) => v,
         Err(_) => 0,
+    }
+}
+
+// --- Headless Compute（v1.1）· 与 NativeSession 分表 ---
+
+fn box_headless(session: HeadlessCompute) -> u64 {
+    Box::into_raw(Box::new(session)) as u64
+}
+
+unsafe fn from_headless<'a>(handle: u64) -> Option<&'a mut HeadlessCompute> {
+    if handle == 0 {
+        return None;
+    }
+    Some(&mut *(handle as *mut HeadlessCompute))
+}
+
+#[no_mangle]
+pub extern "C" fn holm_runtime_headless_create() -> u64 {
+    let created = catch_unwind(AssertUnwindSafe(|| {
+        pollster::block_on(HeadlessCompute::create(false))
+    }));
+    match created {
+        Ok(Ok(session)) => {
+            clear_last_create_error();
+            box_headless(session)
+        }
+        Ok(Err(e)) => {
+            set_last_create_error(e);
+            0
+        }
+        Err(panic) => {
+            set_last_create_error(format!("headless_create panic: {panic:?}"));
+            0
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn holm_runtime_headless_destroy(handle: u64) {
+    if handle == 0 {
+        return;
+    }
+    let _ = catch_unwind(AssertUnwindSafe(|| unsafe {
+        drop(Box::from_raw(handle as *mut HeadlessCompute));
+    }));
+}
+
+#[no_mangle]
+pub extern "C" fn holm_runtime_headless_backend_id(
+    handle: u64,
+    out_buf: *mut c_char,
+    out_len: u32,
+) -> u32 {
+    let result = catch_unwind(AssertUnwindSafe(|| {
+        let id = unsafe { from_headless(handle) }
+            .map(|s| s.backend_id)
+            .unwrap_or("wgpu-blocked");
+        copy_utf8(id, out_buf, out_len)
+    }));
+    match result {
+        Ok(v) => v,
+        Err(_) => 0,
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn holm_runtime_headless_compute_readback(
+    handle: u64,
+    wgsl: *const c_char,
+    input: *const f32,
+    input_len: u32,
+    workgroup_count_x: u32,
+    out_floats: *mut f32,
+    out_cap: u32,
+) -> u32 {
+    let result = catch_unwind(AssertUnwindSafe(|| {
+        let Some(session) = (unsafe { from_headless(handle) }) else {
+            set_last_create_error("headless_compute_readback: bad handle");
+            return 0u32;
+        };
+        if wgsl.is_null() || input.is_null() || out_floats.is_null() || input_len == 0 || out_cap == 0
+        {
+            set_last_create_error("headless_compute_readback: null/empty args");
+            return 0u32;
+        }
+        if out_cap < input_len {
+            set_last_create_error("headless_compute_readback: out_cap < input_len");
+            return 0u32;
+        }
+        let Ok(src) = unsafe { CStr::from_ptr(wgsl) }.to_str() else {
+            set_last_create_error("headless_compute_readback: bad wgsl utf8");
+            return 0u32;
+        };
+        let input_slice =
+            unsafe { std::slice::from_raw_parts(input, input_len as usize) };
+        let wg = workgroup_count_x.max(1);
+        match pollster::block_on(session.run_f32(src, input_slice, wg)) {
+            Ok(out) => {
+                let n = out.len().min(out_cap as usize);
+                unsafe {
+                    ptr::copy_nonoverlapping(out.as_ptr(), out_floats, n);
+                }
+                clear_last_create_error();
+                n as u32
+            }
+            Err(e) => {
+                set_last_create_error(e);
+                0u32
+            }
+        }
+    }));
+    match result {
+        Ok(v) => v,
+        Err(panic) => {
+            set_last_create_error(format!("headless_compute_readback panic: {panic:?}"));
+            0
+        }
     }
 }

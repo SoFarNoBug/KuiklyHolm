@@ -1,5 +1,19 @@
 # changelog · kuikly-dev-ohos
 
+## 2026-11-17（ADD · Ohos headless Compute 回读）
+
+- [ADD] C ABI：`holm_runtime_headless_create/destroy/compute_readback`；`HeadlessCompute` Ohos DisplayHandle
+- [ADD] `kmp-wgpu` / Demo：`ComputeReadback.ohos` + `ComputeReadbackBridge.ohos`（短样本同步）
+- 自测：`build-ohos.sh` + `ohos_build.sh` + 真机 `kmp_wgpu_compute` 点 Run → `ok size=…`
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改 Ohos Compute｜待批 0
+
+## 2026-11-17（FIX · holm_ohos_bridge dlopen libshared）
+
+- [FIX] `holm_ohos_bridge.cpp`：显式 `dlopen(libshared.so)` 再 `dlsym`（XComponent 独立加载时 `RTLD_DEFAULT` 看不到 @CName）
+- [FIX] `EnsureBridgeResolved`：失败可重试，不再一次定终身
+- 自测：真机 `FMR0223927006189` DualTrack — Runtime `onReady.backend=wgpu-m0-gl` 隧道出画；切 Lite 隧道出画 fps≈60（原 `BLOCKED: holm_ohos_bridge unresolved` 已消）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改桥解析｜待批 0
+
 ## 2026-11-16（审查整改 · holm-ohos-android-align 可修项）
 
 - [NOTE] `P2-kmp-wgpu-holm-setters`：Ohos 已与 iOS 同构 — set* 在 `HolmSessionBindings`，**不**挂 `OhosWgpuPlatform`；残余同模块边界可接受（对标 iOS r2 已关）

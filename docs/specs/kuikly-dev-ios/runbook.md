@@ -61,5 +61,5 @@ open iosApp.xcworkspace
 
 - ObjC Shadertoy wrap 与 Kotlin `HolmShadertoyShell` 须同文；改壳双端同单
 - xcframework **不**入库（`holm-runtime/dist/` gitignore）；本机脚本生成；App 仍直链 xcframework 供符号
-- iOS headless Compute 本波 stub（C ABI 未导出）
+- iOS headless Compute：`holm_runtime_headless_*` + `ComputeReadback.ios`（Metal）；Demo `kmp_wgpu_compute`
 - Windows CI **无法**跑本端

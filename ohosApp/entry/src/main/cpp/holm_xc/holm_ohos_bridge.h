@@ -46,7 +46,7 @@ struct HolmOhosBridgeApi {
 };
 
 /**
- * @brief dlsym(RTLD_DEFAULT) 解析 KN bridge；失败返回 false。
+ * @brief dlopen(libshared.so) + dlsym 解析 KN bridge；失败返回 false（可重试）。
  */
 bool HolmOhosBridgeResolve(HolmOhosBridgeApi *outApi);
 

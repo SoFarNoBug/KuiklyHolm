@@ -1,5 +1,20 @@
 # dualtrack-lite-vs-standard · changelog
 
+## 2026-11-17（iOS ADD · kmp-wgpu Compute 回读）
+
+- [ADD] iOS：`holm_runtime_headless_*` + `ComputeReadback.ios`；Demo 页不再 stub FAIL
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改｜待批 0
+
+## 2026-11-17（Ohos ADD · kmp-wgpu Compute 回读）
+
+- [ADD] Ohos：`holm_runtime_headless_*` C ABI + `ComputeReadback.ohos`；Demo 页不再 stub FAIL
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改｜待批 0
+
+## 2026-11-17（Ohos FIX · bridge dlopen libshared）
+
+- [FIX] Lite/Runtime 同挂 `holm_ohos_bridge unresolved`：壳改显式 dlopen `libshared.so` + 可重试 resolve
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改｜待批 0
+
 ## 2026-11-16（Ohos 对齐审查整改 · 可修 P2 口径）
 
 - [NOTE] setters / Provider 负向 / Lite+bridge / worktree：与 `kuikly-dev-ohos` 同日条；无行为回归改动

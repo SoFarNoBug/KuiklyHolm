@@ -75,6 +75,30 @@ uint32_t holm_runtime_session_backend_id(uint64_t handle, char *out_buf, uint32_
 uint32_t holm_runtime_session_last_error_code(uint64_t handle, char *out_buf, uint32_t out_len);
 uint32_t holm_runtime_session_last_error_message(uint64_t handle, char *out_buf, uint32_t out_len);
 
+/**
+ * Headless Compute（ADR 0013 v1.1）：无 Surface；与 Present Session 分表。
+ * @return opaque handle, or 0 on failure（文案见 holm_runtime_last_create_error）
+ */
+uint64_t holm_runtime_headless_create(void);
+
+void holm_runtime_headless_destroy(uint64_t handle);
+
+uint32_t holm_runtime_headless_backend_id(uint64_t handle, char *out_buf, uint32_t out_len);
+
+/**
+ * WGSL compute + f32 回读。
+ * @param out_floats 调用方缓冲；out_cap 为可写 float 个数（通常 = input_len）
+ * @return 写入的 float 个数；0 = 失败（文案见 holm_runtime_last_create_error）
+ */
+uint32_t holm_runtime_headless_compute_readback(
+    uint64_t handle,
+    const char *wgsl,
+    const float *input,
+    uint32_t input_len,
+    uint32_t workgroup_count_x,
+    float *out_floats,
+    uint32_t out_cap);
+
 #ifdef __cplusplus
 }
 #endif

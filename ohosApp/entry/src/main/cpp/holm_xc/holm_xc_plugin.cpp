@@ -35,17 +35,14 @@ constexpr double kNsPerSec = 1e9;
 
 HolmOhosBridgeApi g_bridgeApi {};
 bool g_bridgeResolved = false;
-bool g_bridgeResolveAttempted = false;
 
 bool EnsureBridgeResolved()
 {
     if (g_bridgeResolved) {
         return true;
     }
-    if (!g_bridgeResolveAttempted) {
-        g_bridgeResolveAttempted = true;
-        g_bridgeResolved = HolmOhosBridgeResolve(&g_bridgeApi);
-    }
+    // libshared 可能晚于 XComponent 首帧；失败可重试（勿一次定终身）。
+    g_bridgeResolved = HolmOhosBridgeResolve(&g_bridgeApi);
     return g_bridgeResolved;
 }
 

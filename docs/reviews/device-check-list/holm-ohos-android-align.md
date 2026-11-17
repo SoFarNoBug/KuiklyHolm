@@ -31,9 +31,12 @@
 |---|---|---|
 | 编译门禁 | **通过** | `./ohos_build.sh`；HAP 内 `libshared.so` 导出全部 `holm_ohos_bridge_*`；`NEEDED libholm_runtime.so` + `RUNPATH [$ORIGIN]`；`assembleHap` SUCCESS |
 | 装机 | **通过** | 本机材料 `default_ohosApp_2fKXy…` + `hap-sign-tool sign-app` → `entry-default-signed.hap`；`hdc install -r` SUCCESS（`FMR0223927006189`） |
-| 启动 | **卡住** | `aa start` → `10106102` 锁屏；开发者模式无法自动解锁 — **请手动解锁屏幕后再启** |
+| 启动 | **通过** | 已可 `aa start`；装机 signed HAP |
 | 10 | **通过** | `rg holm_runtime_session_` 仅注释 |
-| 1–9 | **未跑** | 装机已好；解锁后冷启勾 DualTrack |
+| 1–2 | **通过** | 2026-11-17：进双轨；Runtime 隧道；`backend=wgpu-m0-gl`；fps≈61 |
+| 3 | **通过** | 切 Lite：隧道出画；fps≈60；无 `holm_ohos_bridge unresolved` |
+| 4–9 | **未跑** | 热切回 Runtime / maxFps / scale / 负向待补 |
+| Compute 回读 | **装机待启** | 2026-11-17：`holm_runtime_headless_*` 已入 HAP；signed 已装 `FMR0223927006189`；锁屏 `10106102` 未开到 `kmp_wgpu_compute` — 解锁后 Home→Compute→Run 期望 `ok size=8 sample=2,2,2,2,4,6,8,10` |
 
 ## 覆盖对照
 
