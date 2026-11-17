@@ -1,17 +1,29 @@
-# Contributing · kuikly-holm
+# 开发者文档 · kuikly-holm
 
-本文件给**本仓维护者**：怎么起 Demo、文档与决策入口在哪。  
-库接入用法见根目录 [README.md](README.md)。
+给**维护 / 共建本仓**的开发者。  
+路人看根 [README.md](README.md)；接入工程看 [docs/guide.md](docs/guide.md)。
+
+## 文档约定
+
+| 读者 | 文件 |
+|---|---|
+| 路人 | 根 `README.md` |
+| 接入 | `docs/guide.md`（含 `HolmSurface` API 全表 / `onPerf` 语义） |
+| 开发者 / 维护 | 本文件 |
+
+与 [kmp-wgpu](https://github.com/SoFarNoBug/kmp-wgpu) 三份文档分工对齐。
 
 ## 模块速览
 
 ```text
 kuikly-holm/
-├── KuiklyHolmCore/   # 发布库
+├── holm-core / holm-renderer-gl / holm-renderer-wgpu
+├── KuiklyHolmCore/   # umbrella 发布库
 ├── holmDemo/         # Demo 共享页
 ├── androidApp / iosApp / h5App / ohosApp
 ├── CONTEXT.md        # 术语与工程壳
-├── README.md         # 接入者文档
+├── README.md         # 路人
+├── docs/guide.md     # 接入手册
 └── docs/             # product / adr / specs / reviews …
 ```
 
@@ -20,6 +32,7 @@ kuikly-holm/
 | 文档 | 用途 |
 |---|---|
 | [CONTEXT.md](CONTEXT.md) | 领域术语与工程壳 |
+| [docs/guide.md](docs/guide.md) | 接入 / API |
 | [docs/product/00-context-and-decisions.md](docs/product/00-context-and-decisions.md) | 产品决策 SoT |
 | [docs/adr/](docs/adr/) | 难逆转架构决策 |
 | [docs/product/phases/](docs/product/phases/) | 阶段节奏（Stage 0 …） |

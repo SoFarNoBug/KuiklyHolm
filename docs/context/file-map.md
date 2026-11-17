@@ -22,6 +22,7 @@
 | `docs/specs/kuikly-dev-ios/runbook.md` | iOS 起服 / DualTrack 验收 |
 | `settings.gradle.kts` | 根 `KuiklyHolmUI`；三包 / Core / Demo / android / h5；local → includeBuild `../kmp-wgpu` |
 | `settings.ohos.gradle.kts` | 鸿蒙另册；三包 / Core / holmDemo；local → includeBuild `../kmp-wgpu/ohosInclude` |
+| `docs/guide.md` | **接入手册**（API 全表；与 README / CONTRIBUTING 三份对齐 kmp-wgpu） |
 | `docs/product/` | 产品 SoT |
 | `docs/adr/` | 0007 底座；0008 三包；0013 kmp-wgpu；0014 命名；**0015 独立仓** |
 | `docs/skill-references/` | AI 编码规范货架 |

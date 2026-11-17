@@ -1,73 +1,96 @@
-# KuiklyHolm（Holm）
+# Holm（KuiklyHolm）
 
-**页面上开一块 GPU 岛：你定位置与大小，丢进上色 shader，局部出帧。**
+**Kuikly 页面里，嵌一块 GPU 画布。**
 
-Holm 是面向 **Kuikly Compose** 的**通用渲染底座**（shader-in / surface-out）：不绑死某一种特效，不做整页自绘引擎。岛少、局部用；列表默认不要挂实时重岛。
+让你可以在Kuikly页面中用着色器代码（shader）来画——动态背景、小可视化、全屏感特效等（就是使用gpu渲染shader）。Android / iOS / 鸿蒙 / 浏览器，同一套接法。
 
-| 项 | 值 |
-|---|---|
-| 包名 | `com.jlj.kuiklybase.holm` |
-| 三包 | `holm-core` · `holm-renderer-gl` · `holm-renderer-wgpu` |
-| Umbrella | `KuiklyHolmCore`（兼容「只引一个 Core」） |
-| Maven | `io.github.sofarnobug:KuiklyHolmCore:1.0.0-2.31.0` |
-| Demo | `:holmDemo` · 主推「霓虹隧道」样本 |
-| 端 | Android / iOS / 鸿蒙 / H5 |
+谁干什么：
 
-> **路人 / 接入读本页。** 起 Demo、发版、ADR → [CONTRIBUTING.md](CONTRIBUTING.md)。术语 → [CONTEXT.md](CONTEXT.md)。
+- **放哪、多大** → 页面布局
+- **画什么** → 你的 shader
+- **怎么画到各端屏幕上** → Holm（轻量 OpenGL，或 [kmp-wgpu](https://github.com/SoFarNoBug/kmp-wgpu)）
+
+它**不是**整页游戏引擎，也**不是**内置「毛玻璃 / 粒子」特效包——画面内容要自己写（仓库 Demo 里有霓虹隧道等例子可抄）。一块页面里少挂几块就好，列表里一般不要挂一直在刷的重特效。
+
+
+|         |                                                                                         |
+| ------- | --------------------------------------------------------------------------------------- |
+| Maven   | `io.github.sofarnobug:KuiklyHolmCore:1.0.0-2.31.0`                                      |
+| 模块      | `holm-core` · `holm-renderer-gl` · `holm-renderer-wgpu`（也可只引 umbrella `KuiklyHolmCore`） |
+| 包名      | `com.jlj.kuiklybase.holm`                                                               |
+| 端       | Android / iOS / 鸿蒙 / H5                                                                 |
+| Demo    | `:holmDemo` · 页面名 `holm_dualtrack`                                                      |
+| License | 见 [LICENSE](LICENSE)                                                                    |
+
+
+> **路人读本页。** 怎么接到工程、每个参数什么意思 → [docs/guide.md](docs/guide.md)。怎么起 Demo / 发版 → [开发者文档](CONTRIBUTING.md)。
 
 ---
 
-## 它解决什么问题？
+## 为什么需要 Holm？
 
-在 Kuikly 页面里，有时需要一块**真正跑在 GPU 上**的局部表面：全屏感片元、程序化背景、轻量可视化——又不想为此换掉整套 UI 框架。
+用 Kuikly 做 App 时，偶尔会想在页面里嵌一块**真的用显卡画**的区域。常见两条岔路都不理想：
 
-Holm 的约定：
+1. **每端自己接** Surface / OpenGL / Metal —— 同一套特效要写四遍桥
+2. **上完整游戏 / 自绘引擎** —— 只为页面里一块背景太重，还容易和现有 UI 抢主场
 
-1. **布局决定岛**：宽高、位置由 Compose / 页面布局说了算  
-2. **业务喂 shader**：把片元（及可选顶点）交给岛  
-3. **显式选后端**：`renderer-gl`（轻量 GL 族）或 `renderer-wgpu`（wgpu / WGSL 热换）  
-4. **必须设 Provider**：只引 core、不注册后端 → **明确失败**，不会假装出画  
+Holm 的做法：给你一个组件 `HolmSurface`。你像放普通控件一样定位置和大小；把着色器源码传进去；在启动时登记要用哪种绘制后端。后端没配好就**明确报错**，不会假装画成功。
 
-底层算力 / Present 原语由独立仓 **[kmp-wgpu](https://github.com/SoFarNoBug/kmp-wgpu)** 承担；`holm-renderer-wgpu` 是其上的薄适配，不把 Holm 扩成通用 GPU 算力 SDK。
+文档里把这块矩形叫 **「岛」**（局部 GPU 区域）：周围仍是 Kuikly UI，只有岛内走 GPU。
 
 ```text
-Kuikly 页面
-    │  HolmSurface（岛）
+Kuikly 页面（布局决定岛在哪、多大）
+    │  HolmSurface
     ▼
-holm-core  ──Provider──►  holm-renderer-gl
-                      └►  holm-renderer-wgpu
+holm-core  ──登记后端──►  holm-renderer-gl     （偏轻量，GLSL）
+                      └►  holm-renderer-wgpu   （WGSL，底下是 kmp-wgpu）
                                 │
                                 ▼
-                         kmp-wgpu / kmp-wgpu-surface
-                                │
-                                ▼
-                         kmp_wgpu_native（Rust + wgpu）
+                         各端真实图形接口（Vulkan / Metal / GLES / WebGPU …）
 ```
 
----
-
-## 非目标
-
-| 不做 | 说明 |
-|---|---|
-| 玻璃 / 粒子「产品身份」 | Holm 是底座，不是某一款特效 SDK |
-| 官方内置特效目录（五席等） | 已废；样本放 Demo（如隧道），业务自带 WGSL/GLSL |
-| 整页自绘 / 取代 Kuikly | 只做**局部岛** |
-| 静默假画 | 无 Provider / 缺 native → 报错 |
-| 把通用 GPGPU API 塞进 Holm | 无窗口算力走 [kmp-wgpu](https://github.com/SoFarNoBug/kmp-wgpu) |
+如果只想「算完拿数组、不要嵌在页面里画」，请直接用 [kmp-wgpu](https://github.com/SoFarNoBug/kmp-wgpu)，不必绕 Holm。
 
 ---
 
-## 前置条件
+## Holm 能干什么？交到哪一步？
 
-1. 已有 **Kuikly Compose** 宿主（本库不是独立 App SDK）。  
-2. 版本与 Kuikly 对齐（当前坐标后缀 `-2.31.0`；腾讯 Maven 镜像常需同时配置）。  
-3. 启动时 **register Provider**（见下）；仅依赖 umbrella 时仍须按端完成注册 / 初始化。  
-4. 走 `renderer-wgpu` 时，按端带上 **kmp-wgpu native**（`.so` / Pod / ohpm / wasm），详见 [kmp-wgpu 接入指南](https://github.com/SoFarNoBug/kmp-wgpu/blob/main/docs/guide.md)。
+
+| 你想要的                        | 状态      | 说明                                                   |
+| --------------------------- | ------- | ---------------------------------------------------- |
+| 页面里嵌一块 GPU 画布，自己写画面         | **已有**  | 组件名 `HolmSurface`                                    |
+| 同一套 API，可选 OpenGL 或 wgpu    | **已有**  | 参数 `executor`；Demo 里可来回切                             |
+| Android / iOS / 鸿蒙 / 浏览器都能画 | **已有**  | 见下方能力表                                               |
+| 知道着色器编译花了多久、现在大概几帧          | **已有**  | `onShaderCompiled` · `onPerf`                        |
+| 库自带毛玻璃 / 粒子等成品特效            | **非目标** | 自己写或抄 Demo 样本                                        |
+| 整页都用 Holm 画、不用 Kuikly       | **非目标** | 只适合局部一块                                              |
+| 不做界面、只在后台用 GPU 算数           | **非目标** | 用 [kmp-wgpu](https://github.com/SoFarNoBug/kmp-wgpu) |
+| 列表滑动时每行都做重度实时特效             | **非目标** | 费电且易掉帧；别这么用                                          |
+
+
+现在稳定交付的就是：**一个页面组件 + 两种可选绘制后端**（轻量 GL，或走 kmp-wgpu 的 WGSL）。
 
 ---
 
-## 添加依赖
+## 模块怎么选
+
+```text
+页面里要这块 GPU 画布     →  引 KuiklyHolmCore（或下面三包自选）
+只想用轻量 OpenGL        →  holm-core + holm-renderer-gl（包体更友好）
+还要 WGSL / 现代 wgpu    →  再加 holm-renderer-wgpu，并带上 kmp-wgpu 原生库（约数 MB）
+只要后台算数、不要画布  →  别用 Holm，直接用 kmp-wgpu
+```
+
+
+| 模块                     | 你得到什么                                         |
+| ---------------------- | --------------------------------------------- |
+| **holm-core**          | 组件 API、后端登记（`HolmProviders`）                  |
+| **holm-renderer-gl**   | 轻量 OpenGL 绘制实现                                |
+| **holm-renderer-wgpu** | 基于 kmp-wgpu 的 WGSL 绘制实现（体积大头在 native，见 guide） |
+| **KuiklyHolmCore**     | 上面几包打包成一个依赖（启动时仍要**登记后端**；要极致控包请拆包只引 GL）      |
+
+
+**选 GL 还是 wgpu、包体积大概多少**（Android `.so` ≈4 MB / H5 wasm ≈2.3 MB 等）→ [docs/guide.md · 怎么选](docs/guide.md#怎么选holm-renderer-gl-vs-holm-renderer-wgpu)。
 
 ```kotlin
 repositories {
@@ -76,105 +99,100 @@ repositories {
 }
 
 dependencies {
-    // Umbrella：兼容只引一个模块（内部仍须显式 Provider）
     implementation("io.github.sofarnobug:KuiklyHolmCore:1.0.0-2.31.0")
-
-    // 或按需拆包（目标形态）：
-    // implementation("io.github.sofarnobug:holm-core:…")
-    // implementation("io.github.sofarnobug:holm-renderer-gl:…")
-    // implementation("io.github.sofarnobug:holm-renderer-wgpu:…")
 }
 ```
 
-未发版或联调源码时，用本仓模块依赖；`renderer-wgpu` 默认可走 Maven `io.github.sofarnobug:kmp-wgpu*:0.1.0`（本地尖刺见 CONTRIBUTING）。
-
----
-
-## Provider（必做）
-
-业务启动时注册后端，并设默认（示例对齐 Demo）：
+启动时告诉 Holm 用哪些后端（必做；忘了会报错 `BLOCKED`，不会偷偷改用别的）：
 
 ```kotlin
-import com.jlj.kuiklybase.holm.GlBackendProvider
-import com.jlj.kuiklybase.holm.HolmProviders
-import com.jlj.kuiklybase.holm.WgpuBackendProvider
-
 HolmProviders.register(GlBackendProvider)
 HolmProviders.register(WgpuBackendProvider)
-if (HolmProviders.defaultIdOrNull().isNullOrBlank()) {
-    HolmProviders.setDefault(GlBackendProvider.ID) // 或 WgpuBackendProvider.ID
-}
+HolmProviders.setDefault(GlBackendProvider.ID) // 或 WgpuBackendProvider.ID
 ```
 
-各端落点（Android `Application` / iOS 桥 / 鸿蒙壳 / H5 入口）见 Demo 与 [CONTRIBUTING.md](CONTRIBUTING.md)。
+参数说明、各端注意点 → [docs/guide.md](docs/guide.md)。
 
 ---
 
-## 最小接入 · HolmSurface
+## 最小例子
+
+把着色器字符串 `fs` 传进去即可（完整可运行工程见 Demo）：
 
 ```kotlin
-import androidx.compose.runtime.Composable
-import com.jlj.kuiklybase.holm.HolmExecutor
-import com.jlj.kuiklybase.holm.HolmSurface
-import com.tencent.kuikly.compose.foundation.layout.fillMaxSize
-import com.tencent.kuikly.compose.ui.Modifier
-
 @Composable
 fun HolmIsland(fs: String) {
     HolmSurface(
+        scene = "custom",
         modifier = Modifier.fillMaxSize(),
-        executor = HolmExecutor.WGPU, // 或 GL
-        fragmentShader = fs,
+        executor = HolmExecutor.WGPU, // 或 HolmExecutor.GL（OpenGL）
+        fragmentShader = fs,          // 你的着色器源码
         playing = true,
-        // onReady / onError / onPerf / onShaderCompiled 按需接
+        onReady = { /* 画布就绪 */ },
+        onError = { /* 失败时看这里，不会假装画成功 */ },
+        onPerf = { /* 大约每秒回报一次真实刷新情况 */ },
     )
 }
 ```
 
-- **`executor`**：选 `renderer-gl` / `renderer-wgpu`（API 以 `HolmExecutor` 为准）  
-- **`fragmentShader`**：GL 路径多为 GLSL 风格正文；wgpu 路径为 **WGSL**（两端样本见 Demo `NeonTunnelShaders` 等）  
-- 无片元 / 编译失败：走 `onError`，不要假设会静默出画  
-
-完整双轨 Demo：`holmDemo` → page `holm_dualtrack`（隧道 / 其它样本 + 切后端）。
+- 选 OpenGL（`HolmExecutor.GL`）：`fs` 写 GLSL（类似 Shadertoy 正文，库会补外壳）  
+- 选 wgpu（`HolmExecutor.WGPU`）：`fs` 写 WGSL（需要带 `@fragment fn fs_main`）  
+- 想看成品效果：跑 `holmDemo`，打开页面 `holm_dualtrack`（霓虹隧道等）
 
 ---
 
-## 模块怎么选
+## 能力矩阵
 
-| 你要… | 依赖 |
-|---|---|
-| 统一岛 API | `holm-core`（或 umbrella `KuiklyHolmCore`） |
-| 轻量 GL 出画 | + `holm-renderer-gl` + 注册 `GlBackendProvider` |
-| wgpu / WGSL 热换 | + `holm-renderer-wgpu` + `WgpuBackendProvider` + **kmp-wgpu native** |
-| 只要无窗口算力 | **不要扩 Holm** → 直接用 [kmp-wgpu](https://github.com/SoFarNoBug/kmp-wgpu) |
 
----
+|                        | Android | iOS  | 鸿蒙   | H5   |
+| ---------------------- | ------- | ---- | ---- | ---- |
+| renderer-gl            | ✅       | ✅    | ✅    | ✅    |
+| renderer-wgpu          | ✅       | ✅    | ✅    | ✅    |
+| 片元热换                   | ✅       | ✅    | ✅    | ✅    |
+| Provider 未设 / 缺 native | 失败可见    | 失败可见 | 失败可见 | 失败可见 |
 
-## 能力一览（四端 Present）
 
-| | Android | iOS | 鸿蒙 | H5 |
-|---|---|---|---|---|
-| renderer-gl | ✅ | ✅ | ✅ | ✅ |
-| renderer-wgpu | ✅ | ✅ | ✅ | ✅ |
-| 片元热换 | ✅ | ✅ | ✅ | ✅ |
-| Provider 未设 | 失败 | 失败 | 失败 | 失败 |
-
-wgpu 路径上各端**实际图形后端**（Vulkan / Metal / GLES / WebGPU…）由 kmp-wgpu 选择，以运行时 `backend` / `backendId` 为准；鸿蒙常见为 **GLES**（详见 [kmp-wgpu README](https://github.com/SoFarNoBug/kmp-wgpu#readme)）。
+wgpu 路径上各端**实际**推像素的后端（Vulkan / Metal / GLES / WebGPU…）由 kmp-wgpu 选择，以运行时 `onReady.backend` 为准——**不要写死**「某端 = 某 API」。说明见 [kmp-wgpu README](https://github.com/SoFarNoBug/kmp-wgpu#readme)。
 
 ---
 
-## 文档地图
+## 常见问题（路人）
 
-| 文档 | 给谁 |
-|---|---|
-| 本 README | 路人 / 接入 |
-| [CONTEXT.md](CONTEXT.md) | 术语 |
-| [docs/product/](docs/product/) | 产品决策 SoT |
-| [docs/adr/](docs/adr/) | 架构决策（0007 底座 · 0008 三包 · 0013/0015 kmp-wgpu） |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | 维护：起 Demo / 发布 / 联调 |
+**Q. 这和我自己在 Android / iOS 各接一套 OpenGL、Metal 有什么差别？**  
+A. 业务只对接一个 Kuikly 组件；四端差异收在库里。布局继续用 Compose，不用为这一块特效拆四套桥。
+
+**Q. Holm 是不是毛玻璃 / 粒子成品库？**  
+A. **不是。** 它只提供「页面里的 GPU 画布」；画面要自己写着色器，或从 Demo 样本改。
+
+**Q. 和 kmp-wgpu 什么关系？**  
+A. Holm = **嵌在 Kuikly 页面里画**。底层若选 wgpu，会用到 [kmp-wgpu](https://github.com/SoFarNoBug/kmp-wgpu)。如果只要 GPU 算数、不要这块画布，直接用 kmp-wgpu 即可。
+
+**Q. 我把最高帧率设成 30，回调里为什么还显示大约 60？**  
+A. 回调里的数字是「实际画了多少次」，不是「你设的上限」。在 Android 上上限目前多半只是提示系统，不保证真限到 30。详见 [guide](docs/guide.md#onperf真实提交-fps)。
+
+**Q. 能当完整游戏引擎用吗？**  
+A. 不适合。它适合页面里**局部**一块 GPU 画面；整页自绘、复杂 3D 场景不是目标。
+
+**Q. 我想动手接到工程，看哪？**  
+A. → [docs/guide.md](docs/guide.md)。想跑仓库自带 Demo / 发版 → [开发者文档](CONTRIBUTING.md)。
 
 ---
 
-## License
+## 仓库里有什么
 
-见 [LICENSE](LICENSE)。
+
+| 路径                                           | 角色             |
+| -------------------------------------------- | -------------- |
+| `[holm-core/](holm-core/)`                   | 组件 API、后端登记    |
+| `[holm-renderer-gl/](holm-renderer-gl/)`     | 轻量 OpenGL 实现   |
+| `[holm-renderer-wgpu/](holm-renderer-wgpu/)` | wgpu / WGSL 实现 |
+| `[KuiklyHolmCore/](KuiklyHolmCore/)`         | 打包成一个 Maven 依赖 |
+| `[holmDemo/](holmDemo/)`                     | 可运行示例（含霓虹隧道）   |
+| `[docs/guide.md](docs/guide.md)`             | 接入手册           |
+| `[CONTRIBUTING.md](CONTRIBUTING.md)`         | 给维护本仓的人        |
+
+
+---
+
+接入细节与避坑 → **[docs/guide.md](docs/guide.md)**  
+构建 / 发版 / 共建 → **[开发者文档](CONTRIBUTING.md)**
