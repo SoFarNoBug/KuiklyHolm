@@ -20,3 +20,4 @@
 | [0012](./0012-on-shader-compiled-timing.md) | **onShaderCompiled** · 片元装载双耗时回调 |
 | [0013](./0013-kmp-wgpu-primitives-under-holm.md) | **kmp-wgpu** · 通用 wgpu 原语层（Holm 之下） |
 | [0014](./0014-rename-holm-runtime-to-kmp-wgpu-native.md) | **改名** · 消灭 holm-runtime → kmp-wgpu-native / kmp_wgpu_*（ABI break） |
+| [0015](./0015-kmp-wgpu-independent-repo.md) | **独立仓** · kmp-wgpu 拆仓发版 + FullscreenPass + 关 O7 |

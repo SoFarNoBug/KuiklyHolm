@@ -28,14 +28,14 @@ kotlin {
         }
         val androidMain by getting {
             dependencies {
-                api(project(":kmp-wgpu"))
-                api(project(":kmp-wgpu-surface"))
+                api("io.github.sofarnobug:kmp-wgpu:0.1.0")
+                api("io.github.sofarnobug:kmp-wgpu-surface:0.1.0")
             }
         }
         val jsMain by getting {
             dependencies {
-                api(project(":kmp-wgpu"))
-                api(project(":kmp-wgpu-surface"))
+                api("io.github.sofarnobug:kmp-wgpu:0.1.0")
+                api("io.github.sofarnobug:kmp-wgpu-surface:0.1.0")
                 implementation("com.tencent.kuikly-open.core-render-web:base:${Version.getKuiklyVersion()}")
             }
         }
@@ -45,8 +45,8 @@ kotlin {
         val iosMain by creating {
             dependsOn(commonMain)
             dependencies {
-                api(project(":kmp-wgpu"))
-                api(project(":kmp-wgpu-surface"))
+                api("io.github.sofarnobug:kmp-wgpu:0.1.0")
+                api("io.github.sofarnobug:kmp-wgpu-surface:0.1.0")
             }
             iosX64Main.dependsOn(this)
             iosArm64Main.dependsOn(this)

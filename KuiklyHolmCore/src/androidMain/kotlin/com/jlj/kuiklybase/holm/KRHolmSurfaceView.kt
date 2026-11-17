@@ -35,8 +35,6 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
     private val _runtimeView = SurfaceView(context)
     private var _playing: Boolean = true
     private var _scene: String = ""
-    private var _liquidBoost: Float = HolmSurfaceAttr.DEFAULT_LIQUID_BOOST
-    private var _liquidBend: Float = HolmSurfaceAttr.DEFAULT_LIQUID_BEND
     private var _warpAmount: Float = HolmSurfaceAttr.DEFAULT_WARP_AMOUNT
     private var _scrollSpeed: Float = HolmSurfaceAttr.DEFAULT_SCROLL_SPEED
     private var _maxFps: Int = HolmSurfaceAttr.DEFAULT_MAX_FPS
@@ -285,34 +283,6 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
                     }
                 } else {
                     applyPlayingRenderMode()
-                }
-                true
-            }
-            HolmSurfaceAttr.PROP_LIQUID_BOOST -> {
-                val next = propValue.toHolmFloat(HolmSurfaceAttr.DEFAULT_LIQUID_BOOST)
-                if (next != _liquidBoost) {
-                    _liquidBoost = next
-                    if (HolmExecutor.isWgpu(_executor)) {
-                        postRuntime {
-                            it.setLiquid(_liquidBoost, _liquidBend)
-                        }
-                    } else {
-                        _glView.queueEvent { _renderer.setLiquidBoost(next) }
-                    }
-                }
-                true
-            }
-            HolmSurfaceAttr.PROP_LIQUID_BEND -> {
-                val next = propValue.toHolmFloat(HolmSurfaceAttr.DEFAULT_LIQUID_BEND)
-                if (next != _liquidBend) {
-                    _liquidBend = next
-                    if (HolmExecutor.isWgpu(_executor)) {
-                        postRuntime {
-                            it.setLiquid(_liquidBoost, _liquidBend)
-                        }
-                    } else {
-                        _glView.queueEvent { _renderer.setLiquidBend(next) }
-                    }
                 }
                 true
             }
@@ -596,7 +566,6 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
             }
             _fullscreenPass = pass
             applyRuntimeShaders(pass)
-            pass.setLiquid(_liquidBoost, _liquidBend)
             pass.setPlaying(_playing)
             _runtimeLastFrameNs = 0L
             _runtimePerfWindowNs = 0L
@@ -623,7 +592,7 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
         pass.setCustomFs("")
         if (custom.isNotEmpty()) {
             if (!HolmShaderResolve.looksLikeWgslFragment(custom)) {
-                pass.setScene(_scene)
+                // ADR 0015 removed: pass.setScene(_scene)
                 post {
                     fireError(
                         "SHADER_CUSTOM",
@@ -654,7 +623,7 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
                 post { fireShaderCompiled(true, 0f, compileMs, HolmExecutor.WGPU) }
             }
         } else {
-            pass.setScene(_scene)
+            // ADR 0015 removed: pass.setScene(_scene)
             // 空片元 ClearTri：ok=false，对齐 Lite 拒绝语义（审查 P2）
             post { fireShaderCompiled(false, 0f, 0f, HolmExecutor.WGPU) }
         }
@@ -838,8 +807,6 @@ private class HolmGlesRenderer : GLSurfaceView.Renderer {
     private var _program: Int = 0
     private var _timeLoc: Int = -1
     private var _resolutionLoc: Int = -1
-    private var _liquidBoostLoc: Int = -1
-    private var _liquidBendLoc: Int = -1
     private var _warpAmountLoc: Int = -1
     private var _scrollSpeedLoc: Int = -1
     private var _posLoc: Int = -1
@@ -850,8 +817,6 @@ private class HolmGlesRenderer : GLSurfaceView.Renderer {
     private var _scene: String = ""
     private var _fragmentBody: String = ""
     private var _vertexSrc: String = ""
-    private var _liquidBoost: Float = HolmSurfaceAttr.DEFAULT_LIQUID_BOOST
-    private var _liquidBend: Float = HolmSurfaceAttr.DEFAULT_LIQUID_BEND
     private var _warpAmount: Float = HolmSurfaceAttr.DEFAULT_WARP_AMOUNT
     private var _scrollSpeed: Float = HolmSurfaceAttr.DEFAULT_SCROLL_SPEED
     private var _surfaceReady: Boolean = false
@@ -890,14 +855,6 @@ private class HolmGlesRenderer : GLSurfaceView.Renderer {
         _surfaceReady = false
         _shaderFailed = false
         _ready = false
-    }
-
-    fun setLiquidBoost(value: Float) {
-        _liquidBoost = value
-    }
-
-    fun setLiquidBend(value: Float) {
-        _liquidBend = value
     }
 
     fun setWarpAmount(value: Float) {
@@ -948,12 +905,6 @@ private class HolmGlesRenderer : GLSurfaceView.Renderer {
         }
         if (_resolutionLoc >= 0) {
             GLES20.glUniform2f(_resolutionLoc, _viewW.toFloat(), _viewH.toFloat())
-        }
-        if (_liquidBoostLoc >= 0) {
-            GLES20.glUniform1f(_liquidBoostLoc, _liquidBoost)
-        }
-        if (_liquidBendLoc >= 0) {
-            GLES20.glUniform1f(_liquidBendLoc, _liquidBend)
         }
         if (_warpAmountLoc >= 0) {
             GLES20.glUniform1f(_warpAmountLoc, _warpAmount)
@@ -1064,8 +1015,6 @@ private class HolmGlesRenderer : GLSurfaceView.Renderer {
         _posLoc = GLES20.glGetAttribLocation(_program, "a_position")
         _timeLoc = GLES20.glGetUniformLocation(_program, "u_time")
         _resolutionLoc = GLES20.glGetUniformLocation(_program, "u_resolution")
-        _liquidBoostLoc = GLES20.glGetUniformLocation(_program, "u_liquidBoost")
-        _liquidBendLoc = GLES20.glGetUniformLocation(_program, "u_liquidBend")
         _warpAmountLoc = GLES20.glGetUniformLocation(_program, "u_warpAmount")
         _scrollSpeedLoc = GLES20.glGetUniformLocation(_program, "u_scrollSpeed")
         onShaderCompiled?.invoke(true, wrapMs, compileMs)

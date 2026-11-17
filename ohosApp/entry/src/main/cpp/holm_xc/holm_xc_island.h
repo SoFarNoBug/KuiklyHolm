@@ -26,8 +26,6 @@ struct HolmXcIsland {
     int32_t maxFps = 60;
     /** 相对 XComponent 物理像素基线；(0,1]，默认 1=不降采样 */
     float renderScale = 1.0f;
-    float liquidBoost = 1.35f;
-    float liquidBend = 0.05f;
 
     uint64_t sessionHandle = 0;
     HolmXcLiteGl liteGl;

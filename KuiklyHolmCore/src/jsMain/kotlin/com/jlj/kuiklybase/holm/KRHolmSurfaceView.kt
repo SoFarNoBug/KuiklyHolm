@@ -19,8 +19,6 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
     private var _canvas: HTMLCanvasElement = newCanvasElement()
     private var _playing: Boolean = true
     private var _scene: String = ""
-    private var _liquidBoost: Float = HolmSurfaceAttr.DEFAULT_LIQUID_BOOST
-    private var _liquidBend: Float = HolmSurfaceAttr.DEFAULT_LIQUID_BEND
     private var _warpAmount: Float = HolmSurfaceAttr.DEFAULT_WARP_AMOUNT
     private var _scrollSpeed: Float = HolmSurfaceAttr.DEFAULT_SCROLL_SPEED
     private var _maxFps: Int = HolmSurfaceAttr.DEFAULT_MAX_FPS
@@ -102,16 +100,6 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
             HolmSurfaceAttr.PROP_PLAYING -> {
                 _playing = propValue.toBool()
                 postPlaying(effectivePlaying())
-                true
-            }
-            HolmSurfaceAttr.PROP_LIQUID_BOOST -> {
-                _liquidBoost = propValue.toHolmFloat(HolmSurfaceAttr.DEFAULT_LIQUID_BOOST)
-                postSet()
-                true
-            }
-            HolmSurfaceAttr.PROP_LIQUID_BEND -> {
-                _liquidBend = propValue.toHolmFloat(HolmSurfaceAttr.DEFAULT_LIQUID_BEND)
-                postSet()
                 true
             }
             HolmSurfaceAttr.PROP_WARP_AMOUNT -> {
@@ -350,8 +338,6 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
         o.frag = resolveLiteFragmentOrEmpty()
         o.wrapMs = _lastLiteWrapMs.toDouble()
         o.scene = _scene
-        o.liquidBoost = _liquidBoost.toDouble()
-        o.liquidBend = _liquidBend.toDouble()
         o.warpAmount = _warpAmount.toDouble()
         o.scrollSpeed = _scrollSpeed.toDouble()
         o.maxFps = _maxFps
@@ -368,21 +354,15 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                 if (!_started) return
                 val msg = js("{}")
                 msg.type = "set"
-                msg.liquidBoost = _liquidBoost.toDouble()
-                msg.liquidBend = _liquidBend.toDouble()
                 msg.maxFps = _maxFps
                 dispatch(msg)
                 return
             }
-            val session = _runtimeSession ?: return
-            HolmWgpuNative.sessionSetLiquid(session, _liquidBoost, _liquidBend)
             return
         }
         if (!_started) return
         val msg = js("{}")
         msg.type = "set"
-        msg.liquidBoost = _liquidBoost.toDouble()
-        msg.liquidBend = _liquidBend.toDouble()
         msg.warpAmount = _warpAmount.toDouble()
         msg.scrollSpeed = _scrollSpeed.toDouble()
         msg.maxFps = _maxFps
@@ -446,7 +426,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
         pass.setCustomFs("")
         if (custom.isNotEmpty()) {
             if (!HolmShaderResolve.looksLikeWgslFragment(custom)) {
-                pass.setScene(_scene)
+                // ADR 0015 removed: pass.setScene(_scene)
                 fireError(
                     "SHADER_CUSTOM",
                     "Runtime fragmentShader must be WGSL (non-WGSL custom ignored)",
@@ -476,7 +456,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                 fireShaderCompiled(true, 0f, compileMs, HolmExecutor.WGPU)
             }
         } else {
-            pass.setScene(_scene)
+            // ADR 0015 removed: pass.setScene(_scene)
             fireShaderCompiled(false, 0f, 0f, HolmExecutor.WGPU)
         }
     }
@@ -494,7 +474,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
         if (custom.isNotEmpty()) {
             if (!HolmShaderResolve.looksLikeWgslFragment(custom)) {
                 // 仍持 GLSL 正文时跳过，等 Attr 换成 WGSL（已卸旧 custom）
-                HolmWgpuNative.sessionSetScene(session, _scene)
+                // ADR 0015 removed: HolmWgpuNative.sessionSetScene(session, _scene)
                 discardRuntimeSessionErrors(session)
                 fireShaderCompiled(false, 0f, 0f, HolmExecutor.WGPU)
                 return
@@ -526,7 +506,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                 fireShaderCompiled(true, 0f, compileMs, HolmExecutor.WGPU)
             }
         } else {
-            HolmWgpuNative.sessionSetScene(session, _scene)
+            // ADR 0015 removed: HolmWgpuNative.sessionSetScene(session, _scene)
             discardRuntimeSessionErrors(session)
             clearPendingError()
             // 空片元 ClearTri：ok=false，对齐 Lite 拒绝语义（审查 P2）
@@ -911,8 +891,6 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
         init.glueUrl = glueUrl
         init.wasmUrl = wasmUrl
         init.scene = _scene
-        init.liquidBoost = _liquidBoost.toDouble()
-        init.liquidBend = _liquidBend.toDouble()
         init.maxFps = _maxFps
         init.playing = effectivePlaying()
         init.reportPerf = _onPerf != null
@@ -1189,7 +1167,6 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                 _backend = if (backend.isNotBlank()) backend else HolmExecutor.BACKEND_WGPU_M0
                 runCatching { _canvas.style.removeProperty("background") }
                 applyRuntimeShaders(pass)
-                pass.setLiquid(_liquidBoost, _liquidBend)
                 pass.setPlaying(effectivePlaying())
                 clearPendingError()
                 _readyFired = true

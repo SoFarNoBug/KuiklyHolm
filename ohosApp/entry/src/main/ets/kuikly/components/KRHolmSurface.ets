@@ -14,8 +14,6 @@ const PROP_MAX_FPS = 'maxFps';
 const PROP_RENDER_SCALE = 'renderScale';
 const PROP_PLAYING = 'playing';
 const PROP_SCENE = 'scene';
-const PROP_LIQUID_BOOST = 'liquidBoost';
-const PROP_LIQUID_BEND = 'liquidBend';
 const PROP_ON_READY = 'onReady';
 const PROP_ON_ERROR = 'onError';
 const PROP_ON_PERF = 'onPerf';
@@ -47,8 +45,6 @@ export class KRHolmSurface extends KuiklyRenderBaseView {
   cssRenderScale: number = DEFAULT_RENDER_SCALE;
   cssPlaying: boolean = true;
   cssScene: string = '';
-  cssLiquidBoost: number = 1.35;
-  cssLiquidBend: number = 0.05;
   cssOnReady: KuiklyRenderCallback | null = null;
   cssOnError: KuiklyRenderCallback | null = null;
   cssOnPerf: KuiklyRenderCallback | null = null;
@@ -104,16 +100,6 @@ export class KRHolmSurface extends KuiklyRenderBaseView {
         this.pushScene();
         return true;
       }
-      case PROP_LIQUID_BOOST: {
-        this.cssLiquidBoost = Number(propValue);
-        this.pushLiquid();
-        return true;
-      }
-      case PROP_LIQUID_BEND: {
-        this.cssLiquidBend = Number(propValue);
-        this.pushLiquid();
-        return true;
-      }
       case PROP_ON_READY: {
         this.cssOnReady = propValue as KuiklyRenderCallback;
         this.pushCallbacks();
@@ -157,7 +143,6 @@ export class KRHolmSurface extends KuiklyRenderBaseView {
       this.pushMaxFps();
       this.pushRenderScale();
       this.pushScene();
-      this.pushLiquid();
       this.nativeBound = true;
       if (typeof holmXc.hasWgpu === 'function' && holmXc.hasWgpu() === 0 &&
         this.cssExecutor === EXECUTOR_WGPU) {
@@ -222,19 +207,12 @@ export class KRHolmSurface extends KuiklyRenderBaseView {
 
   private pushScene(): void {
     try {
-      holmXc.setScene(this.xcId, this.cssScene);
+      // ADR 0015: setScene removed
     } catch (_e) {
       // ignore
     }
   }
 
-  private pushLiquid(): void {
-    try {
-      holmXc.setLiquid(this.xcId, this.cssLiquidBoost, this.cssLiquidBend);
-    } catch (_e) {
-      // ignore
-    }
-  }
 
   private pushCallbacks(): void {
     try {

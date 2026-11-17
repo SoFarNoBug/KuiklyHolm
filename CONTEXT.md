@@ -31,12 +31,16 @@ _Avoid_：把通用原语或算力 API 塞进 holm-renderer-wgpu；用 GLES 冒�
 _Avoid_：Holm Session；Kuikly 桥；官方算法/特效目录；第二图形后端
 
 **kmp-wgpu-surface**：
-可选 Present/Surface 模块；无窗口算力可不依赖。
-_Avoid_：把 Present 塞进 kmp-wgpu core 必选路径
+可选 Present/Surface 模块；含 **FullscreenPass**（换片元 + tick）；无窗口算力可不依赖。
+_Avoid_：把 Present 塞进 kmp-wgpu core 必选路径；liquid/scene/ClearTri（已废）
+
+**FullscreenPass**：
+通用全屏片元 Present（属 `kmp-wgpu-surface`）；`setFragmentShader` / tick / playing；无片元只清屏。
+_Avoid_：Holm Session；liquid/scene；amber ClearTri 进库默认
 
 **kmp_wgpu_native**：
-Rust+wgpu 实现 crate；磁盘目录 `kmp-wgpu-native/`；C ABI `kmp_wgpu_*`（ADR 0014）。
-_Avoid_：holm-runtime / holm_runtime / HolmRuntime（已废旧名）
+Rust+wgpu 实现 crate；长期独立仓 `~/Studio/kmp/kmp-wgpu`（ADR 0015）；C ABI `kmp_wgpu_*`（ADR 0014）。
+_Avoid_：holm-runtime / holm_runtime / HolmRuntime / holm_fullscreen（已废旧名）
 
 **Provider**：
 宿主必须显式注册的后端实现入口；未设置则失败。
@@ -87,6 +91,7 @@ _Avoid_：`LITE_PENDING` 冒充完成；用 GLES 冒充 wgpu；另挂第二 XCom
 | 三包 + Provider | [`docs/adr/0008-holm-core-gl-wgpu-packages.md`](docs/adr/0008-holm-core-gl-wgpu-packages.md) |
 | kmp-wgpu 原语层 | [`docs/adr/0013-kmp-wgpu-primitives-under-holm.md`](docs/adr/0013-kmp-wgpu-primitives-under-holm.md) |
 | 消灭 holm-runtime 命名 | [`docs/adr/0014-rename-holm-runtime-to-kmp-wgpu-native.md`](docs/adr/0014-rename-holm-runtime-to-kmp-wgpu-native.md) |
+| kmp-wgpu 独立仓 | [`docs/adr/0015-kmp-wgpu-independent-repo.md`](docs/adr/0015-kmp-wgpu-independent-repo.md) |
 | iOS renderer-wgpu | [`docs/adr/0009-ios-runtime-cametallayer-objc-session.md`](docs/adr/0009-ios-runtime-cametallayer-objc-session.md) |
 | 鸿蒙 renderer-wgpu | [`docs/adr/0010-ohos-runtime-xcomponent-session.md`](docs/adr/0010-ohos-runtime-xcomponent-session.md) |
 | 鸿蒙 renderer-gl | [`docs/adr/0011-ohos-lite-egl-xcomponent.md`](docs/adr/0011-ohos-lite-egl-xcomponent.md) |
@@ -111,4 +116,5 @@ _Avoid_：`LITE_PENDING` 冒充完成；用 GLES 冒充 wgpu；另挂第二 XCom
 - Demo：Home「示例 / 双渲染后端」(`holm_dualtrack`) +「kmp-wgpu Compute 回读」；页内 chip 切隧道 / IQ / 程序化海洋 / 电缆巢；官方五席源码已删
 - iOS：ADR 0009 泵仍 ObjC；Present 经 `HolmWgpuIosBridge` → kmp-wgpu；renderer-gl GLES 子树（`gles2-ios` / `wgpu-m0*`）
 - 鸿蒙：ADR 0010 renderer-wgpu + ADR 0011 renderer-gl（同 XC EGL，`gles2-ohos`）；真机隧道/互切待勾
-- 后单：真机勾 v1.1 Compute 冒烟；Maven/独立仓、`holm_api` 对齐
+- 独立仓：ADR 0015（先仓内清边界再剪到 `~/Studio/kmp/kmp-wgpu`；关 O7）
+- 后单：真机勾 v1.1 Compute / 独立仓验收表；`holm_api` 对齐

@@ -394,7 +394,9 @@ void ApplyRuntimeShaders(HolmXcIsland &island)
     if (trimmed.empty()) {
         Bridge().setCustomFs(handle, "");
         if (!island.scene.empty()) {
-            Bridge().setScene(handle, island.scene.c_str());
+            if (Bridge().setScene) {
+                Bridge().setScene(handle, island.scene.c_str());
+            }
         }
         // 空片元 ClearTri：ok=false，对齐 Lite 拒绝语义（审查 P2）
         FireShaderCompiled(island, false, 0.0, 0.0, kExecutorWgpu);
@@ -460,7 +462,6 @@ bool ApplyLiteShaders(HolmXcIsland &island, bool reportDialectError)
         FireShaderCompiled(island, false, wrapMs, compileMs, kExecutorGl);
         return false;
     }
-    HolmXcLiteGlSetLiquid(island.liteGl, island.liquidBoost, island.liquidBend);
     FireShaderCompiled(island, true, wrapMs, compileMs, kExecutorGl);
     return true;
 }
@@ -700,7 +701,6 @@ void StartRuntimeIfNeeded(HolmXcIsland &island, void *window)
     }
     island.sessionHandle = static_cast<uint64_t>(handle);
     island.nativeWindow = window;
-    Bridge().setLiquid(handle, island.liquidBoost, island.liquidBend);
     Bridge().setPlaying(handle, island.playing ? 1 : 0);
     ApplyRuntimeShaders(island);
 
@@ -1027,38 +1027,13 @@ napi_value NapiSetScene(napi_env env, napi_callback_info info)
     }
     ReadUtf8Arg(env, args[1], island->scene);
     if (island->sessionHandle != 0 && EnsureBridgeResolved()) {
-        Bridge().setScene(static_cast<int64_t>(island->sessionHandle), island->scene.c_str());
+        if (Bridge().setScene) {
+            Bridge().setScene(static_cast<int64_t>(island->sessionHandle), island->scene.c_str());
+        }
     }
     return undefined;
 }
 
-napi_value NapiSetLiquid(napi_env env, napi_callback_info info)
-{
-    size_t argc = 3;
-    napi_value args[3] = {nullptr};
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    std::lock_guard<std::mutex> lock(HolmXcMutex());
-    HolmXcIsland *island = IslandFromArg0(env, info, 3);
-    napi_value undefined = nullptr;
-    napi_get_undefined(env, &undefined);
-    if (island == nullptr) {
-        return undefined;
-    }
-    double boost = island->liquidBoost;
-    double bend = island->liquidBend;
-    napi_get_value_double(env, args[1], &boost);
-    napi_get_value_double(env, args[2], &bend);
-    island->liquidBoost = static_cast<float>(boost);
-    island->liquidBend = static_cast<float>(bend);
-    if (island->sessionHandle != 0 && EnsureBridgeResolved()) {
-        Bridge().setLiquid(static_cast<int64_t>(island->sessionHandle), island->liquidBoost,
-            island->liquidBend);
-    }
-    if (island->liteGl.ready) {
-        HolmXcLiteGlSetLiquid(island->liteGl, island->liquidBoost, island->liquidBend);
-    }
-    return undefined;
-}
 
 napi_value NapiSetCallbacks(napi_env env, napi_callback_info info)
 {
@@ -1152,7 +1127,6 @@ napi_value Init(napi_env env, napi_value exports)
     ExportFn(env, exports, "setMaxFps", NapiSetMaxFps);
     ExportFn(env, exports, "setRenderScale", NapiSetRenderScale);
     ExportFn(env, exports, "setScene", NapiSetScene);
-    ExportFn(env, exports, "setLiquid", NapiSetLiquid);
     ExportFn(env, exports, "setCallbacks", NapiSetCallbacks);
     ExportFn(env, exports, "destroyIsland", NapiDestroyIsland);
     return exports;

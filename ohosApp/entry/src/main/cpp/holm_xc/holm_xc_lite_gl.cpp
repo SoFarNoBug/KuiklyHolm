@@ -290,8 +290,6 @@ void HolmXcLiteGlDestroy(HolmXcLiteGl &gl)
     gl.posLoc = -1;
     gl.timeLoc = -1;
     gl.resolutionLoc = -1;
-    gl.liquidBoostLoc = -1;
-    gl.liquidBendLoc = -1;
     gl.viewW = 1;
     gl.viewH = 1;
     gl.animTimeSec = 0.f;
@@ -400,8 +398,6 @@ bool HolmXcLiteGlSetFragmentBody(HolmXcLiteGl &gl, const std::string &body, std:
         gl.posLoc = glGetAttribLocation(program, "a_position");
         gl.timeLoc = glGetUniformLocation(program, "u_time");
         gl.resolutionLoc = glGetUniformLocation(program, "u_resolution");
-        gl.liquidBoostLoc = glGetUniformLocation(program, "u_liquidBoost");
-        gl.liquidBendLoc = glGetUniformLocation(program, "u_liquidBend");
         return true;
     };
 
@@ -435,11 +431,6 @@ bool HolmXcLiteGlSetFragmentBody(HolmXcLiteGl &gl, const std::string &body, std:
     return tryLink(outCompileMs);
 }
 
-void HolmXcLiteGlSetLiquid(HolmXcLiteGl &gl, float boost, float bend)
-{
-    gl.liquidBoost = boost;
-    gl.liquidBend = bend;
-}
 
 void HolmXcLiteGlDrawFrame(HolmXcLiteGl &gl, float dtSec)
 {
@@ -461,12 +452,6 @@ void HolmXcLiteGlDrawFrame(HolmXcLiteGl &gl, float dtSec)
         }
         if (gl.resolutionLoc >= 0) {
             glUniform2f(gl.resolutionLoc, static_cast<GLfloat>(gl.viewW), static_cast<GLfloat>(gl.viewH));
-        }
-        if (gl.liquidBoostLoc >= 0) {
-            glUniform1f(gl.liquidBoostLoc, gl.liquidBoost);
-        }
-        if (gl.liquidBendLoc >= 0) {
-            glUniform1f(gl.liquidBendLoc, gl.liquidBend);
         }
         static const GLfloat kQuad[] = {
             -1.f, -1.f, 1.f, -1.f, -1.f, 1.f, 1.f, 1.f,

@@ -18,12 +18,8 @@
 @property (nonatomic, assign) GLuint program;
 @property (nonatomic, assign) GLint timeLoc;
 @property (nonatomic, assign) GLint resolutionLoc;
-@property (nonatomic, assign) GLint liquidBoostLoc;
-@property (nonatomic, assign) GLint liquidBendLoc;
 @property (nonatomic, assign) GLint posLoc;
 @property (nonatomic, assign) float animTimeSec;
-@property (nonatomic, assign) float liquidBoost;
-@property (nonatomic, assign) float liquidBend;
 @property (nonatomic, assign) GLint viewW;
 @property (nonatomic, assign) GLint viewH;
 @property (nonatomic, assign) CGFloat renderScale;
@@ -50,12 +46,8 @@
 
 - (instancetype)initWithFrame:(CGRect)frame {
     if (self = [super initWithFrame:frame]) {
-        _liquidBoost = 1.35f;
-        _liquidBend = 0.05f;
         _timeLoc = -1;
         _resolutionLoc = -1;
-        _liquidBoostLoc = -1;
-        _liquidBendLoc = -1;
         _posLoc = -1;
         _viewW = 1;
         _viewH = 1;
@@ -180,11 +172,6 @@
     }
 }
 
-- (void)holm_setLiquidBoost:(float)boost bend:(float)bend {
-    _liquidBoost = boost;
-    _liquidBend = bend;
-}
-
 - (BOOL)holm_setFragmentBody:(NSString *)body {
     NSString *trimmed = [body stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (trimmed.length == 0) {
@@ -261,8 +248,6 @@
     _posLoc = glGetAttribLocation(_program, "a_position");
     _timeLoc = glGetUniformLocation(_program, "u_time");
     _resolutionLoc = glGetUniformLocation(_program, "u_resolution");
-    _liquidBoostLoc = glGetUniformLocation(_program, "u_liquidBoost");
-    _liquidBendLoc = glGetUniformLocation(_program, "u_liquidBend");
     [self holm_emitCompiled:YES wrapMs:wrapMs compileMs:compileMs];
     return YES;
 }
@@ -311,12 +296,6 @@
         }
         if (_resolutionLoc >= 0) {
             glUniform2f(_resolutionLoc, (GLfloat)_viewW, (GLfloat)_viewH);
-        }
-        if (_liquidBoostLoc >= 0) {
-            glUniform1f(_liquidBoostLoc, _liquidBoost);
-        }
-        if (_liquidBendLoc >= 0) {
-            glUniform1f(_liquidBendLoc, _liquidBend);
         }
         static const GLfloat kQuad[] = {
             -1.f, -1.f,

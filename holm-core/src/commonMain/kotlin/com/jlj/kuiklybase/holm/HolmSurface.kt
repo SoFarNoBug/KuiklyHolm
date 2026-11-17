@@ -31,6 +31,7 @@ class HolmSurfaceView : DeclarativeBaseView<HolmSurfaceAttr, HolmSurfaceEvent>()
  * @CreateDate: 2026/11/12
  * @Author: jlj
  * @Description: HolmSurface Attr（scene / playing / knobs / maxFps / renderScale / executor / fragmentShader / vertexShader）。
+ * liquid 席已废（ADR 0015），不再暴露 liquidBoost/liquidBend。
  */
 class HolmSurfaceAttr : ComposeAttr() {
     fun scene(value: String): HolmSurfaceAttr {
@@ -40,18 +41,6 @@ class HolmSurfaceAttr : ComposeAttr() {
 
     fun playing(value: Boolean): HolmSurfaceAttr {
         PROP_PLAYING with if (value) 1 else 0
-        return this
-    }
-
-    /** 预留 uniform：边缘色散/高光强度（历史 liquid 席）；无官方席时仍可写入。 */
-    fun liquidBoost(value: Float): HolmSurfaceAttr {
-        PROP_LIQUID_BOOST with value
-        return this
-    }
-
-    /** 预留 uniform：边缘 UV 拧曲幅度（历史 liquid 席）；无官方席时仍可写入。 */
-    fun liquidBend(value: Float): HolmSurfaceAttr {
-        PROP_LIQUID_BEND with value
         return this
     }
 
@@ -120,8 +109,6 @@ class HolmSurfaceAttr : ComposeAttr() {
     companion object {
         const val PROP_SCENE: String = "scene"
         const val PROP_PLAYING: String = "playing"
-        const val PROP_LIQUID_BOOST: String = "liquidBoost"
-        const val PROP_LIQUID_BEND: String = "liquidBend"
         const val PROP_WARP_AMOUNT: String = "warpAmount"
         const val PROP_SCROLL_SPEED: String = "scrollSpeed"
         const val PROP_MAX_FPS: String = "maxFps"
@@ -129,8 +116,6 @@ class HolmSurfaceAttr : ComposeAttr() {
         const val PROP_EXECUTOR: String = "executor"
         const val PROP_FRAGMENT_SHADER: String = "fragmentShader"
         const val PROP_VERTEX_SHADER: String = "vertexShader"
-        const val DEFAULT_LIQUID_BOOST: Float = 1.35f
-        const val DEFAULT_LIQUID_BEND: Float = 0.05f
         const val DEFAULT_WARP_AMOUNT: Float = 0.04f
         const val DEFAULT_SCROLL_SPEED: Float = 1.0f
         const val DEFAULT_MAX_FPS: Int = 60
@@ -292,8 +277,6 @@ fun HolmSurface(
     scene: String,
     modifier: Modifier = Modifier,
     playing: Boolean = true,
-    liquidBoost: Float = HolmSurfaceAttr.DEFAULT_LIQUID_BOOST,
-    liquidBend: Float = HolmSurfaceAttr.DEFAULT_LIQUID_BEND,
     warpAmount: Float = HolmSurfaceAttr.DEFAULT_WARP_AMOUNT,
     scrollSpeed: Float = HolmSurfaceAttr.DEFAULT_SCROLL_SPEED,
     maxFps: Int = HolmSurfaceAttr.DEFAULT_MAX_FPS,
@@ -313,8 +296,6 @@ fun HolmSurface(
             view.getViewAttr().run {
                 scene(scene)
                 playing(playing)
-                liquidBoost(liquidBoost)
-                liquidBend(liquidBend)
                 warpAmount(warpAmount)
                 scrollSpeed(scrollSpeed)
                 maxFps(maxFps)

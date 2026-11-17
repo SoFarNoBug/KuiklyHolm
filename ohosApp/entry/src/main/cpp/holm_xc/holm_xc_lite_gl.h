@@ -25,14 +25,10 @@ struct HolmXcLiteGl {
     GLint posLoc = -1;
     GLint timeLoc = -1;
     GLint resolutionLoc = -1;
-    GLint liquidBoostLoc = -1;
-    GLint liquidBendLoc = -1;
 
     int32_t viewW = 1;
     int32_t viewH = 1;
     float animTimeSec = 0.f;
-    float liquidBoost = 1.35f;
-    float liquidBend = 0.05f;
     std::string fragmentBody;
     bool ready = false;
 };
@@ -51,7 +47,6 @@ bool HolmXcLiteGlSetFragmentBody(HolmXcLiteGl &gl, const std::string &body, std:
                                  std::string *errMsg, double *outWrapMs = nullptr,
                                  double *outCompileMs = nullptr);
 
-void HolmXcLiteGlSetLiquid(HolmXcLiteGl &gl, float boost, float bend);
 
 void HolmXcLiteGlDrawFrame(HolmXcLiteGl &gl, float dtSec);
 

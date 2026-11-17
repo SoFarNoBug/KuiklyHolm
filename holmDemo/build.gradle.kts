@@ -77,12 +77,12 @@ kotlin {
         val androidMain by getting {
             dependencies {
                 api("com.tencent.kuikly-open:core-render-android:${Version.getKuiklyVersion()}")
-                implementation(project(":kmp-wgpu"))
+                implementation("io.github.sofarnobug:kmp-wgpu:0.1.0")
             }
         }
         val jsMain by getting {
             dependencies {
-                implementation(project(":kmp-wgpu"))
+                implementation("io.github.sofarnobug:kmp-wgpu:0.1.0")
             }
         }
 

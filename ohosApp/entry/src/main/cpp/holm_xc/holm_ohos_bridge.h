@@ -21,7 +21,6 @@ typedef int (*HolmOhosBridgeTickFn)(int64_t handle, float dtSecs);
 typedef void (*HolmOhosBridgeResizeFn)(int64_t handle, int32_t width, int32_t height);
 typedef int (*HolmOhosBridgeSetCustomFsFn)(int64_t handle, const char *fs);
 typedef void (*HolmOhosBridgeSetSceneFn)(int64_t handle, const char *scene);
-typedef void (*HolmOhosBridgeSetLiquidFn)(int64_t handle, float boost, float bend);
 typedef void (*HolmOhosBridgeSetPlayingFn)(int64_t handle, int playing);
 typedef uint32_t (*HolmOhosBridgeBackendIdFn)(int64_t handle, char *buf, int32_t cap);
 typedef uint32_t (*HolmOhosBridgeLastErrorCodeFn)(int64_t handle, char *buf, int32_t cap);
@@ -37,7 +36,6 @@ struct HolmOhosBridgeApi {
     HolmOhosBridgeResizeFn resize;
     HolmOhosBridgeSetCustomFsFn setCustomFs;
     HolmOhosBridgeSetSceneFn setScene;
-    HolmOhosBridgeSetLiquidFn setLiquid;
     HolmOhosBridgeSetPlayingFn setPlaying;
     HolmOhosBridgeBackendIdFn backendId;
     HolmOhosBridgeLastErrorCodeFn lastErrorCode;

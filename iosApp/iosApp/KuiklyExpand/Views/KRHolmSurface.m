@@ -49,8 +49,6 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
 @property (nonatomic, assign) BOOL playing;
 @property (nonatomic, assign) NSInteger maxFps;
 @property (nonatomic, assign) CGFloat renderScale;
-@property (nonatomic, assign) float liquidBoost;
-@property (nonatomic, assign) float liquidBend;
 @property (nonatomic, assign) BOOL readyFired;
 @property (nonatomic, assign) BOOL blockedNotified;
 @property (nonatomic, copy, nullable) NSString *pendingErrorCode;
@@ -89,8 +87,6 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
         _playing = YES;
         _maxFps = kHolmDefaultMaxFps;
         _renderScale = kHolmDefaultRenderScale;
-        _liquidBoost = 1.35f;
-        _liquidBend = 0.05f;
         _sessionHandle = 0;
         _minFrameInterval = 0;
         self.opaque = YES;
@@ -168,7 +164,7 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
     }
     _scene = [next copy];
     if (_sessionHandle != 0) {
-        [HolmDemoHolmWgpuIosBridge.shared setSceneHandle:_sessionHandle scene:_scene];
+        // ADR 0015 removed: [HolmDemoHolmWgpuIosBridge.shared setSceneHandle:_sessionHandle scene:_scene];
     }
 }
 
@@ -209,22 +205,6 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
     if (_metalHost) {
         [self holm_resizeSessionIfNeeded];
     }
-}
-
-- (void)setCss_liquidBoost:(NSNumber *)css_liquidBoost {
-    _liquidBoost = css_liquidBoost.floatValue;
-    if (_sessionHandle != 0) {
-        [HolmDemoHolmWgpuIosBridge.shared setLiquidHandle:_sessionHandle boost:_liquidBoost bend:_liquidBend];
-    }
-    [_glesHost holm_setLiquidBoost:_liquidBoost bend:_liquidBend];
-}
-
-- (void)setCss_liquidBend:(NSNumber *)css_liquidBend {
-    _liquidBend = css_liquidBend.floatValue;
-    if (_sessionHandle != 0) {
-        [HolmDemoHolmWgpuIosBridge.shared setLiquidHandle:_sessionHandle boost:_liquidBoost bend:_liquidBend];
-    }
-    [_glesHost holm_setLiquidBoost:_liquidBoost bend:_liquidBend];
 }
 
 - (void)setCss_onReady:(KuiklyRenderCallback)css_onReady {
@@ -295,7 +275,7 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
     } else {
         [HolmDemoHolmWgpuIosBridge.shared setCustomFsHandle:_sessionHandle fs:@""];
         if (_scene.length) {
-            [HolmDemoHolmWgpuIosBridge.shared setSceneHandle:_sessionHandle scene:_scene];
+            // ADR 0015 removed: [HolmDemoHolmWgpuIosBridge.shared setSceneHandle:_sessionHandle scene:_scene];
         }
         // 空片元 ClearTri：ok=false，对齐 Lite 拒绝语义（审查 P2）
         [self holm_fireShaderCompiled:NO wrapMs:0.f compileMs:0.f executor:kHolmExecutorWgpu];
@@ -400,7 +380,6 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
     if (![_glesHost holm_setupGL]) {
         return;
     }
-    [_glesHost holm_setLiquidBoost:_liquidBoost bend:_liquidBend];
 
     NSString *custom = [_fragmentShader stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (custom.length == 0) {
@@ -495,7 +474,6 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
     _sessionHandle = (uint64_t)handle;
     _lastSessionW = (uint32_t)w;
     _lastSessionH = (uint32_t)h;
-    [HolmDemoHolmWgpuIosBridge.shared setLiquidHandle:_sessionHandle boost:_liquidBoost bend:_liquidBend];
     [HolmDemoHolmWgpuIosBridge.shared setPlayingHandle:_sessionHandle playing:_playing];
     if (_fragmentShader.length > 0 &&
         ![self holm_looksLikeWgslFragment:_fragmentShader] &&

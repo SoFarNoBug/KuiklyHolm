@@ -1,3 +1,0 @@
-headers = kmp_wgpu_native.h
-headerFilter = kmp_wgpu_native.h
-package = kmp.wgpu.native.cinterop

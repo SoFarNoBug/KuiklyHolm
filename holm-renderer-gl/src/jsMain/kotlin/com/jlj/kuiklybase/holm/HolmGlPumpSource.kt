@@ -28,8 +28,6 @@ object HolmGlPumpSource {
     var buffer = null;
     var timeLoc = null;
     var resolutionLoc = null;
-    var liquidBoostLoc = null;
-    var liquidBendLoc = null;
     var warpAmountLoc = null;
     var scrollSpeedLoc = null;
     var posLoc = -1;
@@ -37,16 +35,12 @@ object HolmGlPumpSource {
     var vertSrc = "";
     var fragSrc = "";
     var scene = "";
-    var liquidBoost = 1.35;
-    var liquidBend = 0.05;
     var warpAmount = 0.04;
     var scrollSpeed = 1.0;
     var maxFps = 60;
     var intervalMs = 1000 / 60;
     var nextDue = 0;
     var playing = true;
-    var dirtyLiquidBoost = true;
-    var dirtyLiquidBend = true;
     var dirtyWarpAmount = true;
     var dirtyScrollSpeed = true;
     var rafId = 0;
@@ -195,16 +189,12 @@ object HolmGlPumpSource {
       shaderFailed = false;
       timeLoc = gl.getUniformLocation(program, "u_time");
       resolutionLoc = gl.getUniformLocation(program, "u_resolution");
-      liquidBoostLoc = gl.getUniformLocation(program, "u_liquidBoost");
-      liquidBendLoc = gl.getUniformLocation(program, "u_liquidBend");
       warpAmountLoc = gl.getUniformLocation(program, "u_warpAmount");
       scrollSpeedLoc = gl.getUniformLocation(program, "u_scrollSpeed");
       posLoc = gl.getAttribLocation(program, "a_position");
       gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
       gl.enableVertexAttribArray(posLoc);
       gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
-      dirtyLiquidBoost = true;
-      dirtyLiquidBend = true;
       dirtyWarpAmount = true;
       dirtyScrollSpeed = true;
       emitShaderCompiled(true, wrap, nowMs() - t0);
@@ -281,14 +271,6 @@ object HolmGlPumpSource {
         if (resolutionLoc) {
           gl.uniform2f(resolutionLoc, viewW, viewH);
         }
-        if (dirtyLiquidBoost && liquidBoostLoc) {
-          gl.uniform1f(liquidBoostLoc, liquidBoost);
-          dirtyLiquidBoost = false;
-        }
-        if (dirtyLiquidBend && liquidBendLoc) {
-          gl.uniform1f(liquidBendLoc, liquidBend);
-          dirtyLiquidBend = false;
-        }
         if (dirtyWarpAmount && warpAmountLoc) {
           gl.uniform1f(warpAmountLoc, warpAmount);
           dirtyWarpAmount = false;
@@ -327,14 +309,10 @@ object HolmGlPumpSource {
         vertSrc = msg.vert || "";
         fragSrc = msg.frag || "";
         scene = msg.scene || "";
-        liquidBoost = typeof msg.liquidBoost === "number" ? msg.liquidBoost : 1.35;
-        liquidBend = typeof msg.liquidBend === "number" ? msg.liquidBend : 0.05;
         warpAmount = typeof msg.warpAmount === "number" ? msg.warpAmount : 0.04;
         scrollSpeed = typeof msg.scrollSpeed === "number" ? msg.scrollSpeed : 1.0;
         applyMaxFps(typeof msg.maxFps === "number" ? msg.maxFps : 60);
         playing = msg.playing !== false;
-        dirtyLiquidBoost = true;
-        dirtyLiquidBend = true;
         dirtyWarpAmount = true;
         dirtyScrollSpeed = true;
         gl = canvas.getContext("webgl", CTX) || canvas.getContext("experimental-webgl", CTX);
@@ -355,14 +333,6 @@ object HolmGlPumpSource {
         afterSuccessfulRebuild();
       },
       set: function (msg) {
-        if (typeof msg.liquidBoost === "number" && msg.liquidBoost !== liquidBoost) {
-          liquidBoost = msg.liquidBoost;
-          dirtyLiquidBoost = true;
-        }
-        if (typeof msg.liquidBend === "number" && msg.liquidBend !== liquidBend) {
-          liquidBend = msg.liquidBend;
-          dirtyLiquidBend = true;
-        }
         if (typeof msg.warpAmount === "number" && msg.warpAmount !== warpAmount) {
           warpAmount = msg.warpAmount;
           dirtyWarpAmount = true;

@@ -20,14 +20,14 @@ kotlin {
         }
         val androidMain by getting {
             dependencies {
-                api(project(":kmp-wgpu"))
-                api(project(":kmp-wgpu-surface"))
+                api("io.github.sofarnobug:kmp-wgpu:0.1.0")
+                api("io.github.sofarnobug:kmp-wgpu-surface:0.1.0")
             }
         }
         val ohosArm64Main by getting {
             dependencies {
-                api(project(":kmp-wgpu"))
-                api(project(":kmp-wgpu-surface"))
+                api("io.github.sofarnobug:kmp-wgpu:0.1.0")
+                api("io.github.sofarnobug:kmp-wgpu-surface:0.1.0")
             }
         }
     }

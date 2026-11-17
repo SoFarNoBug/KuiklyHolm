@@ -3,19 +3,14 @@ package com.jlj.kuiklybase.holm
 import com.jlj.kmp.wgpu.Device
 import com.jlj.kmp.wgpu.WgpuRuntime
 import com.jlj.kmp.wgpu.isLoadPending as kmpIsLoadPending
-import com.jlj.kmp.wgpu.jsPlatform
-import com.jlj.kmp.wgpu.sessionBackendId
-import com.jlj.kmp.wgpu.sessionLastErrorCode
-import com.jlj.kmp.wgpu.sessionLastErrorMessage
-import com.jlj.kmp.wgpu.sessionResize
-import com.jlj.kmp.wgpu.sessionTick
 import com.jlj.kmp.wgpu.surface.JsSurfaces
 import org.w3c.dom.HTMLCanvasElement
 
 /**
  * @CreateDate: 2026/11/12
  * @Author: jlj
- * @Description: H5 Runtime 门面 → kmp-wgpu-surface；Holm 语义直调 wasm（成败只信 throw）。
+ * @Description: H5 Runtime 门面 → kmp-wgpu-surface；直调 wasm（成败只信 throw）。
+ * Present 走 FullscreenPass / 动态 session；不再依赖 Device.sessionTick*。
  */
 object HolmWgpuNative {
     fun isLibraryLoaded(): Boolean = WgpuRuntime.isLibraryLoaded()
@@ -44,7 +39,7 @@ object HolmWgpuNative {
             height = height,
             onSuccess = { gpu ->
                 val session = gpu.device.handle
-                val backend = gpu.device.sessionBackendId()
+                val backend = backendIdOf(session)
                 onSuccess(session.asDynamic(), backend)
             },
             onError = onError,
@@ -65,14 +60,22 @@ object HolmWgpuNative {
 
     private fun deviceOf(session: dynamic): Device? {
         if (session == null) return null
-        return Device.wrap(session as Any, jsPlatform())
+        return Device.wrap(session as Any, com.jlj.kmp.wgpu.jsPlatform())
     }
 
-    fun sessionSetScene(session: dynamic, scene: String) {
-        if (session == null) return
-        js(
-            "(function(s, scene){ if (s && typeof s.setScene === 'function') s.setScene(scene); })",
-        ).unsafeCast<(dynamic, String) -> Unit>()(session, scene)
+    private fun backendIdOf(session: dynamic): String {
+        return try {
+            js(
+                """
+                (function(s){
+                  if (s && typeof s.backendId === 'function') return String(s.backendId() || 'wgpu-m0');
+                  return 'wgpu-m0';
+                })
+                """,
+            ).unsafeCast<(dynamic) -> String>()(session)
+        } catch (_: Throwable) {
+            "wgpu-m0"
+        }
     }
 
     /**
@@ -85,10 +88,10 @@ object HolmWgpuNative {
             js(
                 """
                 (function(s, fs) {
-                  if (!s || typeof s.setCustomFs !== 'function') {
-                    throw new Error('setCustomFs missing');
+                  if (!s || typeof s.setFragmentShader !== 'function') {
+                    throw new Error('setFragmentShader missing');
                   }
-                  s.setCustomFs(fs || "");
+                  s.setFragmentShader(fs || "");
                   return null;
                 })
                 """,
@@ -115,13 +118,6 @@ object HolmWgpuNative {
         }
     }
 
-    fun sessionSetLiquid(session: dynamic, boost: Float, bend: Float) {
-        if (session == null) return
-        js(
-            "(function(s, boost, bend){ if (s && typeof s.setLiquid === 'function') s.setLiquid(boost, bend); })",
-        ).unsafeCast<(dynamic, Float, Float) -> Unit>()(session, boost, bend)
-    }
-
     fun sessionSetPlaying(session: dynamic, playing: Boolean) {
         if (session == null) return
         js(
@@ -130,21 +126,31 @@ object HolmWgpuNative {
     }
 
     fun sessionResize(session: dynamic, width: Int, height: Int) {
-        deviceOf(session)?.sessionResize(width, height)
+        if (session == null) return
+        val w = width.coerceAtLeast(1)
+        val h = height.coerceAtLeast(1)
+        js(
+            "(function(s,w,h){ if (s && typeof s.resize === 'function') s.resize(w,h); })",
+        ).unsafeCast<(dynamic, Int, Int) -> Unit>()(session, w, h)
     }
 
     /**
      * @return null 成功；非空为错误文案。成败只信 throw。
      */
     fun sessionTick(session: dynamic, dtSecs: Float): String? {
-        val device = deviceOf(session) ?: return "KmpWgpuSession missing"
-        return if (device.sessionTick(dtSecs)) {
-            null
-        } else {
-            // tick 失败（throw→false）；可读 last 作文案，但不因 sticky last 单独否决成功帧
-            device.sessionLastErrorMessage()
-                .ifBlank { device.sessionLastErrorCode() }
-                .ifBlank { "tick failed" }
+        if (session == null) return "KmpWgpuSession missing"
+        return try {
+            js(
+                """
+                (function(s, dt){
+                  if (!s || typeof s.tick !== 'function') throw new Error('tick missing');
+                  s.tick(dt);
+                  return null;
+                })
+                """,
+            ).unsafeCast<(dynamic, Float) -> String?>()(session, dtSecs)
+        } catch (t: Throwable) {
+            t.message?.takeIf { it.isNotBlank() } ?: t.toString()
         }
     }
 

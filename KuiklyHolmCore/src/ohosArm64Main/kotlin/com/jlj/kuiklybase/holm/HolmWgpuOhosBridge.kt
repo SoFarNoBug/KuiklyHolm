@@ -65,11 +65,7 @@ object HolmWgpuOhosBridge {
         _passes[handle]?.setCustomFs(fs) ?: false
 
     fun setScene(handle: Long, scene: String) {
-        _passes[handle]?.setScene(scene)
-    }
-
-    fun setLiquid(handle: Long, boost: Float, bend: Float) {
-        _passes[handle]?.setLiquid(boost, bend)
+        // ADR 0015: scene removed
     }
 
     fun setPlaying(handle: Long, playing: Boolean) {

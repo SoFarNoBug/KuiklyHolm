@@ -78,9 +78,10 @@ fun holmOhosBridgeSetScene(handle: Long, scene: CPointer<ByteVar>?) {
     HolmWgpuOhosBridge.setScene(handle, scene?.toKString().orEmpty())
 }
 
+/** ADR 0015：liquid 已废；保留 CName 空桩以免旧壳 dlsym 崩。 */
 @CName("holm_ohos_bridge_set_liquid")
 fun holmOhosBridgeSetLiquid(handle: Long, boost: Float, bend: Float) {
-    HolmWgpuOhosBridge.setLiquid(handle, boost, bend)
+    // no-op
 }
 
 @CName("holm_ohos_bridge_set_playing")

@@ -5,10 +5,11 @@
 - 产品：**Holm**（**通用渲染底座**：shader-in / surface-out）
 - 身份：**ADR 0007**；目标拆包：**ADR 0008**（`holm-core` / `holm-renderer-gl` / `holm-renderer-wgpu` + **Provider 必设**）
 - 下沉：**ADR 0013**（`kmp-wgpu` 原语层；`holm-renderer-wgpu` 为其上薄适配；与 Kuikly 无关）
+- 独立仓：**ADR 0015**（目标路径 `~/Studio/kmp/kmp-wgpu`；Maven `io.github.sofarnobug:kmp-wgpu*`；O7 已关）
 - 根工程：`KuiklyHolmUI`；三包 `:holm-core` / `:holm-renderer-gl` / `:holm-renderer-wgpu`；umbrella `:KuiklyHolmCore`；Demo `:holmDemo`
-- 命名：`HolmSurface` / `KRHolmSurface` / `holm_*`；原语层 `kmp-wgpu` / `kmp-wgpu-surface`
+- 命名：`HolmSurface` / `KRHolmSurface` / `holm_*`；原语层 `kmp-wgpu` / `kmp-wgpu-surface`（FullscreenPass）
 - 形态：Android+H5+iOS+Ohos 三包 Present 已对齐；`kmp-wgpu-native`；`:kmp-wgpu` / `:kmp-wgpu-surface`
-- 节奏：岛契约稳 → ADR 0013 v1 抽芯（已）→ v1.1 Compute（已）→ 真拆三包（四端 Present 已；Maven/拆仓另单）；Demo **主推隧道**；五席源码已删
+- 节奏：岛契约稳 → ADR 0013 v1/v1.1（已）→ 三包四端 Present（已）→ **仓内清边界 → 剪独立仓发版**（ADR 0015）；Demo **主推隧道**；五席/liquid/scene 已废
 
 ## 接手阅读顺序
 
@@ -17,8 +18,9 @@
 3. [docs/adr/0007-holm-as-generic-render-substrate.md](docs/adr/0007-holm-as-generic-render-substrate.md)
 4. [docs/adr/0008-holm-core-gl-wgpu-packages.md](docs/adr/0008-holm-core-gl-wgpu-packages.md)
 5. [docs/adr/0013-kmp-wgpu-primitives-under-holm.md](docs/adr/0013-kmp-wgpu-primitives-under-holm.md)
-6. [docs/product/00-context-and-decisions.md](docs/product/00-context-and-decisions.md)
-7. Cursor 协作：[.cursor/agents-guide.md](.cursor/agents-guide.md)
+6. [docs/adr/0015-kmp-wgpu-independent-repo.md](docs/adr/0015-kmp-wgpu-independent-repo.md)
+7. [docs/product/00-context-and-decisions.md](docs/product/00-context-and-decisions.md)
+8. Cursor 协作：[.cursor/agents-guide.md](.cursor/agents-guide.md)
 
 ## 硬规则（摘录）
 

@@ -14,7 +14,7 @@ uint32_t kmp_wgpu_abi_version(void);
 uint32_t kmp_wgpu_has_wgpu(void);
 
 /**
- * Create a Runtime Session bound to a CAMetalLayer (iOS).
+ * Create a Present Session bound to a CAMetalLayer (iOS).
  * @param metal_layer  CAMetalLayer* (not retained by Rust; must outlive the session)
  * @param width        pixel width (>=1)
  * @param height       pixel height (>=1)
@@ -23,7 +23,7 @@ uint32_t kmp_wgpu_has_wgpu(void);
 uint64_t kmp_wgpu_session_create_metal(void *metal_layer, uint32_t width, uint32_t height);
 
 /**
- * Create a Runtime Session bound to an OHNativeWindow (HarmonyOS / ADR 0010).
+ * Create a Present Session bound to an OHNativeWindow (HarmonyOS / ADR 0010).
  * @param native_window  OHNativeWindow* from XComponent OnSurfaceCreated (must outlive session)
  * @param width          pixel width (>=1)
  * @param height         pixel height (>=1)
@@ -41,17 +41,12 @@ void kmp_wgpu_session_destroy(uint64_t handle);
 
 void kmp_wgpu_session_resize(uint64_t handle, uint32_t width, uint32_t height);
 
-/** scene name UTF-8 (e.g. "custom"); NULL ignored. */
-void kmp_wgpu_session_set_scene(uint64_t handle, const char *scene);
-
 /**
- * Set custom WGSL fragment module body (full module with vs_main/fs_main via shell).
- * Empty / NULL clears custom pipe.
+ * Set WGSL fragment body (shell provides vs_main + uniforms).
+ * Empty / NULL clears fragment; tick then clear-only.
  * @return 1 on success, 0 on failure
  */
-uint32_t kmp_wgpu_session_set_custom_fs(uint64_t handle, const char *fs);
-
-void kmp_wgpu_session_set_liquid(uint64_t handle, float boost, float bend);
+uint32_t kmp_wgpu_session_set_fragment_shader(uint64_t handle, const char *fs);
 
 void kmp_wgpu_session_set_playing(uint64_t handle, uint32_t playing);
 
@@ -68,7 +63,7 @@ uint32_t kmp_wgpu_session_tick(uint64_t handle, float dt_secs);
 uint32_t kmp_wgpu_session_backend_id(uint64_t handle, char *out_buf, uint32_t out_len);
 
 /**
- * Last error code / message after failed set_custom_fs / tick / uncaptured wgpu.
+ * Last error code / message after failed set_fragment_shader / tick / uncaptured wgpu.
  * Copies NUL-terminated UTF-8; truncates if needed.
  * @return bytes written excluding NUL, or 0
  */

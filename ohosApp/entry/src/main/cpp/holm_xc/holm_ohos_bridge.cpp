@@ -68,8 +68,6 @@ bool HolmOhosBridgeResolve(HolmOhosBridgeApi *outApi)
         !Bind(api.tick, "holm_ohos_bridge_tick") ||
         !Bind(api.resize, "holm_ohos_bridge_resize") ||
         !Bind(api.setCustomFs, "holm_ohos_bridge_set_custom_fs") ||
-        !Bind(api.setScene, "holm_ohos_bridge_set_scene") ||
-        !Bind(api.setLiquid, "holm_ohos_bridge_set_liquid") ||
         !Bind(api.setPlaying, "holm_ohos_bridge_set_playing") ||
         !Bind(api.backendId, "holm_ohos_bridge_backend_id") ||
         !Bind(api.lastErrorCode, "holm_ohos_bridge_last_error_code") ||
@@ -77,6 +75,9 @@ bool HolmOhosBridgeResolve(HolmOhosBridgeApi *outApi)
         !Bind(api.lastCreateError, "holm_ohos_bridge_last_create_error")) {
         return false;
     }
+    // ADR 0015: setScene optional（nullable no-op）
+    api.setScene = nullptr;
+    (void)Bind(api.setScene, "holm_ohos_bridge_set_scene");
     *outApi = api;
     return true;
 }

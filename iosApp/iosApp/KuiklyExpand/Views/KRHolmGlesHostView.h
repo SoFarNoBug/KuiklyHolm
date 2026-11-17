@@ -23,7 +23,6 @@ typedef void (^KRHolmGlesCompiledBlock)(BOOL ok, float wrapMs, float compileMs);
 - (void)holm_setRenderScale:(CGFloat)scale;
 /** 空正文返回 NO（调用方发 FRAGMENT_REQUIRED）；失败保留上一成功 program。 */
 - (BOOL)holm_setFragmentBody:(NSString *)body;
-- (void)holm_setLiquidBoost:(float)boost bend:(float)bend;
 - (void)holm_drawFrame:(float)dt;
 
 @end

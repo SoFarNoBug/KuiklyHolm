@@ -17,8 +17,6 @@ object HolmWgpuPumpSource {
     var session = null;
     var scene = "";
     var customFs = "";
-    var liquidBoost = 1.35;
-    var liquidBend = 0.05;
     var maxFps = 60;
     var intervalMs = 1000 / 60;
     var nextDue = 0;
@@ -194,8 +192,6 @@ object HolmWgpuPumpSource {
         canvas = msg.canvas;
         scene = msg.scene || "";
         customFs = typeof msg.customFs === "string" ? msg.customFs : "";
-        liquidBoost = typeof msg.liquidBoost === "number" ? msg.liquidBoost : 1.35;
-        liquidBend = typeof msg.liquidBend === "number" ? msg.liquidBend : 0.05;
         applyMaxFps(typeof msg.maxFps === "number" ? msg.maxFps : 60);
         playing = msg.playing !== false;
         reportPerf = msg.reportPerf === true;
@@ -245,16 +241,13 @@ object HolmWgpuPumpSource {
             session = s;
             var compileStarted = 0;
             try {
-              if (typeof session.setCustomFs === "function") session.setCustomFs("");
-              if (customFs && typeof session.setCustomFs === "function") {
+              if (typeof session.setFragmentShader === "function") session.setFragmentShader("");
+              if (customFs && typeof session.setFragmentShader === "function") {
                 compileStarted = nowMs();
-                session.setCustomFs(customFs);
+                session.setFragmentShader(customFs);
                 emitShaderCompiled(true, nowMs() - compileStarted);
-              } else if (typeof session.setScene === "function") {
-                session.setScene(scene);
-                // 空片元：ClearTri，契约 ok=false（对齐 Lite 拒绝语义）
-                emitShaderCompiled(false, 0);
               } else {
+                // 无片元：只清屏（ADR 0015）
                 emitShaderCompiled(false, 0);
               }
               if (session && typeof session.drainErrors === "function") {
@@ -265,14 +258,13 @@ object HolmWgpuPumpSource {
                 emitError("SHADER_CUSTOM", (e && e.message) ? e.message : String(e));
               }
               emitShaderCompiled(false, compileStarted ? (nowMs() - compileStarted) : 0);
-              // setCustomFs 失败：wasm 已停 playing；泵侧同步停，避免 ClearTri 空转
+              // setFragmentShader 失败：wasm 已停 playing；泵侧同步停
               playing = false;
               stop();
               try {
                 if (session && typeof session.setPlaying === "function") session.setPlaying(false);
               } catch (_) {}
             }
-            if (typeof session.setLiquid === "function") session.setLiquid(liquidBoost, liquidBend);
             if (typeof session.setPlaying === "function") session.setPlaying(!!playing);
             var backend = "wgpu-m0";
             try {
@@ -290,11 +282,6 @@ object HolmWgpuPumpSource {
           });
       },
       set: function (msg) {
-        if (typeof msg.liquidBoost === "number") liquidBoost = msg.liquidBoost;
-        if (typeof msg.liquidBend === "number") liquidBend = msg.liquidBend;
-        if (session && typeof session.setLiquid === "function") {
-          session.setLiquid(liquidBoost, liquidBend);
-        }
         if (typeof msg.reportPerf === "boolean") {
           reportPerf = msg.reportPerf;
         }
@@ -321,14 +308,11 @@ object HolmWgpuPumpSource {
         var compileStarted = 0;
         try {
           // 切换样本：先卸上一档，再装新；失败不残留旧特效
-          if (typeof session.setCustomFs === "function") session.setCustomFs("");
-          if (customFs && typeof session.setCustomFs === "function") {
+          if (typeof session.setFragmentShader === "function") session.setFragmentShader("");
+          if (customFs && typeof session.setFragmentShader === "function") {
             compileStarted = nowMs();
-            session.setCustomFs(customFs);
+            session.setFragmentShader(customFs);
             emitShaderCompiled(true, nowMs() - compileStarted);
-          } else if (typeof session.setScene === "function") {
-            session.setScene(scene);
-            emitShaderCompiled(false, 0);
           } else {
             emitShaderCompiled(false, 0);
           }

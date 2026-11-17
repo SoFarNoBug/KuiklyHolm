@@ -142,7 +142,7 @@ Stage 0 曾在 2026-11-12 选 **Lite(A)**（ADR 0002），目标是「特效尖�
 | O4 | 与 GearUI 边界 | 定仓后 |
 | O5 | 是否远期开源/多框架 | **非当前**；另 ADR |
 | O6 | 与 ParticleEngine 等消费者的接入契约（仅示例，非身份） | 另单；算力面应走 `kmp-wgpu`（ADR 0013），不绑 Holm |
-| O7 | `kmp-wgpu` 独立仓发版时机 | ADR 0013：先仓内分层，稳定后再拆 |
+| O7 | `kmp-wgpu` 独立仓发版时机 | **关闭 → ADR 0015**：`~/Studio/kmp/kmp-wgpu`；Maven `io.github.sofarnobug:kmp-wgpu*` 0.1.0；Holm `includeBuild` 开关 |
 
 ---
 

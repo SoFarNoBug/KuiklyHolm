@@ -1,5 +1,29 @@
 # dualtrack-lite-vs-standard · changelog
 
+## 2026-11-17（ADR 0015 收尾 · Ohos ohosInclude / 删旧树 / Central）
+
+- [ADD] 独立仓 `ohosInclude/` + 模块 `build.ohos.gradle.kts`；Holm `settings.ohos` local → includeBuild 该入口（补 `ohosArm64`）
+- [MODIFY] 删除 Holm 仓内 `kmp-wgpu` / `kmp-wgpu-surface` / `kmp-wgpu-native` 旧树；去掉 `docs/_run` 临时 Ohos settings
+- [ADD] Maven Central 已发：`io.github.sofarnobug:kmp-wgpu:0.1.0` / `:kmp-wgpu-surface:0.1.0`（`publish-maven.sh` · automaticRelease）
+- 真机验证：本单无真机验证（`ohos_build` 联调路径已过）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：速速改收尾三项｜待批 0
+
+## 2026-11-17（Review 打回修复 · wasm setFragmentShader + 删 liquid）
+
+- [MODIFY] 重编 H5/wasm glue：暴露 `setFragmentShader`；同步独立仓 `npm/`、`kmp-wgpu` JS resources、`h5App`
+- [MODIFY] 删 liquid：`HolmSurface` Attr/Compose 参数；Android/H5/iOS/Ohos GLES·壳泵与 NAPI；`DeviceSession` 迁出（Present 仅 `FullscreenPass`）
+- 真机验证表：`docs/reviews/device-check-list/kmp-wgpu-independent-repo.md`（审核员勾；本单修 P0/P1-soft）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：审查打回修复｜待批 0
+
+## 2026-11-17（ADR 0015 · kmp-wgpu 独立仓）
+
+- [ADD] ADR 0015：独立仓 `~/Studio/kmp/kmp-wgpu`；Maven `io.github.sofarnobug:kmp-wgpu` / `:kmp-wgpu-surface` 0.1.0；关 O7
+- [ADD] `FullscreenPass`（surface）；native `fullscreen_pass`；ABI `set_fragment_shader`；删 liquid/scene/ClearTri
+- [MODIFY] Holm 依赖改 Maven；`kmp.wgpu.local=true` → `includeBuild("../kmp-wgpu")`；仓内 `:kmp-wgpu*` 不再 include
+- [ADD] 分发：AAR `jniLibs`；Podspec / ohpm / npm `@jlj/kmp-wgpu-native`；sample 无 Holm
+- 真机验证表：`docs/reviews/device-check-list/kmp-wgpu-independent-repo.md`（审核员勾）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan 执行｜待批 0
+
 ## 2026-11-17（文案 · 后端→渲染后端）
 
 - [MODIFY] Demo/SoT：「双后端」→「双渲染后端」；chip 标签「渲染后端」
