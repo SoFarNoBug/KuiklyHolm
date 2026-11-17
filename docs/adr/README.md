@@ -1,4 +1,4 @@
-﻿# ADR
+# ADR
 
 重大决策先写 ADR，再改 docs/product/00-context-and-decisions.md 对应条目（若冲突以 00 为产品 SoT，ADR 解释背景）。
 
