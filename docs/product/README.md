@@ -42,8 +42,8 @@
 ```text
 Host / Kuikly 壳 + HolmSurface
   └── shader 契约（宿主片元或样本）
-        ├── Lite：各端轻量 GL
-        └── Standard+：可选 Holm Runtime / RHI
+        ├── renderer-gl：各端轻量 GL
+        └── renderer-wgpu：可选 kmp-wgpu Present
 ```
 
 ## 状态

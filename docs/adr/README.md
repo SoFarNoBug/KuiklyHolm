@@ -19,3 +19,4 @@
 | [0011](./0011-ohos-lite-egl-xcomponent.md) | 鸿蒙 Lite · 同 XComponent + EGL/GLES |
 | [0012](./0012-on-shader-compiled-timing.md) | **onShaderCompiled** · 片元装载双耗时回调 |
 | [0013](./0013-kmp-wgpu-primitives-under-holm.md) | **kmp-wgpu** · 通用 wgpu 原语层（Holm 之下） |
+| [0014](./0014-rename-holm-runtime-to-kmp-wgpu-native.md) | **改名** · 消灭 holm-runtime → kmp-wgpu-native / kmp_wgpu_*（ABI break） |

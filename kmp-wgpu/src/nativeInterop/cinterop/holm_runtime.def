@@ -1,3 +1,0 @@
-headers = holm_runtime.h
-headerFilter = holm_runtime.h
-package = holm.runtime.cinterop

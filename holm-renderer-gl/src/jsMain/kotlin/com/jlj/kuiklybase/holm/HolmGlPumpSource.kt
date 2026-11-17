@@ -101,7 +101,7 @@ object HolmGlPumpSource {
         ok: !!ok,
         wrapMs: typeof wrapMs === "number" ? wrapMs : 0,
         compileMs: typeof compileMs === "number" ? compileMs : 0,
-        executor: "lite"
+        executor: "renderer-gl"
       });
     }
 

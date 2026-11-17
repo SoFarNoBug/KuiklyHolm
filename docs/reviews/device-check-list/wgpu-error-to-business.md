@@ -1,7 +1,7 @@
 # 真机可执行档 · wgpu-error-to-business
 
 - 关联报告：`docs/reviews/review-wgpu-error-to-business.md`
-- 包名 / 入口：`com.jlj.kuiklyholmui` · Home →「示例 / 双轨」(`holm_runtime_m0`)
+- 包名 / 入口：`com.jlj.kuiklyholmui` · Home →「示例 / 双轨」(`holm_dualtrack`)
 - 前置条件：
   - 已跑 `holm-runtime/build-wasm.ps1` 且 `h5App/.../holm-runtime/` 时间戳新于改码
   - 已 `:holmDemo:packLocalJsBundleDebug`；按 `docs/specs/kuikly-dev-h5/runbook.md` 起 **8080 + 8083**；**硬刷新** 8080
@@ -11,7 +11,7 @@
 
 | # | 操作 | 类型 | 期望 |
 |---|---|---|---|
-| 1 | 冷启 8080/8083 → Home →「示例 / 双轨」 | navigate | 进 `holm_runtime_m0`；可见 Lite/Runtime、样本 chip（含**故意失败**）、maxFps |
+| 1 | 冷启 8080/8083 → Home →「示例 / 双轨」 | navigate | 进 `holm_dualtrack`；可见 renderer-gl / renderer-wgpu、样本 chip（含**故意失败**）、maxFps |
 | 2 | Runtime + 隧道（合法 WGSL），等 ≥2s | assert | `onReady`；有画面；`fps=`；**无**持续红字 |
 | 3 | 切「IQ原语」（合法），等 ≥2s | assert | 场景可辨；无 `SHADER_CUSTOM` 红字 |
 | 4 | Runtime + 点「故意失败」 | tap | `onError SHADER_CUSTOM` 文案含 **reserved** / `ref`；岛可深蓝/清屏；**不**当成功特效 |

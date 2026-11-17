@@ -3,7 +3,7 @@ package com.jlj.kmp.wgpu
 /**
  * @CreateDate: 2026/11/16
  * @Author: jlj
- * @Description: H5 kmp-wgpu 绑定；依赖 window.__holmRuntime（kmp_wgpu_native wasm 兼容名）。
+ * @Description: H5 kmp-wgpu 绑定；依赖 window.__kmpWgpu（kmp_wgpu_native wasm）。
  */
 
 actual typealias WgpuHandle = Any
@@ -11,27 +11,27 @@ actual typealias WgpuHandle = Any
 object JsWgpuPlatform : WgpuPlatform {
     override fun isLibraryLoaded(): Boolean {
         return js(
-            "typeof window !== 'undefined' && !!window.__holmRuntime && window.__holmRuntime.ready === true",
+            "typeof window !== 'undefined' && !!window.__kmpWgpu && window.__kmpWgpu.ready === true",
         ).unsafeCast<Boolean>()
     }
 
     override fun isAvailable(): Boolean {
         if (!isLibraryLoaded()) return false
         return js(
-            "typeof window.__holmRuntime.hasWgpu === 'function' && window.__holmRuntime.hasWgpu() === 1",
+            "typeof window.__kmpWgpu.hasWgpu === 'function' && window.__kmpWgpu.hasWgpu() === 1",
         ).unsafeCast<Boolean>()
     }
 
     override fun blockedMessage(): String {
         val loadErr = js(
-            "typeof window !== 'undefined' && window.__holmRuntime && window.__holmRuntime.error",
+            "typeof window !== 'undefined' && window.__kmpWgpu && window.__kmpWgpu.error",
         ).unsafeCast<String?>()
         return if (!loadErr.isNullOrBlank()) {
-            "kmp-wgpu BLOCKED: holm-runtime wasm load failed: $loadErr"
+            "kmp-wgpu BLOCKED: kmp-wgpu-native wasm load failed: $loadErr"
         } else if (!isLibraryLoaded()) {
-            "kmp-wgpu BLOCKED: holm-runtime wasm not loaded (build holm-runtime/build-wasm.ps1). No silent non-wgpu stack."
+            "kmp-wgpu BLOCKED: kmp-wgpu-native wasm not loaded (build kmp-wgpu-native/build-wasm.ps1). No silent non-wgpu stack."
         } else {
-            "kmp-wgpu BLOCKED: holm-runtime wasm loaded but has_wgpu=0. No silent GLES stand-in."
+            "kmp-wgpu BLOCKED: kmp-wgpu-native wasm loaded but has_wgpu=0. No silent GLES stand-in."
         }
     }
 
@@ -57,9 +57,9 @@ fun jsPlatform(): JsWgpuPlatform = JsWgpuPlatform
 fun isLoadPending(): Boolean {
     return js(
         """
-        (typeof window !== 'undefined' && !!window.__holmRuntime
-          && window.__holmRuntime.ready !== true
-          && !window.__holmRuntime.error)
+        (typeof window !== 'undefined' && !!window.__kmpWgpu
+          && window.__kmpWgpu.ready !== true
+          && !window.__kmpWgpu.error)
         """,
     ).unsafeCast<Boolean>()
 }

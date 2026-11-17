@@ -1,7 +1,7 @@
 # 真机/模拟器可执行档 · holm-ios-android-align
 
 - 关联报告：`docs/reviews/review-holm-ios-android-align.md`
-- 包名 / 入口：`com.jlj.kuiklyholmui.iosApp` · Home →「示例1 / 双轨」(`holm_runtime_m0`)
+- 包名 / 入口：`com.jlj.kuiklyholmui.iosApp` · Home →「示例1 / 双轨」(`holm_dualtrack`)
 - 前置条件：
   - `holm-runtime/./build-ios.sh` → `dist/ios/HolmRuntime.xcframework`
   - `./gradlew :holmDemo:linkPodDebugFrameworkIosSimulatorArm64`（真机用 `IosArm64`）
@@ -12,9 +12,9 @@
 
 | # | 操作 | 类型 | 期望 |
 |---|---|---|---|
-| 1 | 冷启 → Home →「示例1 / 双轨」 | navigate | 进 `holm_runtime_m0` |
+| 1 | 冷启 → Home →「示例1 / 双轨」 | navigate | 进 `holm_dualtrack` |
 | 2 | 默认 Runtime，等 ≥2s | assert | 隧道；`onReady.backend=wgpu-m0*`；非深蓝 BLOCKED |
-| 3 | 切 Lite | tap | `backend=gles2-ios`；隧道/出画；**无** `LITE_PENDING` |
+| 3 | 切 renderer-gl | tap | `backend=gles2-ios`；隧道/出画；**无** `LITE_PENDING` |
 | 4 | 再切回 Runtime | tap | 隧道恢复；`backend=wgpu-m0*`；不崩 |
 | 5 | Runtime 下 maxFps 30→60/0 | assert | fps/间隔可感知或合理；不崩 |
 | 6 | renderScale 1.0→0.5→1.0 | assert | 可糊再清；不崩 |
@@ -29,9 +29,9 @@
 
 | # | 结果 | 证据 |
 |---|---|---|
-| 1–2 | **通过** | ContentView 直进 `holm_runtime_m0`；`_holm-ios-duo-runtime.png`：`executor=runtime` · `backend=wgpu-m0` · `fps≈58` · 隧道出画 |
-| 3 | **通过（冷启 Lite）** | `_holm-ios-duo-lite.png`：`executor=lite` · `backend=gles2` · 隧道出画 · **无** `FRAGMENT_REQUIRED` / `LITE_PENDING`（修：`didMoveToWindow` 早于 Compose attr 时 defer 空片元报错，晚到 `setCss_fragmentShader` 补 `onReady`） |
-| 4 | **部分** | 冷启各轨已过；本机无 Simulator AX / `cliclick`，热切 Lite↔Runtime **未点到**；对称 teardown 仍靠代码审 |
+| 1–2 | **通过** | ContentView 直进 `holm_dualtrack`；`_holm-ios-duo-runtime.png`：`executor=renderer-wgpu` · `backend=wgpu-m0` · `fps≈58` · 隧道出画 |
+| 3 | **通过（冷启 Lite）** | `_holm-ios-duo-lite.png`：`executor=renderer-gl` · `backend=gles2` · 隧道出画 · **无** `FRAGMENT_REQUIRED` / `LITE_PENDING`（修：`didMoveToWindow` 早于 Compose attr 时 defer 空片元报错，晚到 `setCss_fragmentShader` 补 `onReady`） |
+| 4 | **部分** | 冷启各轨已过；本机无 Simulator AX / `cliclick`，热切 renderer-gl↔Runtime **未点到**；对称 teardown 仍靠代码审 |
 | 5–7 | 未跑 | — |
 | 8 | 未跑 | 真机 arm64 |
 | 9–10 | 跳过 / 代码路径 | Demo 默认已 register；缺库负向仍为链接期 |

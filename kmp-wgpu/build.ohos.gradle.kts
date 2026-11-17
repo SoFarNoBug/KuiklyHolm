@@ -13,9 +13,9 @@ kotlin {
     ohosArm64 {
         compilations.getByName("main") {
             cinterops {
-                create("holm_runtime") {
-                    defFile(project.file("src/nativeInterop/cinterop/holm_runtime.def"))
-                    includeDirs(project.file("../holm-runtime/include"))
+                create("kmp_wgpu_native") {
+                    defFile(project.file("src/nativeInterop/cinterop/kmp_wgpu_native.def"))
+                    includeDirs(project.file("../kmp-wgpu-native/include"))
                 }
             }
         }

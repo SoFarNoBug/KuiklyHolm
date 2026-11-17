@@ -2,16 +2,16 @@
 
 package com.jlj.kmp.wgpu
 
-import holm.runtime.cinterop.holm_runtime_abi_version
-import holm.runtime.cinterop.holm_runtime_has_wgpu
-import holm.runtime.cinterop.holm_runtime_last_create_error
-import holm.runtime.cinterop.holm_runtime_session_backend_id
-import holm.runtime.cinterop.holm_runtime_session_create_metal
-import holm.runtime.cinterop.holm_runtime_session_destroy
-import holm.runtime.cinterop.holm_runtime_session_last_error_code
-import holm.runtime.cinterop.holm_runtime_session_last_error_message
-import holm.runtime.cinterop.holm_runtime_session_resize
-import holm.runtime.cinterop.holm_runtime_session_tick
+import kmp.wgpu.native.cinterop.kmp_wgpu_abi_version
+import kmp.wgpu.native.cinterop.kmp_wgpu_has_wgpu
+import kmp.wgpu.native.cinterop.kmp_wgpu_last_create_error
+import kmp.wgpu.native.cinterop.kmp_wgpu_session_backend_id
+import kmp.wgpu.native.cinterop.kmp_wgpu_session_create_metal
+import kmp.wgpu.native.cinterop.kmp_wgpu_session_destroy
+import kmp.wgpu.native.cinterop.kmp_wgpu_session_last_error_code
+import kmp.wgpu.native.cinterop.kmp_wgpu_session_last_error_message
+import kmp.wgpu.native.cinterop.kmp_wgpu_session_resize
+import kmp.wgpu.native.cinterop.kmp_wgpu_session_tick
 import kotlin.concurrent.Volatile
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.COpaquePointer
@@ -24,9 +24,9 @@ import kotlinx.cinterop.toKString
 /**
  * @CreateDate: 2026/11/16
  * @Author: jlj
- * @Description: iOS kmp-wgpu 绑定；cinterop → HolmRuntime.xcframework（ADR 0009 C ABI）。
+ * @Description: iOS kmp-wgpu 绑定；cinterop → KmpWgpuNative.xcframework（ADR 0009 C ABI）。
  * 粗粒度能力块：create / tick / resize / destroy；无逐 draw FFI。
- * App 仍须链 HolmRuntime.xcframework（与今日 Xcode 直链一致）。
+ * App 仍须链 KmpWgpuNative.xcframework（与今日 Xcode 直链一致）。
  */
 
 actual typealias WgpuHandle = Long
@@ -39,7 +39,7 @@ object IosWgpuPlatform : WgpuPlatform {
         val cached = _probed
         if (cached != null) return cached
         val ok = runCatching {
-            holm_runtime_abi_version()
+            kmp_wgpu_abi_version()
             true
         }.getOrDefault(false)
         _probed = ok
@@ -47,25 +47,25 @@ object IosWgpuPlatform : WgpuPlatform {
     }
 
     override fun isAvailable(): Boolean =
-        isLibraryLoaded() && runCatching { holm_runtime_has_wgpu() }.getOrDefault(0u) == 1u
+        isLibraryLoaded() && runCatching { kmp_wgpu_has_wgpu() }.getOrDefault(0u) == 1u
 
     override fun blockedMessage(): String {
         return if (!isLibraryLoaded()) {
-            "kmp-wgpu BLOCKED: HolmRuntime.xcframework missing (run holm-runtime/build-ios.sh). No silent non-wgpu stack."
+            "kmp-wgpu BLOCKED: KmpWgpuNative.xcframework missing (run kmp-wgpu-native/build-ios.sh). No silent non-wgpu stack."
         } else {
-            "kmp-wgpu BLOCKED: HolmRuntime linked but has_wgpu=0. No silent GLES stand-in."
+            "kmp-wgpu BLOCKED: kmp_wgpu_native linked but has_wgpu=0. No silent GLES stand-in."
         }
     }
 
     override fun destroyDevice(handle: WgpuHandle) {
         if (handle == 0L || !isLibraryLoaded()) return
-        runCatching { holm_runtime_session_destroy(handle.toULong()) }
+        runCatching { kmp_wgpu_session_destroy(handle.toULong()) }
     }
 
     fun createDeviceFromMetalLayer(layer: COpaquePointer?, width: Int, height: Int): Device? {
         if (layer == null || !isLibraryLoaded()) return null
         val handle = runCatching {
-            holm_runtime_session_create_metal(
+            kmp_wgpu_session_create_metal(
                 layer,
                 width.coerceAtLeast(1).toUInt(),
                 height.coerceAtLeast(1).toUInt(),
@@ -77,20 +77,20 @@ object IosWgpuPlatform : WgpuPlatform {
 
     fun abiVersion(): Int {
         if (!isLibraryLoaded()) return 0
-        return runCatching { holm_runtime_abi_version().toInt() }.getOrDefault(0)
+        return runCatching { kmp_wgpu_abi_version().toInt() }.getOrDefault(0)
     }
 
     fun lastCreateError(): String {
         if (!isLibraryLoaded()) return ""
         return readCStringBuf { buf, len ->
-            holm_runtime_last_create_error(buf, len)
+            kmp_wgpu_last_create_error(buf, len)
         }
     }
 
     fun resize(handle: WgpuHandle, width: Int, height: Int) {
         if (handle == 0L) return
         runCatching {
-            holm_runtime_session_resize(
+            kmp_wgpu_session_resize(
                 handle.toULong(),
                 width.coerceAtLeast(1).toUInt(),
                 height.coerceAtLeast(1).toUInt(),
@@ -101,28 +101,28 @@ object IosWgpuPlatform : WgpuPlatform {
     fun tick(handle: WgpuHandle, dtSecs: Float): Boolean {
         if (handle == 0L) return false
         return runCatching {
-            holm_runtime_session_tick(handle.toULong(), dtSecs) == 1u
+            kmp_wgpu_session_tick(handle.toULong(), dtSecs) == 1u
         }.getOrDefault(false)
     }
 
     fun backendId(handle: WgpuHandle): String {
         if (handle == 0L) return "wgpu-blocked"
         return readCStringBuf { buf, len ->
-            holm_runtime_session_backend_id(handle.toULong(), buf, len)
+            kmp_wgpu_session_backend_id(handle.toULong(), buf, len)
         }.ifBlank { "wgpu-m0" }
     }
 
     fun lastErrorCode(handle: WgpuHandle): String {
         if (handle == 0L) return ""
         return readCStringBuf { buf, len ->
-            holm_runtime_session_last_error_code(handle.toULong(), buf, len)
+            kmp_wgpu_session_last_error_code(handle.toULong(), buf, len)
         }
     }
 
     fun lastErrorMessage(handle: WgpuHandle): String {
         if (handle == 0L) return ""
         return readCStringBuf { buf, len ->
-            holm_runtime_session_last_error_message(handle.toULong(), buf, len)
+            kmp_wgpu_session_last_error_message(handle.toULong(), buf, len)
         }
     }
 

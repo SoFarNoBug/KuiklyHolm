@@ -1,7 +1,7 @@
 # 真机/模拟器可执行档 · ios-runtime-adr0009
 
 - 关联报告：`docs/reviews/review-ios-runtime-adr0009.md`
-- 包名 / 入口：`com.jlj.kuiklyholmui.iosApp` · Home →「示例1 / 双轨」(`holm_runtime_m0`)
+- 包名 / 入口：`com.jlj.kuiklyholmui.iosApp` · Home →「示例1 / 双轨」(`holm_dualtrack`)
 - 前置条件：
   - `holm-runtime/./build-ios.sh` 已出 `dist/ios/HolmRuntime.xcframework`
   - `iosApp`：`pod install`；用 **arm64** 模拟器或真机（工程已排除 sim x86_64）
@@ -20,9 +20,9 @@
 
 | # | 操作 | 类型 | 期望 | 结果 |
 |---|---|---|---|---|
-| 1 | 冷启 → Home →「示例1 / 双轨」 | navigate | 进 `holm_runtime_m0` | OK（口述） |
+| 1 | 冷启 → Home →「示例1 / 双轨」 | navigate | 进 `holm_dualtrack` | OK（口述） |
 | 2 | 默认 Runtime，等 ≥2s | assert | 隧道；`backend=wgpu-m0*` | OK |
-| 3 | 切 Lite | tap | 不崩；深蓝；`LITE_PENDING` | OK |
+| 3 | 切 renderer-gl | tap | 不崩；深蓝；`LITE_PENDING` | OK |
 | 4 | 再切回 Runtime | tap | 隧道恢复；不崩 | OK |
 | 5 | maxFps=30 | assert | fps/间隔可感知变化 | 含于真机 OK |
 | 6 | maxFps=60 或 0 | assert | 回升/跟屏；不崩 | 含于真机 OK |

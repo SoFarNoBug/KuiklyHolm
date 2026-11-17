@@ -39,9 +39,9 @@ object JsSurfaces {
         js(
             """
             (function(canvas, w, h, ok, err) {
-              var rt = window.__holmRuntime;
+              var rt = window.__kmpWgpu;
               if (!rt || typeof rt.createSession !== 'function') {
-                err('holm-runtime createSession missing');
+                err('kmp-wgpu-native createSession missing');
                 return;
               }
               canvas.width = Math.max(1, w | 0);

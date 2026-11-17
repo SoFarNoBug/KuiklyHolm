@@ -5,7 +5,7 @@ import kotlin.concurrent.Volatile
 /**
  * @CreateDate: 2026/11/12
  * @Author: jlj
- * @Description: iOS 宿主初始化；umbrella Provider 兜底；Runtime Present 经 HolmRuntimeIosBridge。
+ * @Description: iOS 宿主初始化；umbrella Provider 兜底；Runtime Present 经 HolmWgpuIosBridge。
  */
 object HolmIos {
     @Volatile

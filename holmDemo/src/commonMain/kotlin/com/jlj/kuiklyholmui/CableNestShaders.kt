@@ -17,7 +17,7 @@ package com.jlj.kuiklyholmui
 object CableNestShaders {
     const val UI_CREDIT: String = "作者 mrange · 出处 shadertoy.com · CC0"
 
-    val LITE_BODY: String = """
+    val GL_BODY: String = """
 // License CC0: Cable nest — Author: mrange · Source: shadertoy.com
 // Holm Lite port: no df overload; no display gamma in postProcess.
 // hsv2rgb: https://stackoverflow.com/a/17897228/418488 (WTFPL / sam hocevar)
@@ -228,7 +228,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 }
 """.trimIndent()
 
-    val RUNTIME_FS: String = """
+    val WGPU_FS: String = """
 const TOLERANCE: f32 = 0.0001;
 const NORMTOL: f32 = 0.00125;
 const MAX_RAY_LENGTH: f32 = 20.0;

@@ -72,5 +72,5 @@
 > **结论栏仍为 Lite(A)**；ADR 0004 = **Keep Lite**（O0 未改选）。
 
 - [x] Track A：iOS `KRHolmSurface` + `frost`/`liquid_approx`（代码+runbook；Mac 目视 PARTIAL）
-- [x] Track B：`holm-runtime` wgpu 骨架 + 旁路；本机无 rustc → **BLOCKED**
+- [x] Track B：`kmp-wgpu-native` wgpu 骨架 + 旁路；本机无 rustc → **BLOCKED**
 - [x] 对比表 + [ADR 0004](../../adr/0004-lite-vs-standard-dualtrack.md) Keep Lite

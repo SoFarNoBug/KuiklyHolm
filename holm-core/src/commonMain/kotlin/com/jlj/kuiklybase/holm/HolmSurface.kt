@@ -84,7 +84,7 @@ class HolmSurfaceAttr : ComposeAttr() {
      * 默认 `1` = 与改前相同像素数；`0.5` ≈ 半分辨率（糊一点换帧率）。
      * `≤0` / 非有限 → `1`；本波夹紧到 `(0, 1]`（禁止超采样）。
      *
-     * 基线因端而异：Ohos/Android=物理 Surface px；iOS Lite=点像素；iOS Runtime=`points×nativeScale`；H5=CSS px。
+     * 基线因端而异：Ohos/Android=物理 Surface px；iOS renderer-gl=点像素；iOS renderer-wgpu=`points×nativeScale`；H5=CSS px。
      */
     fun renderScale(value: Float): HolmSurfaceAttr {
         PROP_RENDER_SCALE with normalizeRenderScale(value)
@@ -92,8 +92,8 @@ class HolmSurfaceAttr : ComposeAttr() {
     }
 
     /**
-     * DualTrack 旁路：`lite`（默认，holm-renderer-gl）或 `runtime`（holm-renderer-wgpu / kmp-wgpu Present）。
-     * runtime 缺 native 时平台侧 `onError(BLOCKED)`，不静默回落 GLES。
+     * 双渲染后端：`renderer-gl`（默认，holm-renderer-gl）或 `renderer-wgpu`（holm-renderer-wgpu / kmp-wgpu Present）。
+     * renderer-wgpu 缺 native 时平台侧 `onError(BLOCKED)`，不静默回落 GLES。
      */
     fun executor(value: String): HolmSurfaceAttr {
         PROP_EXECUTOR with HolmExecutor.normalize(value)
@@ -101,8 +101,8 @@ class HolmSurfaceAttr : ComposeAttr() {
     }
 
     /**
-     * 业务片元源码。Lite：Shadertoy **正文**（库补壳）；Runtime：WGSL 片元段（含 `@fragment fn fs_main`）。
-     * 空字符串：无官方席回退 → Lite error/清屏；Runtime → ClearTri。
+     * 业务片元源码。renderer-gl：Shadertoy **正文**（库补壳）；renderer-wgpu：WGSL 片元段（含 `@fragment fn fs_main`）。
+     * 空字符串：无官方席回退 → renderer-gl error/清屏；renderer-wgpu → ClearTri。
      */
     fun fragmentShader(value: String): HolmSurfaceAttr {
         PROP_FRAGMENT_SHADER with value
@@ -110,7 +110,7 @@ class HolmSurfaceAttr : ComposeAttr() {
     }
 
     /**
-     * 可选顶点源码；空=内置全屏 vert（Lite）。Runtime 忽略（固定全屏 VS）。
+     * 可选顶点源码；空=内置全屏 vert（renderer-gl）。renderer-wgpu 忽略（固定全屏 VS）。
      */
     fun vertexShader(value: String): HolmSurfaceAttr {
         PROP_VERTEX_SHADER with value
@@ -135,7 +135,7 @@ class HolmSurfaceAttr : ComposeAttr() {
         const val DEFAULT_SCROLL_SPEED: Float = 1.0f
         const val DEFAULT_MAX_FPS: Int = 60
         const val DEFAULT_RENDER_SCALE: Float = 1.0f
-        const val DEFAULT_EXECUTOR: String = HolmExecutor.LITE
+        const val DEFAULT_EXECUTOR: String = HolmExecutor.GL
 
         /** `≤0` / NaN/Inf → 1；否则夹紧到 `(0, 1]`。 */
         fun normalizeRenderScale(value: Float): Float {
@@ -236,7 +236,7 @@ data class PerfParams(
 
 /**
  * 每次片元装载尝试结束（成败皆可）；ADR 0012。
- * Runtime 的 [wrapMs] 恒为 0；未跑到的步骤填 0。
+ * renderer-wgpu 的 [wrapMs] 恒为 0；未跑到的步骤填 0。
  */
 data class ShaderCompiledParams(
     val ok: Boolean,

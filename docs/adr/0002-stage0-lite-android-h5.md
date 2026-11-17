@@ -16,7 +16,7 @@ Accepted（2026-11-12）；身份段部分 superseded（2026-11-14）
 2. **尖刺端**：Android GLES2 + H5 WebGL1；iOS / 鸿蒙本单记缺口。  
 3. **API**：最小 Attr（`scene`/`playing`）+ `onReady`/`onError`；声明与执行器在 `:KuiklyHolmCore`；App 只注册。  
 4. **H1**：第一期策略 A；滚动不真采；策略 B 后置。  
-5. **不做**：S0.3、wgpu、独立 `:holm-runtime`、真折射。
+5. **不做**：S0.3、wgpu、独立 `:kmp-wgpu-native`、真折射。
 
 ## Consequences
 

@@ -13,7 +13,7 @@ package com.jlj.kuiklyholmui
  *
  * 相对原版改动（GLES2/WebGL1 + Holm 壳）：
  * - 仅 iTime/iResolution；iMouse 桩为 0（走默认视角）
- * - Lite/Runtime 波次对齐：raymarch 12、normal 24（原版 normal 36，双轨同降一档）
+ * - renderer-gl / renderer-wgpu 波次对齐：raymarch 12、normal 24（原版 normal 36，双渲染后端同降一档）
  * - ACES 去掉末尾 pow(1/2.2) 伽马（对齐 NeonTunnel / Holm 输出约定）
  */
 object ProceduralOceanShaders {
@@ -23,7 +23,7 @@ object ProceduralOceanShaders {
     /**
      * Shadertoy 正文。与 Runtime 同档迭代；弱端可能掉帧，真机再定是否另降 Lite。
      */
-    val LITE_BODY: String = """
+    val GL_BODY: String = """
 // The MIT License
 // Copyright © 2017-2024 afl_ext
 // Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -229,7 +229,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     /**
      * WGSL 同构；与 Lite 同档（raymarch 12 / normal 24；原版 normal 36）。
      */
-    val RUNTIME_FS: String = """
+    val WGPU_FS: String = """
 // The MIT License
 // Copyright © 2017-2024 afl_ext
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

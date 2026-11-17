@@ -13,7 +13,7 @@ Stage 0 → 结论 Lite(A) 或 Standard(B) 或终止
 
 ## 2. 仓库（多端同构 · 胖 Core）
 
-根工程 **`KuiklyHolmUI`**（磁盘目录可仍为 `kuikly-holm`）。**不**要求先建旁路 `holm-runtime/` 目录；独立 Runtime 模块（若需要）**后置**于 Stage 0 / 业务特效之后。
+根工程 **`KuiklyHolmUI`**（磁盘目录可仍为 `kuikly-holm`）。**不**要求先建旁路 `kmp-wgpu-native/` 目录；独立 Runtime 模块（若需要）**后置**于 Stage 0 / 业务特效之后。
 
 ```text
 kuikly-holm/
@@ -32,7 +32,7 @@ kuikly-holm/
 | Demo | `:holmDemo` · `com.jlj.kuiklyholmui` |
 | 四端壳 | `androidApp` + `iosApp` + `h5App` + ohos（`settings.ohos.gradle.kts`）；mini 暂不 include |
 
-不优先拆 `holm-uikit` / `holm-compose-android` 独立开源仓（D12）。`shaders/`、Lite 后端、独立 `:holm-runtime` 等为**后续**可选落点，非本壳前置。
+不优先拆 `holm-uikit` / `holm-compose-android` 独立开源仓（D12）。`shaders/`、Lite 后端、独立 `:kmp-wgpu-native` 等为**后续**可选落点，非本壳前置。
 
 ## 3. 风险
 
@@ -56,7 +56,7 @@ kuikly-holm/
 读 D:\code_space\kuikly-holm\docs\product\README.md、00（D12 Kuikly优先）、07、Stage0。
 未选 Standard 禁止全量 M0–M3 Runtime。
 锚点是 Shader 同源；命名 HolmSurface/KRHolmSurface 不改。
-仓库是胖 Core 同构壳（KuiklyHolmCore + holmDemo），勿强制先建旁路 holm-runtime。
+仓库是胖 Core 同构壳（KuiklyHolmCore + holmDemo），勿强制先建旁路 kmp-wgpu-native。
 优先交付 Kuikly 可用特效。
 ```
 

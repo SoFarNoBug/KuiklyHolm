@@ -46,10 +46,10 @@ kotlin {
             linkerOpts += "-lpixelmap_ndk.z"
             linkerOpts += "-lz"
             linkerOpts += "-lnative_drawing"
-            // kmp-wgpu Present → libholm_runtime.so（与 libshared 同目录装机；$ORIGIN）
+            // kmp-wgpu Present → libkmp_wgpu_native.so（与 libshared 同目录装机；$ORIGIN）
             val holmRuntimeLibDir = rootProject.projectDir.resolve("ohosApp/entry/libs/arm64-v8a").absolutePath
             linkerOpts += "-L$holmRuntimeLibDir"
-            linkerOpts += "-lholm_runtime"
+            linkerOpts += "-lkmp_wgpu_native"
             // lld (KN) 直接吃 -rpath，勿包 -Wl
             linkerOpts += "-rpath"
             linkerOpts += "\$ORIGIN"

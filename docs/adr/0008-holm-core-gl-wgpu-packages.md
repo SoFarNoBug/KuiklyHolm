@@ -18,13 +18,13 @@
 3. **Provider 必设**：无论 classpath 上有无后端，宿主都必须**注册 Provider 并 setDefault**；仅有 `holm-core` 或未设 → **明确失败/报错**，禁止静默假画（对齐 ADR 0006 诚实失败）。  
    - **兼容例外**：依赖 umbrella `:KuiklyHolmCore` 时，可由 `HolmUmbrellaBootstrap` 自动 register 两后端并 default=`gl`；**推荐**宿主/Demo 仍显式 `HolmProviders.register` 演示契约。  
    - **禁止**：仅因 classpath 上有 renderer jar、却从未 register / 未 setDefault，就静默默选出画。
-4. **选用**：启动时注册默认 Provider；**岛上可覆盖**（保留 DualTrack 式 `executor=lite|runtime`）。不再「只引一个后端 jar 就自动默选」。
+4. **选用**：启动时注册默认 Provider；**岛上可覆盖**（保留 DualTrack 式 `executor=renderer-gl|runtime`）。不再「只引一个后端 jar 就自动默选」。
 5. **岛契约（v1）**：业务用布局决定岛的位置与大小；一段上色代码把该矩形每帧画满（全屏四边形片元语义）。第一期不承诺官方多 Pass 图 / Compute 产品入口。
 6. **样本**：产品叙事**废弃五席**；Demo **主推隧道**；五席源码已于 2026-11-14 从仓库移除。
 7. **物理拆节奏**：
    - **Android + H5**：三模块 + umbrella 已落地。
-   - **iOS（本波）**：`kmp-wgpu` / `kmp-wgpu-surface` / `holm-renderer-*` 加 ios 目标；Runtime Present 经 `HolmFullscreenPass` + `HolmRuntimeIosBridge`；壳 **不再直调** C Session；泵仍 ObjC（ADR 0009）。
-   - **Ohos（本波）**：`settings.ohos` 纳入三包 + `kmp-wgpu*`；Runtime Present 经 `HolmFullscreenPass` + `HolmRuntimeOhosBridge`（Demo `@CName` / `libholm_xc` dlsym）；壳 **不再直调** C Session；泵仍 XComponent OnFrame（ADR 0010）；Lite EGL 仍在 `libholm_xc`（ADR 0011）。Maven 独立坐标 / 拆仓另单（O7）。
+   - **iOS（本波）**：`kmp-wgpu` / `kmp-wgpu-surface` / `holm-renderer-*` 加 ios 目标；Runtime Present 经 `HolmFullscreenPass` + `HolmWgpuIosBridge`；壳 **不再直调** C Session；泵仍 ObjC（ADR 0009）。
+   - **Ohos（本波）**：`settings.ohos` 纳入三包 + `kmp-wgpu*`；Runtime Present 经 `HolmFullscreenPass` + `HolmWgpuOhosBridge`（Demo `@CName` / `libholm_xc` dlsym）；壳 **不再直调** C Session；泵仍 XComponent OnFrame（ADR 0010）；Lite EGL 仍在 `libholm_xc`（ADR 0011）。Maven 独立坐标 / 拆仓另单（O7）。
 
 ## Consequences
 

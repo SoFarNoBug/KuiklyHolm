@@ -12,7 +12,7 @@ Accepted（2026-11-13）
 
 1. **可选 Attr** `fragmentShader` / `vertexShader`（空=走原 `scene` / 内置全屏 vert）。
 2. **Lite**：`fragmentShader` 为 Shadertoy **正文**；库 `HolmShadertoyShell` 补 precision、`u_time`、`u_resolution`、入口 `main`。非空覆盖上色；**失败 `onError`，不静默回 frost**；保留上一成功程序，无成功程序时深蓝清屏。
-3. **Runtime**：同 Attr 传 **WGSL 片元段**（含 `@fragment fn fs_main`）；`HolmRuntimeSession.setCustomFs` 重建 pipeline。GLSL 不可直喂 Runtime。
+3. **Runtime**：同 Attr 传 **WGSL 片元段**（含 `@fragment fn fs_main`）；`KmpWgpuSession.setCustomFs` 重建 pipeline。GLSL 不可直喂 Runtime。
 4. **custom 不是官方五席**：Demo 可用 `scene` 状态机档位 `custom`，真正喂岛的是 Attr 源码；切回三席时清空 `fragmentShader`。
 5. **本波验收端**：H5 双轨；Android Lite 可接自定义；**Android Runtime 打通为下一单**。
 

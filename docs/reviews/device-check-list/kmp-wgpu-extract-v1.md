@@ -1,7 +1,7 @@
 # 真机可执行档 · kmp-wgpu-extract-v1
 
 - 关联报告：`docs/reviews/review-kmp-wgpu-extract-v1.md` · 复审 `review-kmp-wgpu-extract-v1-r2.md`
-- 包名 / 入口：`com.jlj.kuiklyholmui` · Home →「示例 / 双轨」(`holm_runtime_m0`)；H5 同页
+- 包名 / 入口：`com.jlj.kuiklyholmui` · Home →「示例 / 双轨」(`holm_dualtrack`)；H5 同页
 - 前置条件：
   - **先关闭 P0**（H5 sticky `lastErrorCode`）再跑本表；否则 H5 #6–#8 可能假失败
   - Android：已用当前树 `./holm-runtime/build-android.sh`（或 ps1）重编 `jniLibs/arm64-v8a/libholm_runtime.so`（JNI=`AndroidWgpuPlatform`）后 `installDebug`
@@ -11,7 +11,7 @@
 
 | # | 操作 | 类型 | 期望 |
 |---|---|---|---|
-| 1 | Android 冷启 →「示例 / 双轨」 | navigate | 进 `holm_runtime_m0`；可见 Lite/Runtime |
+| 1 | Android 冷启 →「示例 / 双轨」 | navigate | 进 `holm_dualtrack`；可见 renderer-gl / renderer-wgpu |
 | 2 | 默认 Runtime + 隧道 ≥2s | assert | `backend=wgpu-m0*`；隧道动效；非深蓝 BLOCKED |
 | 3 | Runtime 热换 IQ / 电缆巢 | tap | 出画或诚实 `SHADER_*`；不崩；可再切回隧道成功 |
 | 4 | Runtime↔Lite 互切 2 次 | tap | 各轨 backend 诚实；隧道可恢复 |

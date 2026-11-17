@@ -1,6 +1,6 @@
 /**
  * @file holm_ohos_bridge.h
- * @brief KN @CName Present 桥（dlsym）；壳禁止直调 holm_runtime_session_*。
+ * @brief KN @CName Present 桥（dlsym）；壳禁止直调 kmp_wgpu_session_*。
  * @date 2026-11-16
  * @author jlj
  */

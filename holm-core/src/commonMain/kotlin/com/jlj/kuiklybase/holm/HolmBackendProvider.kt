@@ -10,7 +10,7 @@ interface HolmBackendProvider {
     val id: String
 
     /**
-     * 对应 Attr `executor`：`lite` 或 `runtime`。
+     * 对应 Attr `executor`：`renderer-gl` 或 `renderer-wgpu`。
      * backendId 前缀约定：`gles2` / `webgl` / `wgpu-*`。
      */
     val executorKey: String

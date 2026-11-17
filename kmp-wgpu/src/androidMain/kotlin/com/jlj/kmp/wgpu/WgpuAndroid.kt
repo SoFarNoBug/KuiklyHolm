@@ -5,7 +5,7 @@ import android.view.Surface
 /**
  * @CreateDate: 2026/11/16
  * @Author: jlj
- * @Description: Android kmp-wgpu 绑定；JNI 进 libholm_runtime（kmp_wgpu_native 产物名兼容）。
+ * @Description: Android kmp-wgpu 绑定；JNI 进 libkmp_wgpu_native.so。
  * 粗粒度能力块：create / tick / resize / destroy；无逐 draw FFI。
  */
 
@@ -19,7 +19,7 @@ object AndroidWgpuPlatform : WgpuPlatform {
         val cached = _libraryLoaded
         if (cached != null) return cached
         val ok = runCatching {
-            System.loadLibrary("holm_runtime")
+            System.loadLibrary("kmp_wgpu_native")
             true
         }.getOrDefault(false)
         _libraryLoaded = ok
@@ -30,9 +30,9 @@ object AndroidWgpuPlatform : WgpuPlatform {
 
     override fun blockedMessage(): String {
         return if (!isLibraryLoaded()) {
-            "kmp-wgpu BLOCKED: libholm_runtime.so missing (run holm-runtime/build-android.ps1). No silent non-wgpu stack."
+            "kmp-wgpu BLOCKED: libkmp_wgpu_native.so missing (run kmp-wgpu-native/build-android.ps1). No silent non-wgpu stack."
         } else {
-            "kmp-wgpu BLOCKED: holm_runtime loaded but has_wgpu=0. No silent GLES stand-in."
+            "kmp-wgpu BLOCKED: kmp_wgpu_native loaded but has_wgpu=0. No silent GLES stand-in."
         }
     }
 

@@ -3,11 +3,11 @@ package com.jlj.kuiklybase.holm
 /**
  * @CreateDate: 2026/11/12
  * @Author: jlj
- * @Description: DualTrack 执行器常量；lite→holm-renderer-gl，runtime→holm-renderer-wgpu（经 Provider）。
+ * @Description: 双渲染后端执行器常量；`renderer-gl`→holm-renderer-gl，`renderer-wgpu`→holm-renderer-wgpu（经 Provider）。
  */
 object HolmExecutor {
-    const val LITE: String = "lite"
-    const val RUNTIME: String = "runtime"
+    const val GL: String = "renderer-gl"
+    const val WGPU: String = "renderer-wgpu"
 
     const val BACKEND_GLES2: String = "gles2"
     const val BACKEND_WEBGL: String = "webgl"
@@ -18,8 +18,8 @@ object HolmExecutor {
 
     fun normalize(raw: String?): String {
         val v = raw?.trim()?.lowercase().orEmpty()
-        return if (v == RUNTIME) RUNTIME else LITE
+        return if (v == WGPU) WGPU else GL
     }
 
-    fun isRuntime(raw: String?): Boolean = normalize(raw) == RUNTIME
+    fun isWgpu(raw: String?): Boolean = normalize(raw) == WGPU
 }

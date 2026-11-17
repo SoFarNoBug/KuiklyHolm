@@ -5,7 +5,7 @@
 
 package com.jlj.kuiklyholmui
 
-import com.jlj.kuiklybase.holm.HolmRuntimeOhosBridge
+import com.jlj.kuiklybase.holm.HolmWgpuOhosBridge
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.COpaquePointer
 import kotlinx.cinterop.CPointer
@@ -36,8 +36,8 @@ fun holmOhosBridgeRequireProvider(
     errBuf: CPointer<ByteVar>?,
     errCap: Int,
 ): Int {
-    val key = executor?.toKString().orEmpty().ifBlank { "lite" }
-    val err = HolmRuntimeOhosBridge.requireProvider(key)
+    val key = executor?.toKString().orEmpty().ifBlank { "renderer-gl" }
+    val err = HolmWgpuOhosBridge.requireProvider(key)
     return if (err == null) {
         0
     } else {
@@ -47,59 +47,59 @@ fun holmOhosBridgeRequireProvider(
 }
 
 @CName("holm_ohos_bridge_has_wgpu")
-fun holmOhosBridgeHasWgpu(): Int = if (HolmRuntimeOhosBridge.hasWgpu()) 1 else 0
+fun holmOhosBridgeHasWgpu(): Int = if (HolmWgpuOhosBridge.hasWgpu()) 1 else 0
 
 @CName("holm_ohos_bridge_create")
 fun holmOhosBridgeCreate(window: COpaquePointer?, width: Int, height: Int): Long =
-    HolmRuntimeOhosBridge.create(window, width, height)
+    HolmWgpuOhosBridge.create(window, width, height)
 
 @CName("holm_ohos_bridge_destroy")
 fun holmOhosBridgeDestroy(handle: Long) {
-    HolmRuntimeOhosBridge.destroy(handle)
+    HolmWgpuOhosBridge.destroy(handle)
 }
 
 @CName("holm_ohos_bridge_tick")
 fun holmOhosBridgeTick(handle: Long, dtSecs: Float): Int =
-    if (HolmRuntimeOhosBridge.tick(handle, dtSecs)) 1 else 0
+    if (HolmWgpuOhosBridge.tick(handle, dtSecs)) 1 else 0
 
 @CName("holm_ohos_bridge_resize")
 fun holmOhosBridgeResize(handle: Long, width: Int, height: Int) {
-    HolmRuntimeOhosBridge.resize(handle, width, height)
+    HolmWgpuOhosBridge.resize(handle, width, height)
 }
 
 @CName("holm_ohos_bridge_set_custom_fs")
 fun holmOhosBridgeSetCustomFs(handle: Long, fs: CPointer<ByteVar>?): Int {
     val body = fs?.toKString().orEmpty()
-    return if (HolmRuntimeOhosBridge.setCustomFs(handle, body)) 1 else 0
+    return if (HolmWgpuOhosBridge.setCustomFs(handle, body)) 1 else 0
 }
 
 @CName("holm_ohos_bridge_set_scene")
 fun holmOhosBridgeSetScene(handle: Long, scene: CPointer<ByteVar>?) {
-    HolmRuntimeOhosBridge.setScene(handle, scene?.toKString().orEmpty())
+    HolmWgpuOhosBridge.setScene(handle, scene?.toKString().orEmpty())
 }
 
 @CName("holm_ohos_bridge_set_liquid")
 fun holmOhosBridgeSetLiquid(handle: Long, boost: Float, bend: Float) {
-    HolmRuntimeOhosBridge.setLiquid(handle, boost, bend)
+    HolmWgpuOhosBridge.setLiquid(handle, boost, bend)
 }
 
 @CName("holm_ohos_bridge_set_playing")
 fun holmOhosBridgeSetPlaying(handle: Long, playing: Int) {
-    HolmRuntimeOhosBridge.setPlaying(handle, playing != 0)
+    HolmWgpuOhosBridge.setPlaying(handle, playing != 0)
 }
 
 @CName("holm_ohos_bridge_backend_id")
 fun holmOhosBridgeBackendId(handle: Long, buf: CPointer<ByteVar>?, cap: Int): UInt =
-    writeCString(buf, cap, HolmRuntimeOhosBridge.backendId(handle))
+    writeCString(buf, cap, HolmWgpuOhosBridge.backendId(handle))
 
 @CName("holm_ohos_bridge_last_error_code")
 fun holmOhosBridgeLastErrorCode(handle: Long, buf: CPointer<ByteVar>?, cap: Int): UInt =
-    writeCString(buf, cap, HolmRuntimeOhosBridge.lastErrorCode(handle))
+    writeCString(buf, cap, HolmWgpuOhosBridge.lastErrorCode(handle))
 
 @CName("holm_ohos_bridge_last_error_message")
 fun holmOhosBridgeLastErrorMessage(handle: Long, buf: CPointer<ByteVar>?, cap: Int): UInt =
-    writeCString(buf, cap, HolmRuntimeOhosBridge.lastErrorMessage(handle))
+    writeCString(buf, cap, HolmWgpuOhosBridge.lastErrorMessage(handle))
 
 @CName("holm_ohos_bridge_last_create_error")
 fun holmOhosBridgeLastCreateError(buf: CPointer<ByteVar>?, cap: Int): UInt =
-    writeCString(buf, cap, HolmRuntimeOhosBridge.lastCreateError())
+    writeCString(buf, cap, HolmWgpuOhosBridge.lastCreateError())

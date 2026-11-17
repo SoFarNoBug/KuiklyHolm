@@ -1,5 +1,7 @@
 # DualTrack · Lite vs Standard（限时尖刺）
 
+> **Attr 命名（2026-11-17）**：对外执行器已改为 `executor=renderer-gl` / `renderer-wgpu`（废 `lite`/`runtime`）。下文历史「Lite/Standard」仅保留尖刺史实，勿再当 UI/Attr 用词。
+
 > **状态**：已收口（2026-11-12）→ ADR 0004 **Keep Lite**；**O0 仍为 Lite(A)**（未改选）。  
 > **动机**：多端对齐要证据；真模型英雄区只能走 Standard，先用最小通面估账单。
 
@@ -16,7 +18,7 @@
 | 轨 | 内容 | 端 | 非目标 |
 | --- | --- | --- | --- |
 | **A · Lite** | `KRHolmSurface` iOS；`frost` 逐字同源 + `liquid_approx` 骨架同源 | iOS（Android/H5 已有） | 本波不强求五席全上 iOS；liquid 不强制逐字同步 |
-| **B · Standard** | `:holm-runtime` wgpu 清屏/三角 + 旁路桥；Demo 可切换，**默认 Lite** | Android + H5 | glTF / M1 / M2 / 鸿蒙 |
+| **B · Standard** | `:kmp-wgpu-native` wgpu 清屏/三角 + 旁路桥；Demo 可切换，**默认 Lite** | Android + H5 | glTF / M1 / M2 / 鸿蒙 |
 
 ## 3. 非目标（硬）
 
@@ -36,9 +38,9 @@
 
 ### Track B
 
-- [x] `holm-runtime` Rust+wgpu 骨架 + `executor=runtime` 旁路  
+- [x] `kmp-wgpu-native` Rust+wgpu 骨架 + `executor=renderer-wgpu` 旁路  
 - [x] 缺 native 时 `onError(BLOCKED)` + `backend=wgpu-blocked`（不静默 GLES）  
-- [x] Demo `holm_runtime_m0`；默认仍 Lite 五席  
+- [x] Demo `holm_dualtrack`；默认仍 Lite 五席  
 - [ ] Android/H5 可见清屏/三角（**BLOCKED**：无 rustc）  
 - [x] 包体增量粗估行（见下表：未链 native ≈0；链上后另测）  
 

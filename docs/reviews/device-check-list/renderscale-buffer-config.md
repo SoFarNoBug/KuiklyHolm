@@ -1,7 +1,7 @@
 # 真机可执行档 · renderscale-buffer-config
 
 - 关联报告：`docs/reviews/review-renderscale-buffer-config.md`
-- 包名 / 入口：鸿蒙优先 `ohosApp` · Home →「示例1 / 双轨」(`holm_runtime_m0`)；对照可扫 Android / iOS / H5
+- 包名 / 入口：鸿蒙优先 `ohosApp` · Home →「示例1 / 双轨」(`holm_dualtrack`)；对照可扫 Android / iOS / H5
 - 前置条件：
   - 已装含 `renderScale` 的 HAP / APK / iOS / H5 包
   - 状态行可见 `scale=` 与 fps

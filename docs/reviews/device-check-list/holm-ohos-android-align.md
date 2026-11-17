@@ -1,7 +1,7 @@
 # 真机可执行档 · holm-ohos-android-align
 
 - 关联报告：[`docs/reviews/review-holm-ohos-android-align.md`](../review-holm-ohos-android-align.md)
-- 包名 / 入口：`com.jlj.kuiklyholm.demo` · Home →「示例1 / 双轨」(`holm_runtime_m0`)
+- 包名 / 入口：`com.jlj.kuiklyholm.demo` · Home →「示例1 / 双轨」(`holm_dualtrack`)
 - 前置条件：
   - `holm-runtime/./build-ohos.sh` → `ohosApp/entry/libs/arm64-v8a/libholm_runtime.so`
   - `./ohos_build.sh` → `libshared.so`（须含 `holm_ohos_bridge_*` 导出）
@@ -12,9 +12,9 @@
 
 | # | 操作 | 类型 | 期望 |
 |---|---|---|---|
-| 1 | 冷启 → Home →「示例1 / 双轨」 | navigate | 进 `holm_runtime_m0` |
+| 1 | 冷启 → Home →「示例1 / 双轨」 | navigate | 进 `holm_dualtrack` |
 | 2 | 默认 Runtime，等 ≥2s | assert | 隧道；`onReady.backend=wgpu-m0*`；非深蓝 BLOCKED |
-| 3 | 切 Lite | tap | `backend=gles2-ohos`；隧道/出画；**无** `LITE_PENDING` |
+| 3 | 切 renderer-gl | tap | `backend=gles2-ohos`；隧道/出画；**无** `LITE_PENDING` |
 | 4 | 再切回 Runtime | tap | 隧道恢复；`backend=wgpu-m0*`；不崩 |
 | 5 | Runtime 下 maxFps 30→60/0 | assert | fps/间隔可感知或合理；不崩 |
 | 6 | renderScale 1.0→0.5→1.0 | assert | 可糊再清；不崩 |
@@ -34,7 +34,7 @@
 | 启动 | **通过** | 已可 `aa start`；装机 signed HAP |
 | 10 | **通过** | `rg holm_runtime_session_` 仅注释 |
 | 1–2 | **通过** | 2026-11-17：进双轨；Runtime 隧道；`backend=wgpu-m0-gl`；fps≈61 |
-| 3 | **通过** | 切 Lite：隧道出画；fps≈60；无 `holm_ohos_bridge unresolved` |
+| 3 | **通过** | 切 renderer-gl：隧道出画；fps≈60；无 `holm_ohos_bridge unresolved` |
 | 4–9 | **未跑** | 热切回 Runtime / maxFps / scale / 负向待补 |
 | Compute 回读 | **装机待启** | 2026-11-17：`holm_runtime_headless_*` 已入 HAP；signed 已装 `FMR0223927006189`；锁屏 `10106102` 未开到 `kmp_wgpu_compute` — 解锁后 Home→Compute→Run 期望 `ok size=8 sample=2,2,2,2,4,6,8,10` |
 

@@ -8,7 +8,7 @@ package com.jlj.kmp.wgpu
 
 /**
  * 默认示例 WGSL：`out[i] = in[i] * 2`（`@workgroup_size(64)`）。
- * 与 Rust `SAMPLE_DOUBLE_WGSL`（`holm-runtime/src/compute_readback.rs`）**双份**；改一处须同步另一处。
+ * 与 Rust `SAMPLE_DOUBLE_WGSL`（`kmp-wgpu-native/src/compute_readback.rs`）**双份**；改一处须同步另一处。
  */
 const val COMPUTE_SAMPLE_DOUBLE_WGSL: String = """
 @group(0) @binding(0) var<storage, read> input_buf: array<f32>;

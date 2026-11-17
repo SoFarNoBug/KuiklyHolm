@@ -25,7 +25,7 @@ add_library(entry SHARED napi_init.cpp)
 target_link_libraries(entry PUBLIC libace_napi.z.so libhilog_ndk.z.so kuikly_shared kuikly_render)
 
 # ADR 0010/0011 · libholm_xc.so（独立于 libentry）
-# Runtime Present 经 KN holm_ohos_bridge_*（dlsym）；不再链 libholm_runtime（由 libshared 持有）。
+# Runtime Present 经 KN holm_ohos_bridge_*（dlsym）；不再链 libkmp_wgpu_native（由 libshared 持有）。
 # Lite EGL/GLES 仍在本 so。
 add_library(holm_xc SHARED
         holm_xc/holm_xc_plugin.cpp

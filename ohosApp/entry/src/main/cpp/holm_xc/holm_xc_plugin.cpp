@@ -1,7 +1,7 @@
 /**
  * @file holm_xc_plugin.cpp
  * @brief ADR 0010/0011 · libholm_xc.so：XComponent OnFrame + Runtime/Lite 双轨
- * Present 经 KN holm_ohos_bridge_*（dlsym）；禁止直调 holm_runtime_session_*。
+ * Present 经 KN holm_ohos_bridge_*（dlsym）；禁止直调 kmp_wgpu_session_*。
  * @date 2026-11-16
  * @author jlj
  */
@@ -28,8 +28,8 @@
 
 namespace {
 
-constexpr const char *kExecutorRuntime = "runtime";
-constexpr const char *kExecutorLite = "lite";
+constexpr const char *kExecutorWgpu = "renderer-wgpu";
+constexpr const char *kExecutorGl = "renderer-gl";
 constexpr const char *kBackendGles2Ohos = "gles2-ohos";
 constexpr double kNsPerSec = 1e9;
 
@@ -284,7 +284,7 @@ void FlushDeferredJs(HolmXcIsland &island)
 
 bool IsRuntime(const HolmXcIsland &island)
 {
-    return island.executor == kExecutorRuntime;
+    return island.executor == kExecutorWgpu;
 }
 
 void DestroyRuntimeSession(HolmXcIsland &island)
@@ -397,11 +397,11 @@ void ApplyRuntimeShaders(HolmXcIsland &island)
             Bridge().setScene(handle, island.scene.c_str());
         }
         // 空片元 ClearTri：ok=false，对齐 Lite 拒绝语义（审查 P2）
-        FireShaderCompiled(island, false, 0.0, 0.0, kExecutorRuntime);
+        FireShaderCompiled(island, false, 0.0, 0.0, kExecutorWgpu);
         return;
     }
     if (!LooksLikeWgsl(trimmed)) {
-        FireShaderCompiled(island, false, 0.0, 0.0, kExecutorRuntime);
+        FireShaderCompiled(island, false, 0.0, 0.0, kExecutorWgpu);
         return;
     }
     using Clock = std::chrono::steady_clock;
@@ -416,9 +416,9 @@ void ApplyRuntimeShaders(HolmXcIsland &island)
         const char *code = codeBuf[0] ? codeBuf : "SHADER_CUSTOM";
         const char *msg = msgBuf[0] ? msgBuf : "Runtime setCustomFs failed";
         FireError(island, code, msg);
-        FireShaderCompiled(island, false, 0.0, compileMs, kExecutorRuntime);
+        FireShaderCompiled(island, false, 0.0, compileMs, kExecutorWgpu);
     } else {
-        FireShaderCompiled(island, true, 0.0, compileMs, kExecutorRuntime);
+        FireShaderCompiled(island, true, 0.0, compileMs, kExecutorWgpu);
     }
 }
 
@@ -430,7 +430,7 @@ bool ApplyLiteShaders(HolmXcIsland &island, bool reportDialectError)
 {
     if (!island.liteGl.ready) {
         // Surface 未就绪也结束本次尝试，避免业务干等（审查 P2）
-        FireShaderCompiled(island, false, 0.0, 0.0, kExecutorLite);
+        FireShaderCompiled(island, false, 0.0, 0.0, kExecutorGl);
         return false;
     }
     std::string trimmed = TrimCopy(island.fragmentShader);
@@ -438,7 +438,7 @@ bool ApplyLiteShaders(HolmXcIsland &island, bool reportDialectError)
         // 首包未到：不抢报；已 onReady 后被清空才 FRAGMENT_REQUIRED（对齐 iOS）
         if (island.readyFired) {
             FireError(island, "FRAGMENT_REQUIRED", "fragmentShader required (Shadertoy body)");
-            FireShaderCompiled(island, false, 0.0, 0.0, kExecutorLite);
+            FireShaderCompiled(island, false, 0.0, 0.0, kExecutorGl);
         }
         return false;
     }
@@ -446,7 +446,7 @@ bool ApplyLiteShaders(HolmXcIsland &island, bool reportDialectError)
         if (reportDialectError) {
             FireError(island, "SHADER_DIALECT",
                       "Lite fragmentShader must be GLSL Shadertoy body (WGSL ignored)");
-            FireShaderCompiled(island, false, 0.0, 0.0, kExecutorLite);
+            FireShaderCompiled(island, false, 0.0, 0.0, kExecutorGl);
         }
         // 切轨暂态仍持 WGSL：不报 compile fail，等 Compose 换成 LITE_BODY
         return false;
@@ -457,11 +457,11 @@ bool ApplyLiteShaders(HolmXcIsland &island, bool reportDialectError)
     double compileMs = 0.0;
     if (!HolmXcLiteGlSetFragmentBody(island.liteGl, trimmed, &errCode, &errMsg, &wrapMs, &compileMs)) {
         FireError(island, errCode.c_str(), errMsg.c_str());
-        FireShaderCompiled(island, false, wrapMs, compileMs, kExecutorLite);
+        FireShaderCompiled(island, false, wrapMs, compileMs, kExecutorGl);
         return false;
     }
     HolmXcLiteGlSetLiquid(island.liteGl, island.liquidBoost, island.liquidBend);
-    FireShaderCompiled(island, true, wrapMs, compileMs, kExecutorLite);
+    FireShaderCompiled(island, true, wrapMs, compileMs, kExecutorGl);
     return true;
 }
 
@@ -527,7 +527,7 @@ void OnFramePump(OH_NativeXComponent *component, uint64_t timestamp, uint64_t /*
                 Bridge().lastErrorCode(handle, codeBuf, static_cast<int32_t>(sizeof(codeBuf)));
                 Bridge().lastErrorMessage(handle, msgBuf, static_cast<int32_t>(sizeof(msgBuf)));
                 const char *code = codeBuf[0] ? codeBuf : "TICK";
-                const char *msg = msgBuf[0] ? msgBuf : "holm_runtime tick failed";
+                const char *msg = msgBuf[0] ? msgBuf : "kmp_wgpu tick failed";
                 FireError(island, code, msg);
             }
             return;
@@ -577,8 +577,8 @@ void StartLiteIfNeeded(HolmXcIsland &island, void *window)
     }
     {
         char errBuf[512] = {0};
-        if (Bridge().requireProvider(kExecutorLite, errBuf, static_cast<int>(sizeof(errBuf))) != 0) {
-            const char *msg = errBuf[0] ? errBuf : "HolmProvider missing for lite";
+        if (Bridge().requireProvider(kExecutorGl, errBuf, static_cast<int>(sizeof(errBuf))) != 0) {
+            const char *msg = errBuf[0] ? errBuf : "HolmProvider missing for renderer-gl";
             FireError(island, "BLOCKED", msg);
             island.blockedNotified = true;
             return;
@@ -669,15 +669,15 @@ void StartRuntimeIfNeeded(HolmXcIsland &island, void *window)
     }
     {
         char errBuf[512] = {0};
-        if (Bridge().requireProvider(kExecutorRuntime, errBuf, static_cast<int>(sizeof(errBuf))) != 0) {
-            const char *msg = errBuf[0] ? errBuf : "HolmProvider missing for runtime";
+        if (Bridge().requireProvider(kExecutorWgpu, errBuf, static_cast<int>(sizeof(errBuf))) != 0) {
+            const char *msg = errBuf[0] ? errBuf : "HolmProvider missing for renderer-wgpu";
             FireError(island, "BLOCKED", msg);
             island.blockedNotified = true;
             return;
         }
     }
     if (Bridge().hasWgpu() == 0) {
-        FireError(island, "BLOCKED", "holm_runtime has_wgpu=0. No silent GLES stand-in.");
+        FireError(island, "BLOCKED", "kmp_wgpu has_wgpu=0. No silent GLES stand-in.");
         island.blockedNotified = true;
         return;
     }
@@ -716,7 +716,7 @@ void StartRuntimeIfNeeded(HolmXcIsland &island, void *window)
         const char *code = codeBuf[0] ? codeBuf : "TICK";
         const char *msg = msgBuf[0]
             ? msgBuf
-            : "holm_runtime tick failed after create. No silent GLES stand-in.";
+            : "kmp_wgpu tick failed after create. No silent GLES stand-in.";
         DestroyRuntimeSession(island);
         FireError(island, code, msg);
         island.blockedNotified = true;
@@ -865,7 +865,7 @@ napi_value NapiHasWgpu(napi_env env, napi_callback_info /*info*/)
 
 napi_value NapiAbiVersion(napi_env env, napi_callback_info /*info*/)
 {
-    // Present 经 KN；壳不再直读 holm_runtime_abi_version。未知时回 0。
+    // Present 经 KN；壳不再直读 kmp_wgpu_abi_version。未知时回 0。
     napi_value result = nullptr;
     napi_create_int32(env, 0, &result);
     return result;
@@ -897,8 +897,8 @@ napi_value NapiSetExecutor(napi_env env, napi_callback_info info)
     for (auto &c : exec) {
         c = static_cast<char>(tolower(c));
     }
-    if (exec != kExecutorRuntime) {
-        exec = kExecutorLite;
+    if (exec != kExecutorWgpu) {
+        exec = kExecutorGl;
     }
     if (exec == island->executor) {
         return undefined;

@@ -7,7 +7,7 @@
 - 下沉：**ADR 0013**（`kmp-wgpu` 原语层；`holm-renderer-wgpu` 为其上薄适配；与 Kuikly 无关）
 - 根工程：`KuiklyHolmUI`；三包 `:holm-core` / `:holm-renderer-gl` / `:holm-renderer-wgpu`；umbrella `:KuiklyHolmCore`；Demo `:holmDemo`
 - 命名：`HolmSurface` / `KRHolmSurface` / `holm_*`；原语层 `kmp-wgpu` / `kmp-wgpu-surface`
-- 形态：Android+H5+iOS+Ohos 三包 Present 已对齐；`holm-runtime`（=kmp_wgpu_native）；`:kmp-wgpu` / `:kmp-wgpu-surface`
+- 形态：Android+H5+iOS+Ohos 三包 Present 已对齐；`kmp-wgpu-native`；`:kmp-wgpu` / `:kmp-wgpu-surface`
 - 节奏：岛契约稳 → ADR 0013 v1 抽芯（已）→ v1.1 Compute（已）→ 真拆三包（四端 Present 已；Maven/拆仓另单）；Demo **主推隧道**；五席源码已删
 
 ## 接手阅读顺序

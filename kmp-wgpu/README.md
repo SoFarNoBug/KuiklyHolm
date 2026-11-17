@@ -29,7 +29,7 @@
   - 同步 API：JNI 内 `pollster::block_on`；**仅短样本**（Demo 默认 8×f32）
   - `*Async`：单线程池 `kmp-wgpu-headless` 执行；`onDone` **可能不在调用线程**（UI/Kuikly 须自行回线程）
   - `HeadlessDevice.destroy`：幂等（二次 no-op）
-- H5：`window.__holmRuntime.createHeadless()` → `HeadlessComputeSession`；只用 Async 路径
+- H5：`window.__kmpWgpu.createHeadless()` → `HeadlessComputeSession`；只用 Async 路径
 - **勿**对 headless 句柄调用 `tick` / `setCustomFs` / Surface resize
 - 示例 WGSL：Rust `SAMPLE_DOUBLE_WGSL` 与 Kotlin `COMPUTE_SAMPLE_DOUBLE_WGSL` 双份；改一处须同步另一处
 
@@ -39,4 +39,4 @@
 
 ## Native
 
-Rust crate 目录仍为 `holm-runtime/`，长期名 **`kmp_wgpu_native`**；产物文件名暂 `libholm_runtime.so` / `holm_runtime*.wasm` 兼容。
+Rust crate 目录为 `kmp-wgpu-native/`，身份 **`kmp_wgpu_native`**；产物 `libkmp_wgpu_native.so`  / `kmp_wgpu_native*.wasm`。

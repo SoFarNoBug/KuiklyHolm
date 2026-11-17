@@ -3,7 +3,7 @@ package com.jlj.kmp.wgpu
 /**
  * @CreateDate: 2026/11/16
  * @Author: jlj
- * @Description: H5 headless Compute + 回读 → __holmRuntime.createHeadless / runF32（异步）。
+ * @Description: H5 headless Compute + 回读 → __kmpWgpu.createHeadless / runF32（异步）。
  */
 
 actual fun createHeadlessDevice(): HeadlessDevice? = null
@@ -38,9 +38,9 @@ actual fun createHeadlessDeviceAsync(onDone: (Result<HeadlessDevice>) -> Unit) {
         js(
             """
             (function(done){
-              var rt = window.__holmRuntime;
+              var rt = window.__kmpWgpu;
               if (!rt || typeof rt.createHeadless !== 'function') {
-                done(null, 'createHeadless missing on __holmRuntime');
+                done(null, 'createHeadless missing on __kmpWgpu');
                 return;
               }
               Promise.resolve(rt.createHeadless())

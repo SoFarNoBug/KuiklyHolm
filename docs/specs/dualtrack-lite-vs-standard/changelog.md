@@ -1,5 +1,23 @@
 # dualtrack-lite-vs-standard · changelog
 
+## 2026-11-17（文案 · 后端→渲染后端）
+
+- [MODIFY] Demo/SoT：「双后端」→「双渲染后端」；chip 标签「渲染后端」
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：避免误读服务器后端｜待批 0
+
+## 2026-11-17（Attr/文案 · Lite·Runtime → renderer-gl / renderer-wgpu）
+
+- [MODIFY] `HolmExecutor`：`GL`/`WGPU` 线值 `renderer-gl`/`renderer-wgpu`；废 `lite`/`runtime`（无兼容）
+- [MODIFY] Demo chip/标题/Home；四端壳与 Provider key；活 SoT/runbook/device-check 描述
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：按确认放行 1｜待批 0
+
+## 2026-11-17（ADR 0014 · 消灭 holm-runtime 命名）
+
+- [MODIFY] 目录 `holm-runtime/` → `kmp-wgpu-native/`；crate/产物 `kmp_wgpu_native`；C ABI `kmp_wgpu_*`；H5 `__kmpWgpu` / `KmpWgpuSession`
+- [MODIFY] Holm 适配：`HolmWgpuNative` / `HolmWgpu*Bridge` / `HolmWgpuPumpSource`；Demo `@Page("holm_dualtrack")`
+- [ADD] ADR 0014（故意 ABI break，无兼容 shim）
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：按确认 Plan 改名｜待批 0
+
 ## 2026-11-17（iOS ADD · kmp-wgpu Compute 回读）
 
 - [ADD] iOS：`holm_runtime_headless_*` + `ComputeReadback.ios`；Demo 页不再 stub FAIL

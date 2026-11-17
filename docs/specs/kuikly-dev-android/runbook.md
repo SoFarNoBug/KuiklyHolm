@@ -35,24 +35,24 @@ cd D:\code_space\kuikly-holm
 ```bash
 adb shell am start -n com.jlj.kuiklyholmui/.KuiklyRenderActivity
 # DualTrack Runtime 旁路页
-adb shell am start -n com.jlj.kuiklyholmui/.KuiklyRenderActivity -e pageName holm_runtime_m0
+adb shell am start -n com.jlj.kuiklyholmui/.KuiklyRenderActivity -e pageName holm_dualtrack
 ```
 
 | 项 | 值 |
 |---|---|
 | applicationId | `com.jlj.kuiklyholmui` |
 | Activity | `.KuiklyRenderActivity` |
-| 入口页 | Home → **示例1 / 双轨** / `holm_runtime_m0` |
-| Runtime 页 | `holm_runtime_m0`（需先编 `.so`，见下） |
+| 入口页 | Home → **示例1 / 双轨** / `holm_dualtrack` |
+| Runtime 页 | `holm_dualtrack`（需先编 `.so`，见下） |
 
 ## Android Runtime（arm64 `.so`）
 
-改 `holm-runtime` 后须先打 so，再装包（Gradle **不**自动编 Rust）：
+改 `kmp-wgpu-native` 后须先打 so，再装包（Gradle **不**自动编 Rust）：
 
 ```powershell
-cd holm-runtime
+cd kmp-wgpu-native
 .\build-android.ps1
-# → androidApp/src/main/jniLibs/arm64-v8a/libholm_runtime.so
+# → androidApp/src/main/jniLibs/arm64-v8a/libkmp_wgpu_native.so
 cd ..
 ./gradlew :androidApp:installDebug
 ```
@@ -88,7 +88,7 @@ vivo 等机型偶发要在「设置 → 更多设置 → 开发者选项」里�
 2. `./gradlew --stop`
 3. 关闭占用该 jar 的 IDE 索引/其它 Gradle；再装包
 
-## DualTrack 目视（holm_runtime_m0 · 示例1）
+## DualTrack 目视（holm_dualtrack · 示例1）
 
 - 示例：霓虹隧道（Lite GLSL / Runtime WGSL）；官方五席已删  
 - `maxFps`：`0 / 30 / 60 / 120`
@@ -119,7 +119,7 @@ vivo 等机型偶发要在「设置 → 更多设置 → 开发者选项」里�
 |---|---|
 | `androidApp/` | 壳；注册 `KRHolmSurface`；`jniLibs/arm64-v8a` |
 | `KuiklyHolmCore/src/androidMain/.../KRHolmSurfaceView.kt` | Lite GLES2 + Runtime SurfaceView |
-| `holm-runtime/` | wgpu Session；`build-android.ps1` |
-| `holmDemo/.../HolmRuntimeM0Pager.kt` | `holm_runtime_m0`（示例1 / 双轨） |
+| `kmp-wgpu-native/` | wgpu Session；`build-android.ps1` |
+| `holmDemo/.../HolmDualTrackPager.kt` | `holm_dualtrack`（示例1 / 双轨） |
 | `docs/specs/dualtrack-lite-vs-standard/changelog.md` | DualTrack changelog |
 | `docs/adr/0006-android-runtime-surface-session.md` | Android Runtime ADR |

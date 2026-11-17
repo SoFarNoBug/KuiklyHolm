@@ -5,7 +5,7 @@
 
 ## Context
 
-ADR 0010 已通鸿蒙 Runtime（XComponent + `libholm_xc` 外泵 + wgpu）；`executor=lite` 曾诚实 `LITE_PENDING`。审讯锁定补齐 Lite，与 Android/iOS DualTrack 对齐：同一岛可切 Lite GLES ↔ Runtime wgpu。
+ADR 0010 已通鸿蒙 Runtime（XComponent + `libholm_xc` 外泵 + wgpu）；`executor=renderer-gl` 曾诚实 `LITE_PENDING`。审讯锁定补齐 Lite，与 Android/iOS DualTrack 对齐：同一岛可切 Lite GLES ↔ Runtime wgpu。
 
 ## Decision
 
@@ -16,7 +16,7 @@ ADR 0010 已通鸿蒙 Runtime（XComponent + `libholm_xc` 外泵 + wgpu）；`ex
 5. **分辨率**：`OH_NativeXComponent_GetXComponentSize` 像素为基线；**现行**由 Attr `renderScale`（默认 `1`）相对缩放（可 `SET_BUFFER_GEOMETRY`）。
 6. **`onReady.backend`**：`gles2-ohos`。
 7. **失败诚实**：空 body → `FRAGMENT_REQUIRED`；Lite 收到像 WGSL 的串 → `onError`（不静默编译）；EGL/编译失败 → 深蓝底 + `onError`；**禁止**用 GLES 冒充 wgpu，亦禁止 Runtime 失败时静默切 Lite。
-8. **验收**：Demo `holm_runtime_m0` Lite 隧道出画 + Runtime↔Lite 互切；去掉 `LITE_PENDING`。
+8. **验收**：Demo `holm_dualtrack` Lite 隧道出画 + Runtime↔Lite 互切；去掉 `LITE_PENDING`。
 
 ## Consequences
 

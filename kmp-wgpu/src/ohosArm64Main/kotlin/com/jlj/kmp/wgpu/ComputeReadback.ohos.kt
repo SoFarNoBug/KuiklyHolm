@@ -2,11 +2,11 @@
 
 package com.jlj.kmp.wgpu
 
-import holm.runtime.cinterop.holm_runtime_headless_backend_id
-import holm.runtime.cinterop.holm_runtime_headless_compute_readback
-import holm.runtime.cinterop.holm_runtime_headless_create
-import holm.runtime.cinterop.holm_runtime_headless_destroy
-import holm.runtime.cinterop.holm_runtime_last_create_error
+import kmp.wgpu.native.cinterop.kmp_wgpu_headless_backend_id
+import kmp.wgpu.native.cinterop.kmp_wgpu_headless_compute_readback
+import kmp.wgpu.native.cinterop.kmp_wgpu_headless_create
+import kmp.wgpu.native.cinterop.kmp_wgpu_headless_destroy
+import kmp.wgpu.native.cinterop.kmp_wgpu_last_create_error
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.allocArray
 import kotlinx.cinterop.get
@@ -25,16 +25,16 @@ private fun lastCreateError(): String =
     memScoped {
         val cap = 512u
         val buf = allocArray<ByteVar>(cap.toInt())
-        runCatching { holm_runtime_last_create_error(buf, cap) }.getOrDefault(0u)
+        runCatching { kmp_wgpu_last_create_error(buf, cap) }.getOrDefault(0u)
         if (buf[0].toInt() == 0) "" else buf.toKString()
     }
 
 actual fun createHeadlessDevice(): HeadlessDevice? {
     if (!WgpuRuntime.isAvailable()) return null
-    val handle = runCatching { holm_runtime_headless_create().toLong() }.getOrDefault(0L)
+    val handle = runCatching { kmp_wgpu_headless_create().toLong() }.getOrDefault(0L)
     if (handle == 0L) return null
     return HeadlessDevice(handle) { h ->
-        runCatching { holm_runtime_headless_destroy(h.toULong()) }
+        runCatching { kmp_wgpu_headless_destroy(h.toULong()) }
     }
 }
 
@@ -72,7 +72,7 @@ actual fun HeadlessDevice.computeReadback(
     val n = runCatching {
         input.usePinned { inPin ->
             out.usePinned { outPin ->
-                holm_runtime_headless_compute_readback(
+                kmp_wgpu_headless_compute_readback(
                     handle.toULong(),
                     shaderWgsl,
                     inPin.addressOf(0),
@@ -111,7 +111,7 @@ fun HeadlessDevice.ohosBackendId(): String {
         val cap = 128u
         val buf = allocArray<ByteVar>(cap.toInt())
         runCatching {
-            holm_runtime_headless_backend_id(handle.toULong(), buf, cap)
+            kmp_wgpu_headless_backend_id(handle.toULong(), buf, cap)
         }.getOrDefault(0u)
         if (buf[0].toInt() == 0) "wgpu-blocked" else buf.toKString()
     }

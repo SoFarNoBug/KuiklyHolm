@@ -1,7 +1,7 @@
 # 真机可执行档 · on-shader-compiled
 
 - 关联报告：`docs/reviews/review-on-shader-compiled.md`
-- 包名 / 入口：`com.jlj.kuiklyholmui` · Home →「示例 / 双轨」（`holm_runtime_m0`）
+- 包名 / 入口：`com.jlj.kuiklyholmui` · Home →「示例 / 双轨」（`holm_dualtrack`）
 - 前置条件：
   - 含 ADR 0012 / `onShaderCompiled` 的构建产物
   - Android：`installDebug` 可起；H5：按 `docs/specs/kuikly-dev-h5/runbook.md`
@@ -18,12 +18,12 @@
 | 5 | Lite 下再切样本 | tap | 每次更新耗时；`executor` 显示含 lite |
 | 6 | 点「故意失败」 | tap | 先红字 `onError`（SHADER_COMPILE 或等价）；状态行 `compile fail`；失败步耗时非空或显式 0 |
 | 7 | 切回隧道可恢复 | tap | 红字可清或可再出画；`compile ok` 再出现 |
-| 8 | （可选）Android：切 Runtime→后台→回前台或旋转触发 Surface 恢复 | assert | 恢复后再次出现 `compile ok`（系统重编也回调） |
+| 8 | （可选）Android：切 renderer-wgpu→后台→回前台或旋转触发 Surface 恢复 | assert | 恢复后再次出现 `compile ok`（系统重编也回调） |
 | 9 | （可选）iOS / 鸿蒙：重复 #2–#6 | assert | 同契约；鸿蒙 Lite 错方言可见 `SHADER_DIALECT` 后再 `fail` 零耗时 |
 
 类型合法值：`tap` `assert` `scroll` `input` `wait` `screenshot` `track_logcat` `navigate`
 
-## H5 勾表结果（2026-11-16 · localhost:8080 `holm_runtime_m0`）
+## H5 勾表结果（2026-11-16 · localhost:8080 `holm_dualtrack`）
 
 | # | 结果 | 实况摘录 |
 |---|---|---|
@@ -36,7 +36,7 @@
 | 7 | 通过 | 回隧道：`compile ok wrap=0.3ms compile=3ms (lite)`；红字清 |
 | 8–9 | 未跑 | 见下节 Android；iOS / 鸿蒙仍开 |
 
-## Android 勾表结果（2026-11-16 · V2545A · `installDebug` → `holm_runtime_m0`）
+## Android 勾表结果（2026-11-16 · V2545A · `installDebug` → `holm_dualtrack`）
 
 | # | 结果 | 实况摘录 |
 |---|---|---|
