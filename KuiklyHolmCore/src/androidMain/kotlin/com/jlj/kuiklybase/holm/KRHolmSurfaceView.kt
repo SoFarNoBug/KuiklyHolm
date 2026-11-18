@@ -280,6 +280,9 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
         _modelRenderer.onError = { code, message ->
             post { fireError(code, message) }
         }
+        _modelRenderer.onPerf = { fps, frameMs ->
+            post { firePerf(fps, frameMs) }
+        }
 
         _renderer.onReady = {
             post {

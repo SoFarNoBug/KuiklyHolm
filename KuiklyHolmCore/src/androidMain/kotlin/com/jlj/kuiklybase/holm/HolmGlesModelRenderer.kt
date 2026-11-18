@@ -43,9 +43,12 @@ internal class HolmGlesModelRenderer : GLSurfaceView.Renderer {
     /** surface 未就绪时暂存，onSurfaceCreated 再灌。 */
     private var _pendingDoc: GltfDocument? = null
     private var _pendingApplyBaseColor: Boolean = true
+    private var _fpsWindowNs: Long = 0L
+    private var _frameCount: Int = 0
 
     var onReady: (() -> Unit)? = null
     var onError: ((String, String) -> Unit)? = null
+    var onPerf: ((Float, Float) -> Unit)? = null
 
     fun setOrbit(yaw: Float, pitch: Float, enabled: Boolean) {
         _yaw = yaw
@@ -149,8 +152,12 @@ internal class HolmGlesModelRenderer : GLSurfaceView.Renderer {
     }
 
     override fun onDrawFrame(gl: GL10?) {
+        val nowNs = System.nanoTime()
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
-        if (!_ready || _program == 0 || _gpuMeshes.isEmpty()) return
+        if (!_ready || _program == 0 || _gpuMeshes.isEmpty()) {
+            tickPerf(nowNs)
+            return
+        }
         GLES20.glUseProgram(_program)
         val mvp = FloatArray(16)
         val view = FloatArray(16)
@@ -193,6 +200,24 @@ internal class HolmGlesModelRenderer : GLSurfaceView.Renderer {
         }
         GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0)
         GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, 0)
+        tickPerf(nowNs)
+    }
+
+    private fun tickPerf(nowNs: Long) {
+        if (_fpsWindowNs == 0L) {
+            _fpsWindowNs = nowNs
+            _frameCount = 0
+            return
+        }
+        _frameCount += 1
+        val elapsed = nowNs - _fpsWindowNs
+        if (elapsed >= 1_000_000_000L) {
+            val fps = _frameCount * 1_000_000_000f / elapsed.toFloat()
+            val frameMs = if (fps > 0.01f) 1000f / fps else 0f
+            onPerf?.invoke(fps, frameMs)
+            _fpsWindowNs = nowNs
+            _frameCount = 0
+        }
     }
 
     private fun uploadMesh(mesh: GltfMesh): GpuMesh {

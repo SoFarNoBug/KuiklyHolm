@@ -2,6 +2,7 @@
 
 ## 2026-11-18
 
+- [ADD] `holm_model` 展示 onPerf；GLES Model 层补帧率统计（wgpu 沿用 tickRuntimePerf）
 - [FIX] Model 轨道手势改转台：手指左右/上下均与模型同向（yaw+pitch 取反；GLES/wgpu 一致）
 - 轻量治理：路径=速速改｜sediment=否｜gate=跳过｜真机表=无
 - [ADD] Demo 接入 Khronos `Duck.glb` / `Box.glb` + 资产 chip；`assets/models/ATTRIBUTION.md`（CC BY / SCEA / 本仓 hero）

@@ -68,6 +68,7 @@ private fun HolmModelScreen() {
     var executor by remember { mutableStateOf(HolmExecutor.GL) }
     var asset by remember { mutableStateOf(DEMO_MODEL_ASSETS.first()) }
     var backendText by remember { mutableStateOf("waiting…") }
+    var perfText by remember { mutableStateOf("fps=—") }
     var errorText by remember { mutableStateOf("") }
     val model = remember(asset.path) {
         HolmModelContent.fromAssets(
@@ -99,7 +100,7 @@ private fun HolmModelScreen() {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "executor=$executor | ${asset.path} | drag orbit | $backendText",
+            text = "executor=$executor | ${asset.path} | $perfText | drag orbit | $backendText",
             fontSize = 13.sp,
             lineHeight = 13.sp,
             color = DemoTheme.TextSecondary,
@@ -118,6 +119,7 @@ private fun HolmModelScreen() {
                         asset = item
                         errorText = ""
                         backendText = "waiting…"
+                        perfText = "fps=—"
                     },
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -132,6 +134,7 @@ private fun HolmModelScreen() {
                     executor = HolmExecutor.GL
                     errorText = ""
                     backendText = "waiting…"
+                    perfText = "fps=—"
                 },
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -142,6 +145,7 @@ private fun HolmModelScreen() {
                     executor = HolmExecutor.WGPU
                     errorText = ""
                     backendText = "waiting…"
+                    perfText = "fps=—"
                 },
             )
         }
@@ -163,6 +167,10 @@ private fun HolmModelScreen() {
                 onReady = { ready ->
                     errorText = ""
                     backendText = "onReady backend=${ready.backend}"
+                },
+                onPerf = { perf ->
+                    val ms = ((perf.frameMs * 10f).toInt() / 10f)
+                    perfText = "fps=${perf.fps.toInt()} (${ms}ms)"
                 },
                 onError = { err ->
                     errorText = "onError ${err.code}: ${err.message}"
