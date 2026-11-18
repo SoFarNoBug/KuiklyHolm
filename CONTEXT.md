@@ -117,5 +117,5 @@ _Avoid_：`LITE_PENDING` 冒充完成；用 GLES 冒充 wgpu；另挂第二 XCom
 - iOS：ADR 0009 泵仍 ObjC；Present 经 `HolmWgpuIosBridge` → kmp-wgpu；renderer-gl GLES 子树（`gles2-ios` / `wgpu-m0*`）
 - 鸿蒙：ADR 0010 renderer-wgpu + ADR 0011 renderer-gl（同 XC EGL，`gles2-ohos`）；真机隧道/互切待勾
 - 独立仓：ADR 0015 已落地（`~/Studio/kmp/kmp-wgpu`；Maven `0.1.0`；关 O7；真机表已勾）
-- kmp-wgpu 分发：CocoaPods `KmpWgpuNative` `0.1.0` trunk 已收；ohpm `0.1.1` 审核中；npm / GitHub Release 待发（见 kmp-wgpu `CHANGELOG.md`）
+- kmp-wgpu 分发：CocoaPods / ohpm / npm / GitHub Release **0.1.x 均已发**（npm=`@sofarnobug/kmp-wgpu-native@0.1.0`；ohpm=`@jlj/…@0.1.1`；见 kmp-wgpu `CHANGELOG.md`）
 - `holm_api` L3：已与 ADR 0007/0008/0013 对齐（2026-11-18）

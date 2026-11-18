@@ -12,7 +12,7 @@ ADR 0013 锁定 `kmp-wgpu` 为与 Holm 无关的原语层，O7 将独立仓时�
 1. **独立仓**：`/Users/aimo/Studio/kmp/kmp-wgpu`（模块 `kmp-wgpu` / `kmp-wgpu-surface` / `kmp-wgpu-native` + 无 Holm sample）。
 2. **产品面**：core = 原语 + headless Compute；surface = 窗口 + **FullscreenPass**（`setFragmentShader` / tick / playing / resize / error）；无片元 = 只清屏。
 3. **删除遗留**：`setLiquid` / `liquid_*` / `setScene` / ClearTri / `holm_fullscreen` 命名；故意 ABI break，无 compat shim。
-4. **坐标（首发 0.1.0）**：Maven `io.github.sofarnobug:kmp-wgpu` / `:kmp-wgpu-surface`；Pod `KmpWgpuNative`；ohpm/npm `@jlj/kmp-wgpu-native`。
+4. **坐标（首发 0.1.0）**：Maven `io.github.sofarnobug:kmp-wgpu` / `:kmp-wgpu-surface`；Pod `KmpWgpuNative`；ohpm `@jlj/kmp-wgpu-native`；npm `@sofarnobug/kmp-wgpu-native`（npm org 与 ohpm scope 不同）。
 5. **Holm 消费**：默认 Maven；`local.properties` / `-Pkmp.wgpu.local=true` → `includeBuild` 覆盖坐标。
    - 主 settings → `../kmp-wgpu`
    - `settings.ohos` → `../kmp-wgpu/ohosInclude`（KBA + `build.ohos`，补 `ohosArm64`；主 settings 无该变体）
