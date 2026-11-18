@@ -14,17 +14,17 @@
 		2152FB042600AC8F00CF470E /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2152FB032600AC8F00CF470E /* iOSApp.swift */; };
 		3FDCFB96518F86B53D4E5ADD /* Pods_iosApp.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 28A2BBF98AD622240C0C6069 /* Pods_iosApp.framework */; };
 		7555FF83242A565900829871 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7555FF82242A565900829871 /* ContentView.swift */; };
+		A1B2C3D429A2B001009349F1 /* KRHolmSurface.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D329A2B001009349F1 /* KRHolmSurface.m */; };
+		A1B2C3D829A2B001009349F1 /* KRHolmMetalHostView.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D629A2B001009349F1 /* KRHolmMetalHostView.m */; };
+		A1B2C3E129A2B001009349F1 /* KmpWgpuNative.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1B2C3E029A2B001009349F1 /* KmpWgpuNative.xcframework */; };
+		A1B2C3E329A2B001009349F1 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1B2C3E229A2B001009349F1 /* Metal.framework */; };
+		A1B2C3E529A2B001009349F1 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1B2C3E429A2B001009349F1 /* QuartzCore.framework */; };
+		A1B2C3F229A2B001009349F1 /* KRHolmGlesHostView.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3F029A2B001009349F1 /* KRHolmGlesHostView.m */; };
+		A1B2C3F429A2B001009349F1 /* OpenGLES.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1B2C3F329A2B001009349F1 /* OpenGLES.framework */; };
 		FF6B714429A2A174009349F1 /* KuiklyRenderViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = FF6B713F29A2A173009349F1 /* KuiklyRenderViewController.m */; };
 		FF6B714529A2A174009349F1 /* HRBridgeModule.m in Sources */ = {isa = PBXBuildFile; fileRef = FF6B714129A2A173009349F1 /* HRBridgeModule.m */; };
 		FF6B714729A2A315009349F1 /* KuiklyRenderViewPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF6B714629A2A315009349F1 /* KuiklyRenderViewPage.swift */; };
 		FF6B715029A2A6FF009349F1 /* KuiklyRenderComponentExpandHandler.m in Sources */ = {isa = PBXBuildFile; fileRef = FF6B714F29A2A6FF009349F1 /* KuiklyRenderComponentExpandHandler.m */; };
-		A1B2C3D429A2B001009349F1 /* KRHolmSurface.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D329A2B001009349F1 /* KRHolmSurface.m */; };
-		A1B2C3D829A2B001009349F1 /* KRHolmMetalHostView.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D629A2B001009349F1 /* KRHolmMetalHostView.m */; };
-		A1B2C3F229A2B001009349F1 /* KRHolmGlesHostView.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3F029A2B001009349F1 /* KRHolmGlesHostView.m */; };
-		A1B2C3E129A2B001009349F1 /* KmpWgpuNative.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1B2C3E029A2B001009349F1 /* KmpWgpuNative.xcframework */; };
-		A1B2C3E329A2B001009349F1 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1B2C3E229A2B001009349F1 /* Metal.framework */; };
-		A1B2C3E529A2B001009349F1 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1B2C3E429A2B001009349F1 /* QuartzCore.framework */; };
-		A1B2C3F429A2B001009349F1 /* OpenGLES.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1B2C3F329A2B001009349F1 /* OpenGLES.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +40,16 @@
 		7555FF7B242A565900829871 /* iosApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iosApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7555FF82242A565900829871 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		7555FF8C242A565B00829871 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A1B2C3D329A2B001009349F1 /* KRHolmSurface.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KRHolmSurface.m; sourceTree = "<group>"; };
+		A1B2C3D529A2B001009349F1 /* KRHolmSurface.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KRHolmSurface.h; sourceTree = "<group>"; };
+		A1B2C3D629A2B001009349F1 /* KRHolmMetalHostView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KRHolmMetalHostView.m; sourceTree = "<group>"; };
+		A1B2C3D729A2B001009349F1 /* KRHolmMetalHostView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KRHolmMetalHostView.h; sourceTree = "<group>"; };
+		A1B2C3E029A2B001009349F1 /* KmpWgpuNative.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = KmpWgpuNative.xcframework; path = "../kmp-wgpu-native/dist/ios/KmpWgpuNative.xcframework"; sourceTree = "<group>"; };
+		A1B2C3E229A2B001009349F1 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
+		A1B2C3E429A2B001009349F1 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+		A1B2C3F029A2B001009349F1 /* KRHolmGlesHostView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KRHolmGlesHostView.m; sourceTree = "<group>"; };
+		A1B2C3F129A2B001009349F1 /* KRHolmGlesHostView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KRHolmGlesHostView.h; sourceTree = "<group>"; };
+		A1B2C3F329A2B001009349F1 /* OpenGLES.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGLES.framework; path = System/Library/Frameworks/OpenGLES.framework; sourceTree = SDKROOT; };
 		EAD586BEDBD0772EDC4E4B96 /* Pods-iosApp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-iosApp.release.xcconfig"; path = "Target Support Files/Pods-iosApp/Pods-iosApp.release.xcconfig"; sourceTree = "<group>"; };
 		FF6B713F29A2A173009349F1 /* KuiklyRenderViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = KuiklyRenderViewController.m; sourceTree = "<group>"; };
 		FF6B714129A2A173009349F1 /* HRBridgeModule.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = HRBridgeModule.m; sourceTree = "<group>"; };
@@ -49,16 +59,6 @@
 		FF6B714C29A2A45D009349F1 /* iosApp-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "iosApp-Bridging-Header.h"; sourceTree = "<group>"; };
 		FF6B714E29A2A6FF009349F1 /* KuiklyRenderComponentExpandHandler.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KuiklyRenderComponentExpandHandler.h; sourceTree = "<group>"; };
 		FF6B714F29A2A6FF009349F1 /* KuiklyRenderComponentExpandHandler.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KuiklyRenderComponentExpandHandler.m; sourceTree = "<group>"; };
-		A1B2C3D329A2B001009349F1 /* KRHolmSurface.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KRHolmSurface.m; sourceTree = "<group>"; };
-		A1B2C3D529A2B001009349F1 /* KRHolmSurface.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KRHolmSurface.h; sourceTree = "<group>"; };
-		A1B2C3D629A2B001009349F1 /* KRHolmMetalHostView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KRHolmMetalHostView.m; sourceTree = "<group>"; };
-		A1B2C3D729A2B001009349F1 /* KRHolmMetalHostView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KRHolmMetalHostView.h; sourceTree = "<group>"; };
-		A1B2C3F029A2B001009349F1 /* KRHolmGlesHostView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KRHolmGlesHostView.m; sourceTree = "<group>"; };
-		A1B2C3F129A2B001009349F1 /* KRHolmGlesHostView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KRHolmGlesHostView.h; sourceTree = "<group>"; };
-		A1B2C3E029A2B001009349F1 /* KmpWgpuNative.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = KmpWgpuNative.xcframework; path = ../kmp-wgpu-native/dist/ios/KmpWgpuNative.xcframework; sourceTree = "<group>"; };
-		A1B2C3E229A2B001009349F1 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
-		A1B2C3E429A2B001009349F1 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
-		A1B2C3F329A2B001009349F1 /* OpenGLES.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGLES.framework; path = System/Library/Frameworks/OpenGLES.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -148,6 +148,19 @@
 			path = iosApp;
 			sourceTree = "<group>";
 		};
+		A1B2C3D229A2B001009349F1 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D529A2B001009349F1 /* KRHolmSurface.h */,
+				A1B2C3D329A2B001009349F1 /* KRHolmSurface.m */,
+				A1B2C3D729A2B001009349F1 /* KRHolmMetalHostView.h */,
+				A1B2C3D629A2B001009349F1 /* KRHolmMetalHostView.m */,
+				A1B2C3F129A2B001009349F1 /* KRHolmGlesHostView.h */,
+				A1B2C3F029A2B001009349F1 /* KRHolmGlesHostView.m */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
 		FDF972C7159D4191183C9089 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
@@ -167,19 +180,6 @@
 				FF6B714029A2A173009349F1 /* Modules */,
 			);
 			path = KuiklyExpand;
-			sourceTree = "<group>";
-		};
-		A1B2C3D229A2B001009349F1 /* Views */ = {
-			isa = PBXGroup;
-			children = (
-				A1B2C3D529A2B001009349F1 /* KRHolmSurface.h */,
-				A1B2C3D329A2B001009349F1 /* KRHolmSurface.m */,
-				A1B2C3D729A2B001009349F1 /* KRHolmMetalHostView.h */,
-				A1B2C3D629A2B001009349F1 /* KRHolmMetalHostView.m */,
-				A1B2C3F129A2B001009349F1 /* KRHolmGlesHostView.h */,
-				A1B2C3F029A2B001009349F1 /* KRHolmGlesHostView.m */,
-			);
-			path = Views;
 			sourceTree = "<group>";
 		};
 		FF6B714029A2A173009349F1 /* Modules */ = {
@@ -279,9 +279,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-iosApp/Pods-iosApp-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-iosApp/Pods-iosApp-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -296,9 +300,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-iosApp/Pods-iosApp-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-iosApp/Pods-iosApp-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -474,8 +482,9 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_ASSET_PATHS = "\"iosApp/Preview Content\"";
-				DEVELOPMENT_TEAM = C3873662Y8;
+				DEVELOPMENT_TEAM = YPBS944547;
 				ENABLE_PREVIEWS = YES;
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)/../kmp-wgpu-native/dist/ios",
@@ -490,7 +499,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lc++",
@@ -510,8 +518,9 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_ASSET_PATHS = "\"iosApp/Preview Content\"";
-				DEVELOPMENT_TEAM = C3873662Y8;
+				DEVELOPMENT_TEAM = YPBS944547;
 				ENABLE_PREVIEWS = YES;
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)/../kmp-wgpu-native/dist/ios",
@@ -526,7 +535,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lc++",

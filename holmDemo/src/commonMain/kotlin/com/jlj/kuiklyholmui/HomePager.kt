@@ -79,6 +79,11 @@ private fun HomeScreen() {
         )
         Spacer(modifier = Modifier.height(16.dp))
         HomeButton(
+            label = "Model / glTF (holm_model)",
+            onClick = { openPage(localPager, "holm_model") },
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        HomeButton(
             label = "kmp-wgpu Compute 回读 (v1.1)",
             onClick = { openPage(localPager, "kmp_wgpu_compute") },
         )

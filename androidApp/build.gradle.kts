@@ -41,6 +41,8 @@ dependencies {
     implementation(project(":holmDemo"))
     // 宿主 init HolmAndroid（库 androidMain API，Demo 为 implementation 不传递）
     implementation(project(":KuiklyHolmCore"))
+    // Demo Model 页显式依赖（ADR 0016；不打进 umbrella 必选）
+    implementation(project(":holm-gltf"))
 
     implementation("androidx.recyclerview:recyclerview:1.2.1")
     implementation("androidx.appcompat:appcompat:1.3.1")

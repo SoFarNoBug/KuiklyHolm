@@ -15,6 +15,8 @@ object HolmExecutor {
     const val BACKEND_WGPU_BLOCKED: String = "wgpu-blocked"
 
     const val ERROR_BLOCKED: String = "BLOCKED"
+    /** 非 Android 端尚未实现 Model Present（ADR 0016）。 */
+    const val ERROR_MODEL_UNSUPPORTED: String = "MODEL_UNSUPPORTED"
 
     fun normalize(raw: String?): String {
         val v = raw?.trim()?.lowercase().orEmpty()

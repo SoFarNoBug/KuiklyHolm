@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.jlj.kuiklybase.holm.HolmExecutor
+import com.jlj.kuiklybase.holm.HolmShaderContent
 import com.jlj.kuiklybase.holm.HolmSurface
 import com.jlj.kuiklybase.holm.HolmSurfaceAttr
 import com.jlj.kuiklyholmui.base.BasePager
@@ -74,8 +75,7 @@ private fun HolmDualTrackScreen() {
     // 换样本代数：成功 compile 后丢弃迟到的上一档 onError（P2-h5-error-sticky-ui）
     var shaderSeq by remember { mutableStateOf(0) }
     var compiledOkSeq by remember { mutableStateOf(-1) }
-    val scene = NeonTunnelShaders.SCENE_CUSTOM
-    val fragmentShader = sample.fragmentFor(executor)
+    val shaderContent = HolmShaderContent(source = sample.fragmentFor(executor))
 
     Column(
         modifier = Modifier
@@ -92,7 +92,7 @@ private fun HolmDualTrackScreen() {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "executor=$executor | sample=${sample.id} | scene=$scene | maxFps=$maxFps | scale=$renderScale | $perfText | $compileText | ${islandSize.width}x${islandSize.height} | $backendText",
+            text = "executor=$executor | sample=${sample.id} | maxFps=$maxFps | scale=$renderScale | $perfText | $compileText | ${islandSize.width}x${islandSize.height} | $backendText",
             fontSize = 13.sp,
             lineHeight = 13.sp,
             color = DemoTheme.TextSecondary,
@@ -123,7 +123,7 @@ private fun HolmDualTrackScreen() {
         RuntimeExampleRow(
             sample = sample,
             onSelect = { next ->
-                // 仅换 fragmentShader 不会再 onReady；勿清 backend（审查 P2）
+                // 仅换 ShaderContent 不会再 onReady；勿清 backend（审查 P2）
                 // 换样本须清 sticky 红字，否则「故意失败」残留挡下一档
                 shaderSeq += 1
                 compiledOkSeq = -1
@@ -156,13 +156,12 @@ private fun HolmDualTrackScreen() {
             contentAlignment = Alignment.Center,
         ) {
             HolmSurface(
-                scene = scene,
+                content = shaderContent,
                 modifier = Modifier.fillMaxSize(),
                 playing = surfacePlaying,
                 maxFps = maxFps,
                 renderScale = renderScale,
                 executor = executor,
-                fragmentShader = fragmentShader,
                 onReady = { ready ->
                     errorText = ""
                     backendText = "onReady backend=${ready.backend} quality=${ready.quality}"

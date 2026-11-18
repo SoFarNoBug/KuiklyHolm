@@ -55,6 +55,7 @@ if (useLocalKmpWgpu) {
 include(":holm-core")
 include(":holm-renderer-gl")
 include(":holm-renderer-wgpu")
+include(":holm-gltf")
 include(":KuiklyHolmCore")
 include(":androidApp")
 include(":holmDemo")

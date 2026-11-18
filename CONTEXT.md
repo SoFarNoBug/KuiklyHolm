@@ -2,7 +2,7 @@
 
 ## 一句话
 
-**通用渲染底座**：业务定岛的位置与大小，传入上色 shader，局部 GPU 岛出帧；目标拆成 `holm-core` / `holm-renderer-gl` / `holm-renderer-wgpu`，须显式 Provider。其下为与 Holm 无关的 `kmp-wgpu` 原语层（ADR 0013）。
+**通用渲染底座**：业务定岛的位置与大小，挂上 `HolmContent`（片元或最小 glTF 模型）出帧；目标拆成 `holm-core` / `holm-renderer-gl` / `holm-renderer-wgpu`（+ 可选 `holm-gltf`），须显式 Provider。其下为与 Holm 无关的 `kmp-wgpu` 原语层（ADR 0013）。
 
 ## Language
 
@@ -15,15 +15,31 @@ _Avoid_：玻璃特效产品、粒子引擎；通用 GPU 算力库
 _Avoid_：整页自绘引擎
 
 **holm-core**：
-目标骨架依赖：统一岛 API、生命周期、喂 shader / 选后端；不含画像素实现。
-_Avoid_：把特效目录塞进 core
+目标骨架依赖：统一岛 API、生命周期、挂 `HolmContent` / 选后端；不含画像素实现。
+_Avoid_：把特效目录或 glTF 解析塞进 core
+
+**HolmContent**：
+交给岛的「画什么」交付物；实现为 `HolmShaderContent` 或 `HolmModelContent`。
+_Avoid_：Session（易与旧 Runtime Session 混）；在 Surface 上并列 fragmentShader+modelUri
+
+**HolmShaderContent**：
+片元内容（源码字符串 + 可搬迁的 knobs）；取代对外 `fragmentShader` Attr。
+_Avoid_：在 ShaderContent 上假装有真透视相机
+
+**HolmModelContent**：
+最小 glTF/glb 英雄模型内容；真相机、可选轨道手势、业务可配灯/材质覆盖。
+_Avoid_：游戏场景图；Filament；库内默认自转；http 加载
+
+**holm-gltf**：
+可选 Kotlin 模块：CPU 侧解析 glb → 网格/材质数据；不引则无模型能力。
+_Avoid_：把解析放进 kmp-wgpu-native；强制进 umbrella 必选依赖
 
 **holm-renderer-gl**：
-轻量 GL 族后端依赖（Android/iOS GLES、H5 WebGL 等）。（原草案名 `holm-gl`）
+轻量 GL 族后端依赖（Android/iOS GLES、H5 WebGL 等）；含片元 Present，并将含最小网格 Model Present。（原草案名 `holm-gl`）
 _Avoid_：Lite（易混旧特效产品档）
 
 **holm-renderer-wgpu**：
-Holm 的 wgpu Provider / 岛 Present 薄适配；依赖 `kmp-wgpu`（+可选 surface）。（原草案名 `holm-wgpu`）
+Holm 的 wgpu Provider / 岛 Present 薄适配；依赖 `kmp-wgpu`（+可选 surface）；片元与最小网格 Model Present。（原草案名 `holm-wgpu`）
 _Avoid_：把通用原语或算力 API 塞进 holm-renderer-wgpu；用 GLES 冒充 wgpu 通面
 
 **kmp-wgpu**：
@@ -92,6 +108,7 @@ _Avoid_：`LITE_PENDING` 冒充完成；用 GLES 冒充 wgpu；另挂第二 XCom
 | kmp-wgpu 原语层 | [`docs/adr/0013-kmp-wgpu-primitives-under-holm.md`](docs/adr/0013-kmp-wgpu-primitives-under-holm.md) |
 | 消灭 holm-runtime 命名 | [`docs/adr/0014-rename-holm-runtime-to-kmp-wgpu-native.md`](docs/adr/0014-rename-holm-runtime-to-kmp-wgpu-native.md) |
 | kmp-wgpu 独立仓 | [`docs/adr/0015-kmp-wgpu-independent-repo.md`](docs/adr/0015-kmp-wgpu-independent-repo.md) |
+| Content + 最小 glTF | [`docs/adr/0016-holm-content-and-minimal-gltf.md`](docs/adr/0016-holm-content-and-minimal-gltf.md) |
 | iOS renderer-wgpu | [`docs/adr/0009-ios-runtime-cametallayer-objc-session.md`](docs/adr/0009-ios-runtime-cametallayer-objc-session.md) |
 | 鸿蒙 renderer-wgpu | [`docs/adr/0010-ohos-runtime-xcomponent-session.md`](docs/adr/0010-ohos-runtime-xcomponent-session.md) |
 | 鸿蒙 renderer-gl | [`docs/adr/0011-ohos-lite-egl-xcomponent.md`](docs/adr/0011-ohos-lite-egl-xcomponent.md) |
@@ -119,3 +136,4 @@ _Avoid_：`LITE_PENDING` 冒充完成；用 GLES 冒充 wgpu；另挂第二 XCom
 - 独立仓：ADR 0015 已落地（`~/Studio/kmp/kmp-wgpu`；Maven `0.1.0`；关 O7；真机表已勾）
 - kmp-wgpu 分发：CocoaPods / ohpm / npm / GitHub Release **0.1.x 均已发**（npm=`@sofarnobug/kmp-wgpu-native@0.1.0`；ohpm=`@jlj/…@0.1.1`；见 kmp-wgpu `CHANGELOG.md`）
 - `holm_api` L3：已与 ADR 0007/0008/0013 对齐（2026-11-18）
+- **下波（分支 `feat/holm-model-content-android`）**：ADR 0016 — `HolmContent` 契约；自研最小 glTF；关 O3（非 Filament）；Model 真画 Android 优先

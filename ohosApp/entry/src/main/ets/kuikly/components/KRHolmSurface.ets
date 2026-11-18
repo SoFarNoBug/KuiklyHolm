@@ -9,6 +9,8 @@ import { ComponentContent } from '@kit.ArkUI';
 import holmXc from 'libholm_xc.so';
 
 const PROP_EXECUTOR = 'executor';
+const PROP_CONTENT_ID = 'contentId';
+const PROP_CONTENT_KIND = 'contentKind';
 const PROP_FRAGMENT_SHADER = 'fragmentShader';
 const PROP_MAX_FPS = 'maxFps';
 const PROP_RENDER_SCALE = 'renderScale';
@@ -72,6 +74,24 @@ export class KRHolmSurface extends KuiklyRenderBaseView {
         const next = ((propValue as string) ?? EXECUTOR_GL).toLowerCase();
         this.cssExecutor = next === EXECUTOR_WGPU ? EXECUTOR_WGPU : EXECUTOR_GL;
         this.pushExecutor();
+        return true;
+      }
+      case PROP_CONTENT_ID: {
+        // Registry 在 Kotlin 堆；Ohos 靠 contentKind + fragmentShader 桥
+        return true;
+      }
+      case PROP_CONTENT_KIND: {
+        const kind = ((propValue as string) ?? 'empty').toLowerCase();
+        if (kind === 'model') {
+          this.cssFragmentShader = '';
+          this.pushFragmentShader();
+          this.fireLocalError('MODEL_UNSUPPORTED', 'HolmModelContent not implemented on Ohos (ADR 0016)');
+          return true;
+        }
+        if (kind === 'empty') {
+          this.cssFragmentShader = '';
+          this.pushFragmentShader();
+        }
         return true;
       }
       case PROP_FRAGMENT_SHADER: {

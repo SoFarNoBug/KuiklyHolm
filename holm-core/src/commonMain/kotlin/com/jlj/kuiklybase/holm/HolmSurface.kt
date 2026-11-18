@@ -12,7 +12,7 @@ import com.tencent.kuikly.core.nvi.serialization.json.JSONObject
 /**
  * @CreateDate: 2026/11/12
  * @Author: jlj
- * @Description: HolmSurface 薄壳 Declarative 节点（Stage 0）；viewName=KRHolmSurface。
+ * @Description: HolmSurface 薄壳 Declarative 节点；viewName=KRHolmSurface。
  */
 class HolmSurfaceView : DeclarativeBaseView<HolmSurfaceAttr, HolmSurfaceEvent>() {
 
@@ -30,38 +30,16 @@ class HolmSurfaceView : DeclarativeBaseView<HolmSurfaceAttr, HolmSurfaceEvent>()
 /**
  * @CreateDate: 2026/11/12
  * @Author: jlj
- * @Description: HolmSurface Attr（scene / playing / knobs / maxFps / renderScale / executor / fragmentShader / vertexShader）。
- * liquid 席已废（ADR 0015），不再暴露 liquidBoost/liquidBend。
+ * @Description: HolmSurface Attr（ADR 0016：contentId + 岛级旋钮；废 fragmentShader）。
  */
 class HolmSurfaceAttr : ComposeAttr() {
-    fun scene(value: String): HolmSurfaceAttr {
-        PROP_SCENE with value
-        return this
-    }
-
     fun playing(value: Boolean): HolmSurfaceAttr {
         PROP_PLAYING with if (value) 1 else 0
         return this
     }
 
-    /** 预留 uniform：全屏场扭曲幅度（历史 warp 席）。 */
-    fun warpAmount(value: Float): HolmSurfaceAttr {
-        PROP_WARP_AMOUNT with value
-        return this
-    }
-
-    /** 预留 uniform：条带平移速率（历史 gradient 席）。 */
-    fun scrollSpeed(value: Float): HolmSurfaceAttr {
-        PROP_SCROLL_SPEED with value
-        return this
-    }
-
     /**
      * 期望的 GL 提交上限（fps）。默认 60；`0`=不限制；`<0` 按 0。
-     *
-     * 平台差异：H5 泵用 vsync + nextDue 跳过提交，上报 fps 大致贴档。
-     * Android 当前仅 `Surface.setFrameRate` 提示，CONTINUOUSLY 下真实提交仍可能≈显示刷新；
-     * `onPerf.fps` 计的是真实 draw 次数，不是「期望 maxFps」。详见 androidMain `applySurfaceFrameRate`。
      */
     fun maxFps(value: Int): HolmSurfaceAttr {
         PROP_MAX_FPS with value.coerceAtLeast(0)
@@ -70,10 +48,6 @@ class HolmSurfaceAttr : ComposeAttr() {
 
     /**
      * GPU 缓冲相对**当前平台基线**的缩放（与 [maxFps] 正交）。
-     * 默认 `1` = 与改前相同像素数；`0.5` ≈ 半分辨率（糊一点换帧率）。
-     * `≤0` / 非有限 → `1`；本波夹紧到 `(0, 1]`（禁止超采样）。
-     *
-     * 基线因端而异：Ohos/Android=物理 Surface px；iOS renderer-gl=点像素；iOS renderer-wgpu=`points×nativeScale`；H5=CSS px。
      */
     fun renderScale(value: Float): HolmSurfaceAttr {
         PROP_RENDER_SCALE with normalizeRenderScale(value)
@@ -81,8 +55,7 @@ class HolmSurfaceAttr : ComposeAttr() {
     }
 
     /**
-     * 双渲染后端：`renderer-gl`（默认，holm-renderer-gl）或 `renderer-wgpu`（holm-renderer-wgpu / kmp-wgpu Present）。
-     * renderer-wgpu 缺 native 时平台侧 `onError(BLOCKED)`，不静默回落 GLES。
+     * 双渲染后端：`renderer-gl` 或 `renderer-wgpu`。
      */
     fun executor(value: String): HolmSurfaceAttr {
         PROP_EXECUTOR with HolmExecutor.normalize(value)
@@ -90,39 +63,62 @@ class HolmSurfaceAttr : ComposeAttr() {
     }
 
     /**
-     * 业务片元源码。renderer-gl：Shadertoy **正文**（库补壳）；renderer-wgpu：WGSL 片元段（含 `@fragment fn fs_main`）。
-     * 空字符串：无官方席回退 → renderer-gl error/清屏；renderer-wgpu → ClearTri。
+     * [HolmContentRegistry] 登记 id；空串=无 Content（清屏不报错）。
      */
-    fun fragmentShader(value: String): HolmSurfaceAttr {
-        PROP_FRAGMENT_SHADER with value
+    fun contentId(value: String): HolmSurfaceAttr {
+        PROP_CONTENT_ID with value
         return this
     }
 
     /**
-     * 可选顶点源码；空=内置全屏 vert（renderer-gl）。renderer-wgpu 忽略（固定全屏 VS）。
+     * NVI 桥（Ohos ETS / iOS ObjC 无 Registry 堆访问）；Compose 内部写，**非**公开业务 API。
      */
-    fun vertexShader(value: String): HolmSurfaceAttr {
-        PROP_VERTEX_SHADER with value
+    fun bridgeContentKind(value: String): HolmSurfaceAttr {
+        PROP_BRIDGE_CONTENT_KIND with value
+        return this
+    }
+
+    fun bridgeFragmentShader(value: String): HolmSurfaceAttr {
+        PROP_BRIDGE_FRAGMENT with value
+        return this
+    }
+
+    fun bridgeVertexShader(value: String): HolmSurfaceAttr {
+        PROP_BRIDGE_VERTEX with value
+        return this
+    }
+
+    fun bridgeWarpAmount(value: Float): HolmSurfaceAttr {
+        PROP_BRIDGE_WARP with value
+        return this
+    }
+
+    fun bridgeScrollSpeed(value: Float): HolmSurfaceAttr {
+        PROP_BRIDGE_SCROLL with value
         return this
     }
 
     companion object {
-        const val PROP_SCENE: String = "scene"
         const val PROP_PLAYING: String = "playing"
-        const val PROP_WARP_AMOUNT: String = "warpAmount"
-        const val PROP_SCROLL_SPEED: String = "scrollSpeed"
         const val PROP_MAX_FPS: String = "maxFps"
         const val PROP_RENDER_SCALE: String = "renderScale"
         const val PROP_EXECUTOR: String = "executor"
-        const val PROP_FRAGMENT_SHADER: String = "fragmentShader"
-        const val PROP_VERTEX_SHADER: String = "vertexShader"
+        const val PROP_CONTENT_ID: String = "contentId"
+        /** shader | model | empty — 供无 Registry 的原生壳 */
+        const val PROP_BRIDGE_CONTENT_KIND: String = "contentKind"
+        const val PROP_BRIDGE_FRAGMENT: String = "fragmentShader"
+        const val PROP_BRIDGE_VERTEX: String = "vertexShader"
+        const val PROP_BRIDGE_WARP: String = "warpAmount"
+        const val PROP_BRIDGE_SCROLL: String = "scrollSpeed"
+        const val CONTENT_KIND_EMPTY: String = "empty"
+        const val CONTENT_KIND_SHADER: String = "shader"
+        const val CONTENT_KIND_MODEL: String = "model"
         const val DEFAULT_WARP_AMOUNT: Float = 0.04f
         const val DEFAULT_SCROLL_SPEED: Float = 1.0f
         const val DEFAULT_MAX_FPS: Int = 60
         const val DEFAULT_RENDER_SCALE: Float = 1.0f
         const val DEFAULT_EXECUTOR: String = HolmExecutor.GL
 
-        /** `≤0` / NaN/Inf → 1；否则夹紧到 `(0, 1]`。 */
         fun normalizeRenderScale(value: Float): Float {
             if (!value.isFinite() || value <= 0f) {
                 return DEFAULT_RENDER_SCALE
@@ -200,10 +196,6 @@ data class ErrorParams(
     }
 }
 
-/**
- * GL **真实提交** FPS（约 1Hz 窗口）；只在实际 clear/draw 后计数。
- * 与 Attr `maxFps`（期望上限）可能不一致——Android 上设 30 仍报 ~60 时，说明仍在每 vsync 提交。
- */
 data class PerfParams(
     val fps: Float,
     val frameMs: Float,
@@ -219,10 +211,6 @@ data class PerfParams(
     }
 }
 
-/**
- * 每次片元装载尝试结束（成败皆可）；ADR 0012。
- * renderer-wgpu 的 [wrapMs] 恒为 0；未跑到的步骤填 0。
- */
 data class ShaderCompiledParams(
     val ok: Boolean,
     val wrapMs: Float,
@@ -249,7 +237,6 @@ data class ShaderCompiledParams(
     }
 }
 
-/** H5 回调常为 Map；Android 多为 JSONObject；兼容 JSON 字符串。 */
 private fun Any?.toHolmJson(): JSONObject = when (this) {
     is JSONObject -> this
     is Map<*, *> -> {
@@ -271,19 +258,16 @@ fun ViewContainer<*, *>.HolmSurface(init: HolmSurfaceView.() -> Unit) {
 
 /**
  * Compose 入口（禁止 ComposeView 子类扩展）。
+ * [content] 经 [HolmContentRegistry] 登记为 contentId；null/空 = 清屏。
  */
 @Composable
 fun HolmSurface(
-    scene: String,
+    content: HolmContent? = null,
     modifier: Modifier = Modifier,
     playing: Boolean = true,
-    warpAmount: Float = HolmSurfaceAttr.DEFAULT_WARP_AMOUNT,
-    scrollSpeed: Float = HolmSurfaceAttr.DEFAULT_SCROLL_SPEED,
     maxFps: Int = HolmSurfaceAttr.DEFAULT_MAX_FPS,
     renderScale: Float = HolmSurfaceAttr.DEFAULT_RENDER_SCALE,
     executor: String = HolmSurfaceAttr.DEFAULT_EXECUTOR,
-    fragmentShader: String = "",
-    vertexShader: String = "",
     onReady: ((ReadyParams) -> Unit)? = null,
     onError: ((ErrorParams) -> Unit)? = null,
     onPerf: ((PerfParams) -> Unit)? = null,
@@ -293,16 +277,36 @@ fun HolmSurface(
         factory = { HolmSurfaceView() },
         modifier = modifier,
         viewUpdate = { view ->
+            val contentId = if (content == null) {
+                ""
+            } else {
+                HolmContentRegistry.register(content)
+            }
             view.getViewAttr().run {
-                scene(scene)
+                // 先挂 Content 再切 executor，避免热切首包错方言
+                contentId(contentId)
+                when (content) {
+                    null -> {
+                        bridgeContentKind(HolmSurfaceAttr.CONTENT_KIND_EMPTY)
+                        bridgeFragmentShader("")
+                        bridgeVertexShader("")
+                    }
+                    is HolmShaderContent -> {
+                        bridgeContentKind(HolmSurfaceAttr.CONTENT_KIND_SHADER)
+                        bridgeFragmentShader(content.source)
+                        bridgeVertexShader(content.vertexSource)
+                        bridgeWarpAmount(content.warpAmount)
+                        bridgeScrollSpeed(content.scrollSpeed)
+                    }
+                    is HolmModelContent -> {
+                        bridgeContentKind(HolmSurfaceAttr.CONTENT_KIND_MODEL)
+                        bridgeFragmentShader("")
+                        bridgeVertexShader("")
+                    }
+                }
                 playing(playing)
-                warpAmount(warpAmount)
-                scrollSpeed(scrollSpeed)
                 maxFps(maxFps)
                 renderScale(renderScale)
-                // 先写源码再切 executor，避免热切时首包带错方言（审查 P1-concurrency）
-                fragmentShader(fragmentShader)
-                vertexShader(vertexShader)
                 executor(executor)
             }
             val readyHandler = onReady

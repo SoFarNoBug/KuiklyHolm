@@ -6,8 +6,6 @@ export const setFragmentShader: (id: string, fragmentShader: string) => void;
 export const setPlaying: (id: string, playing: boolean) => void;
 export const setMaxFps: (id: string, maxFps: number) => void;
 export const setRenderScale: (id: string, renderScale: number) => void;
-export const setScene: (id: string, scene: string) => void;
-export const setLiquid: (id: string, boost: number, bend: number) => void;
 export const setCallbacks: (
   id: string,
   onReady?: (payload: object) => void,

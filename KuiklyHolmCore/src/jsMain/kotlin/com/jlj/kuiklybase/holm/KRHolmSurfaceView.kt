@@ -24,6 +24,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
     private var _maxFps: Int = HolmSurfaceAttr.DEFAULT_MAX_FPS
     private var _renderScale: Float = HolmSurfaceAttr.DEFAULT_RENDER_SCALE
     private var _executor: String = HolmSurfaceAttr.DEFAULT_EXECUTOR
+    private var _contentId: String = ""
     private var _fragmentShader: String = ""
     private var _vertexShader: String = ""
     private var _runtimeBlockedNotified: Boolean = false
@@ -66,19 +67,37 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
 
     override fun setProp(propKey: String, propValue: Any): Boolean {
         return when (propKey) {
-            HolmSurfaceAttr.PROP_SCENE -> {
+            HolmSurfaceAttr.PROP_CONTENT_ID -> {
                 val next = propValue.toString()
-                if (next != _scene) {
-                    _scene = next
-                    postScene()
+                if (next != _contentId) {
+                    if (_contentId.isNotEmpty()) {
+                        HolmContentRegistry.unregister(_contentId)
+                    }
+                    _contentId = next
+                    applyHolmContentFromRegistry()
                 }
                 true
             }
-            HolmSurfaceAttr.PROP_FRAGMENT_SHADER -> {
+            HolmSurfaceAttr.PROP_BRIDGE_CONTENT_KIND -> {
+                val kind = propValue.toString()
+                if (kind == HolmSurfaceAttr.CONTENT_KIND_MODEL) {
+                    // contentId 路径已对 HolmModelContent fireError；此处跳过避免双红字
+                    if (HolmContentRegistry.get(_contentId) !is HolmModelContent) {
+                        _fragmentShader = ""
+                        _vertexShader = ""
+                        postScene()
+                        fireError(
+                            HolmExecutor.ERROR_MODEL_UNSUPPORTED,
+                            "HolmModelContent not implemented on H5 (ADR 0016)",
+                        )
+                    }
+                }
+                true
+            }
+            HolmSurfaceAttr.PROP_BRIDGE_FRAGMENT -> {
                 val next = propValue.toString()
                 if (next != _fragmentShader) {
                     _fragmentShader = next
-                    // 切轨过渡：错方言先只存值，等 executor 落地再喂泵
                     if (fragmentMatchesCurrentExecutor(_fragmentShader)) {
                         postScene()
                     } else {
@@ -87,7 +106,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                 }
                 true
             }
-            HolmSurfaceAttr.PROP_VERTEX_SHADER -> {
+            HolmSurfaceAttr.PROP_BRIDGE_VERTEX -> {
                 val next = propValue.toString()
                 if (next != _vertexShader) {
                     _vertexShader = next
@@ -102,12 +121,12 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                 postPlaying(effectivePlaying())
                 true
             }
-            HolmSurfaceAttr.PROP_WARP_AMOUNT -> {
+            HolmSurfaceAttr.PROP_BRIDGE_WARP -> {
                 _warpAmount = propValue.toHolmFloat(HolmSurfaceAttr.DEFAULT_WARP_AMOUNT)
                 postSet()
                 true
             }
-            HolmSurfaceAttr.PROP_SCROLL_SPEED -> {
+            HolmSurfaceAttr.PROP_BRIDGE_SCROLL -> {
                 _scrollSpeed = propValue.toHolmFloat(HolmSurfaceAttr.DEFAULT_SCROLL_SPEED)
                 postSet()
                 true
@@ -174,6 +193,43 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
         }
     }
 
+    private fun applyHolmContentFromRegistry() {
+        if (_contentId.isEmpty()) {
+            _fragmentShader = ""
+            _vertexShader = ""
+            postScene()
+            return
+        }
+        when (val content = HolmContentRegistry.get(_contentId)) {
+            null -> {
+                _fragmentShader = ""
+                _vertexShader = ""
+                postScene()
+            }
+            is HolmShaderContent -> {
+                _warpAmount = content.warpAmount
+                _scrollSpeed = content.scrollSpeed
+                _fragmentShader = content.source
+                _vertexShader = content.vertexSource
+                postSet()
+                if (fragmentMatchesCurrentExecutor(_fragmentShader)) {
+                    postScene()
+                } else {
+                    fireShaderCompiled(false, 0f, 0f, _executor)
+                }
+            }
+            is HolmModelContent -> {
+                _fragmentShader = ""
+                _vertexShader = ""
+                postScene()
+                fireError(
+                    HolmExecutor.ERROR_MODEL_UNSUPPORTED,
+                    "HolmModelContent not implemented on H5 (ADR 0016)",
+                )
+            }
+        }
+    }
+
     override fun onAddToParent(parent: Element) {
         _attached = true
         if (HolmExecutor.isWgpu(_executor)) {
@@ -189,6 +245,10 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
 
     override fun onRemoveFromParent(parent: Element) {
         _attached = false
+        if (_contentId.isNotEmpty()) {
+            HolmContentRegistry.unregister(_contentId)
+            _contentId = ""
+        }
         clearWasmLoadPoll()
         detachObservers()
         destroyPump()

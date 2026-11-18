@@ -11,7 +11,7 @@ layer: L3
 
 ## 规则
 
-1. **身份（D12 · ADR 0007）**：Holm 是 **通用渲染底座**（shader-in / surface-out）——宿主定岛、传入 shader，库出呈现面；**禁止**写成「专为粒子 / 专为玻璃 / 专为某 App」；**禁止**第一期做成通用多框架开源引擎或并行多 bridge。
+1. **身份（D12 · ADR 0007）**：Holm 是 **通用渲染底座**（shader-in / surface-out）——宿主定岛、传入 Content，库出呈现面；**禁止**写成「专为粒子 / 专为玻璃 / 专为某 App」；**禁止**第一期做成通用多框架开源引擎或并行多 bridge。
 2. **命名（D10）**：对外固定 `HolmSurface` / viewName `KRHolmSurface` / ABI `holm_*`；**禁止**擅自改名或去掉 `KR` 前缀。
 3. **三包 + Provider（D11 / D13 · ADR 0008）**：目标包 `holm-core` / `holm-renderer-gl` / `holm-renderer-wgpu`；宿主须 **register Provider 并 setDefault**；仅 core 或未设 → **明确失败**，禁止 classpath 静默默选。umbrella `KuiklyHolmCore` 可自动注册为例外，Demo/宿主仍宜显式演示契约。对外 Attr：`executor=renderer-gl` / `renderer-wgpu`（废 `lite` / `runtime` 用词）。
 4. **全量 Runtime 门禁（D0）**：全量 Standard / M0–M3 级 Runtime 加深须有**书面后端选型**；不得把「再堆官方特效席」当成底座完成态。Stage 0「选 Lite 做玻璃交付」仅历史尖刺，**不是**现行身份锚。
@@ -23,6 +23,7 @@ layer: L3
 10. **桥接**：第一期唯一宿主桥接走 Kuikly `expand-native-ui`；Compose 用 `MakeKuiklyComposeNode`，**禁止** `ComposeView` 子类扩展。
 11. **能力子集（D9）**：鸿蒙等弱端经 Caps 降级；ABI 形稳、能力可不装全；不得假装 Full / 简单 3D 已四端齐。
 12. **算力边界（D14 · ADR 0013）**：通用 GPU 算力 / Compute / 无窗口加速走 **`kmp-wgpu`**；**禁止**把 Holm 扩成算力 SDK 或把原语 API 塞进 `holm-renderer-wgpu`。
+13. **Content 契约（ADR 0016）**：`HolmSurface` **只挂** `HolmContent`（`HolmShaderContent` / `HolmModelContent`）；Attr 过 NVI 用 `contentId` + Registry；**禁止**对外再暴露 `fragmentShader` / `vertexShader` 业务 Attr。`HolmModelContent` 真画本波 **仅 Android**；其它端须 `MODEL_UNSUPPORTED` + 清屏。glTF 解析在可选 `:holm-gltf`，**禁止**塞进 kmp-wgpu。
 
 ## 判据速查
 
@@ -36,4 +37,6 @@ layer: L3
 | 整页自绘进岛 / 列表实时真折射当默认能力 | **FAIL** |
 | 把通用算力 API 塞进 Holm 公开面 | **FAIL** → 走 kmp-wgpu |
 | 长期只交空清屏、无任何可喂 shader 通面且未声明基建单 | **FAIL** |
+| 业务公开 API 仍并列 `fragmentShader` Attr | **FAIL** → Content（ADR 0016） |
+| 非 Android 假装 Model 已通 / 静默空画不报错 | **FAIL** → `MODEL_UNSUPPORTED` |
 | 仅改文档 / 未改公开契约 | 相关条可 `N/A` |

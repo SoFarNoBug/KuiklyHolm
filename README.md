@@ -123,10 +123,9 @@ HolmProviders.setDefault(GlBackendProvider.ID) // 或 WgpuBackendProvider.ID
 @Composable
 fun HolmIsland(fs: String) {
     HolmSurface(
-        scene = "custom",
+        content = HolmShaderContent(source = fs),
         modifier = Modifier.fillMaxSize(),
         executor = HolmExecutor.WGPU, // 或 HolmExecutor.GL（OpenGL）
-        fragmentShader = fs,          // 你的着色器源码
         playing = true,
         onReady = { /* 画布就绪 */ },
         onError = { /* 失败时看这里，不会假装画成功 */ },
@@ -137,7 +136,7 @@ fun HolmIsland(fs: String) {
 
 - 选 OpenGL（`HolmExecutor.GL`）：`fs` 写 GLSL（类似 Shadertoy 正文，库会补外壳）  
 - 选 wgpu（`HolmExecutor.WGPU`）：`fs` 写 WGSL（需要带 `@fragment fn fs_main`）  
-- 想看成品效果：跑 `holmDemo`，打开页面 `holm_dualtrack`（霓虹隧道等）
+- 想看成品效果：跑 `holmDemo`，打开页面 `holm_dualtrack`（霓虹隧道等）；Android 模型页 `holm_model`
 
 ---
 

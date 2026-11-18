@@ -33,6 +33,7 @@ dependencies {
 | 统一岛 API | `holm-core`（或 umbrella `KuiklyHolmCore`） |
 | 轻量 GL 出画 | + `holm-renderer-gl` + 注册 `GlBackendProvider` |
 | wgpu / WGSL 热换 | + `holm-renderer-wgpu` + `WgpuBackendProvider` + **kmp-wgpu native** |
+| Android 最小 glTF 模型 | + `:holm-gltf`（**可选**；不进 umbrella 必选）+ `HolmModelContent` |
 | 只要无窗口算力 | **不要扩 Holm** → 直接用 [kmp-wgpu](https://github.com/SoFarNoBug/kmp-wgpu) |
 
 ### 怎么选：`holm-renderer-gl` vs `holm-renderer-wgpu`
@@ -122,16 +123,17 @@ Kuikly 页面布局
     │  决定岛位置 / 大小
     ▼
 HolmSurface（Compose） / KRHolmSurface（原生 viewName）
-    │  Attr：executor / fragmentShader / maxFps / …
+    │  Attr：contentId / executor / playing / maxFps / renderScale
     │  Event：onReady / onError / onPerf / onShaderCompiled
     ▼
 holm-core ──Provider──► renderer-gl（GLSL Shadertoy 正文 + 库补壳）
                     └► renderer-wgpu（WGSL 片元 + kmp-wgpu Present）
+           （可选）holm-gltf → Android Model Present
 ```
 
 - **局部岛**：不替换 Kuikly 主 UI；一页少岛；列表默认不要挂实时重岛。
 - **显式选后端**：`executor = renderer-gl | renderer-wgpu`（见 `HolmExecutor`）。
-- **业务自带片元**：无官方特效目录；样本在 Demo（如霓虹隧道）。
+- **只挂 Content**：`HolmShaderContent` / `HolmModelContent`；**禁止**业务再传 `fragmentShader` Attr（ADR 0016）。
 
 ---
 
@@ -142,16 +144,12 @@ holm-core ──Provider──► renderer-gl（GLSL Shadertoy 正文 + 库补�
 ```kotlin
 @Composable
 fun HolmSurface(
-    scene: String,
+    content: HolmContent? = null,
     modifier: Modifier = Modifier,
     playing: Boolean = true,
-    warpAmount: Float = HolmSurfaceAttr.DEFAULT_WARP_AMOUNT,
-    scrollSpeed: Float = HolmSurfaceAttr.DEFAULT_SCROLL_SPEED,
     maxFps: Int = HolmSurfaceAttr.DEFAULT_MAX_FPS,       // 60
     renderScale: Float = HolmSurfaceAttr.DEFAULT_RENDER_SCALE, // 1f
     executor: String = HolmSurfaceAttr.DEFAULT_EXECUTOR, // renderer-gl
-    fragmentShader: String = "",
-    vertexShader: String = "",
     onReady: ((ReadyParams) -> Unit)? = null,
     onError: ((ErrorParams) -> Unit)? = null,
     onPerf: ((PerfParams) -> Unit)? = null,
@@ -159,21 +157,27 @@ fun HolmSurface(
 )
 ```
 
-Declarative 薄壳：`HolmSurfaceView` + `HolmSurfaceAttr` / `HolmSurfaceEvent`（同名字段经 Attr/Event 同步）。
+Declarative 薄壳：`HolmSurfaceView` + `HolmSurfaceAttr` / `HolmSurfaceEvent`。Compose 将 `content` 登记进 `HolmContentRegistry`，Attr 只传 `contentId`（+ 无 Registry 堆访问端的 NVI 桥字段）。
 
-### Attr
+### Content
+
+| 类型 | 含义 |
+|---|---|
+| `null` / 空 | 清屏，**不**报错 |
+| `HolmShaderContent(source, vertexSource?, warpAmount?, scrollSpeed?)` | 片元。GL=Shadertoy **正文**；wgpu=WGSL（含 `@fragment fn fs_main`） |
+| `HolmModelContent.fromAssets` / `fromFileUri` / `fromBytes` | 最小 glTF；**仅 Android 真画**；其它端 `MODEL_UNSUPPORTED` + 清屏 |
+
+`HolmModelContent`：默认 `orbitEnabled=true`（单指拖 yaw/pitch）；`setYaw` / `setPitch` 供业务自写手势；`lights` 空=unlit，上限 `HolmModelContent.MAX_LIGHTS`（8）。资源：**不做 http**；先验 `assets/`，另有 `file://` 与 `ByteArray`。
+
+### Attr（岛级）
 
 | 参数 | 类型 | 默认 | 含义 |
 |---|---|---|---|
-| `scene` | `String` | （Compose 必填） | 场景 / 样本标签；历史席名可留作 Demo 标识，**不再**绑定官方内置特效实现 |
+| `contentId` | `String` | `""` | Registry id；空=无 Content |
 | `playing` | `Boolean` | `true` | `false` 停泵：不再提交 GPU；恢复后继续 |
 | `executor` | `String` | `renderer-gl` | `HolmExecutor.GL` / `HolmExecutor.WGPU`；其它值归一成 GL |
-| `fragmentShader` | `String` | `""` | **业务片元**。GL：Shadertoy **正文**（库补壳）；wgpu：WGSL 片元段（含 `@fragment fn fs_main`）。空串：GL 侧 error/清屏；wgpu → 清屏三角 |
-| `vertexShader` | `String` | `""` | 可选；空=内置全屏 vert（**仅 renderer-gl**）。renderer-wgpu **忽略**（固定全屏 VS） |
 | `maxFps` | `Int` | `60` | **期望**提交上限；`0`=不限制；`<0` 按 0。与 `onPerf.fps` **不是同一含义**（见下） |
 | `renderScale` | `Float` | `1` | GPU 缓冲相对**当前平台基线**的缩放；与 `maxFps` 正交。`≤0` / 非有限 → `1`；夹紧 `(0, 1]`（禁止超采样） |
-| `warpAmount` | `Float` | `0.04` | 预留 uniform（历史 warp 席）；无对应官方席时由业务片元自行决定是否使用 |
-| `scrollSpeed` | `Float` | `1` | 预留 uniform（历史 gradient 席）；同上 |
 
 **`renderScale` 基线（因端而异）**
 
@@ -216,6 +220,8 @@ Declarative 薄壳：`HolmSurfaceView` + `HolmSurfaceAttr` / `HolmSurfaceEvent`�
 | code | 典型原因 |
 |---|---|
 | `BLOCKED` | 未 register / 未 setDefault；或 wgpu 缺 native / 不可用（**不**静默回 GL） |
+| `MODEL_UNSUPPORTED` | 非 Android 端挂了 `HolmModelContent`（本波不真画） |
+| `MODEL_LOAD` | Android 读 assets / 解析 glTF 失败 |
 | `SHADER_WRAP` / `SHADER_COMPILE` / `SHADER_LINK` / `SHADER_CUSTOM` | 片元包壳或编译/装载失败 |
 | `TICK` | Present / 泵帧回合失败 |
 | 其它平台码 | 如 H5 `CREATE_SESSION` / `NO_WASM_URL`；以 `message` 为准 |
@@ -260,6 +266,7 @@ frameMs ≈ 1000 / fps
 ```kotlin
 import androidx.compose.runtime.Composable
 import com.jlj.kuiklybase.holm.HolmExecutor
+import com.jlj.kuiklybase.holm.HolmShaderContent
 import com.jlj.kuiklybase.holm.HolmSurface
 import com.tencent.kuikly.compose.foundation.layout.fillMaxSize
 import com.tencent.kuikly.compose.ui.Modifier
@@ -267,10 +274,9 @@ import com.tencent.kuikly.compose.ui.Modifier
 @Composable
 fun HolmIsland(fs: String) {
     HolmSurface(
-        scene = "custom",
+        content = HolmShaderContent(source = fs),
         modifier = Modifier.fillMaxSize(),
         executor = HolmExecutor.WGPU, // 或 HolmExecutor.GL
-        fragmentShader = fs,
         playing = true,
         maxFps = 60,
         onReady = { r -> /* r.backend */ },
@@ -282,7 +288,7 @@ fun HolmIsland(fs: String) {
 ```
 
 - GL 路径喂 **GLSL Shadertoy 正文**；wgpu 路径喂 **WGSL**（两端样本见 Demo `NeonTunnelShaders` 等）。
-- 完整双轨：`holmDemo` → page `holm_dualtrack`。
+- 完整双轨：`holmDemo` → page `holm_dualtrack`；Model：`holm_model`（Android）。
 
 ## 能力矩阵
 
@@ -290,7 +296,8 @@ fun HolmIsland(fs: String) {
 |---|---|---|---|---|
 | renderer-gl | ✅ | ✅ | ✅ | ✅ |
 | renderer-wgpu | ✅ | ✅ | ✅ | ✅ |
-| 片元热换 | ✅ | ✅ | ✅ | ✅ |
+| ShaderContent 热换 | ✅ | ✅ | ✅ | ✅ |
+| ModelContent（glTF） | ✅ GL=GLES 网格；wgpu=`ModelPass`（真 wgpu） | BLOCKED | BLOCKED | BLOCKED |
 | Provider 未设 | 失败 | 失败 | 失败 | 失败 |
 | `onPerf` 真实提交 | ✅ | ✅ | ✅ | ✅ |
 
@@ -303,7 +310,10 @@ wgpu 路径上各端**实际图形后端**（Vulkan / Metal / GLES / WebGPU…�
 | 只引 core、不 register | `BLOCKED` | 启动时 `HolmProviders.register` + `setDefault` |
 | wgpu 忘 native | `BLOCKED` / 链失败 | 按 [kmp-wgpu guide](https://github.com/SoFarNoBug/kmp-wgpu/blob/main/docs/guide.md) 补 `.so` / Pod / ohpm / wasm |
 | 用 `maxFps` 当实测 FPS | Android 设 30 仍觉得「统计错」 | 读 `onPerf.fps`；Android 限帧仅为提示 |
-| GL/WGSL 方言喂错轨 | 编译失败 / 红字 | 先写 `fragmentShader` 再切 `executor`；热切注意方言 |
+| GL/WGSL 方言喂错轨 | 编译失败 / 红字 | Content 源码与 `executor` 方言一致；热切注意方言 |
+| 业务仍传 `fragmentShader` Attr | 编译失败 / 无效 | 改用 `HolmShaderContent`（ADR 0016） |
+| 非 Android 挂 Model | `MODEL_UNSUPPORTED` | 本波仅 Android 真画 |
+| 只用 Shader 却引 `:holm-gltf` | 包体变大 | Model 可选依赖；Shader 宿主可不引 |
 | 列表里挂多岛实时泵 | 掉帧 / 耗电 | 局部少岛；列表默认禁实时重岛 |
 | 无窗口 GPGPU 塞进 Holm | API 不对口 | 直接用 kmp-wgpu Headless |
 | 把系统玻璃当 Holm 完成 | 验收争议 | 非目标；勿冒充四端一致底座 |
@@ -315,8 +325,9 @@ wgpu 路径上各端**实际图形后端**（Vulkan / Metal / GLES / WebGPU…�
 | 根 [README.md](../README.md) | 路人 / 产品定位 / 最小示例 |
 | 本文件 | **接入手册 + API 全表** |
 | [CONTRIBUTING.md](../CONTRIBUTING.md) | 维护：起 Demo / 发版 |
-| [`holmDemo/`](../holmDemo/) | 双轨与隧道样本 |
-| [`holm-core/`](../holm-core/) | 岛 API / Providers |
+| [`holmDemo/`](../holmDemo/) | 双轨隧道 + Model 样本 |
+| [`holm-core/`](../holm-core/) | 岛 API / Content / Providers |
+| [`holm-gltf/`](../holm-gltf/) | 可选 GLB 解析（CPU） |
 | [`holm-renderer-gl/`](../holm-renderer-gl/) | Lite GL |
 | [`holm-renderer-wgpu/`](../holm-renderer-wgpu/) | wgpu Present 薄适配 |
 | [`docs/product/`](./product/) | 产品决策 SoT |

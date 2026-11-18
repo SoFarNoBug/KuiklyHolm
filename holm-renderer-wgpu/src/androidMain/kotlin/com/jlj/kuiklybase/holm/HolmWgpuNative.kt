@@ -52,4 +52,7 @@ object HolmWgpuNative {
         val gpu = AndroidSurfaces.create(surface, width, height) ?: return null
         return HolmFullscreenPass(gpu)
     }
+
+    fun createModelPass(surface: Surface, width: Int, height: Int): HolmModelPass? =
+        HolmModelPass.create(surface, width, height)
 }

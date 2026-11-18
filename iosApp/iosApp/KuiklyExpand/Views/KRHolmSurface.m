@@ -143,13 +143,41 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
     [self holm_applyExecutorMode];
 }
 
+- (void)setCss_contentId:(NSString *)css_contentId {
+    // Android/JS 用 Registry；iOS 靠 contentKind + fragmentShader 桥字段。
+    (void)css_contentId;
+}
+
+- (void)setCss_contentKind:(NSString *)css_contentKind {
+    NSString *kind = css_contentKind.length ? css_contentKind.lowercaseString : @"empty";
+    if ([kind isEqualToString:@"model"]) {
+        _fragmentShader = @"";
+        if (_sessionHandle != 0 && [self holm_isWgpu]) {
+            [self holm_applyRuntimeShaders];
+        } else if (_glesHost && ![self holm_isWgpu]) {
+            [self holm_applyLiteShaders];
+        }
+        [self holm_fireError:@"MODEL_UNSUPPORTED"
+                     message:@"HolmModelContent not implemented on iOS (ADR 0016)"];
+        return;
+    }
+    if ([kind isEqualToString:@"empty"]) {
+        _fragmentShader = @"";
+        if (_sessionHandle != 0 && [self holm_isWgpu]) {
+            [self holm_applyRuntimeShaders];
+        } else if (_glesHost && ![self holm_isWgpu]) {
+            [self holm_applyLiteShaders];
+        }
+    }
+}
+
 - (void)setCss_fragmentShader:(NSString *)css_fragmentShader {
     NSString *next = css_fragmentShader ?: @"";
     if ([next isEqualToString:_fragmentShader]) {
         return;
     }
     _fragmentShader = [next copy];
-    // Compose 先写 fragmentShader 再写 executor：切轨途中勿把错方言喂进当前后端。
+    // Compose 经 content 桥写入；切轨途中勿把错方言喂进当前后端。
     if (_sessionHandle != 0 && [self holm_isWgpu]) {
         [self holm_applyRuntimeShaders];
     } else if (_glesHost && ![self holm_isWgpu]) {

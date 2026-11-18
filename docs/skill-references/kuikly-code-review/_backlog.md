@@ -8,6 +8,7 @@
 
 ## 候选
 
+- [ ] Content Registry 过 NVI：View 销毁/卸岛必须 unregister 当前 contentId，避免 map 泄漏｜2026-11-18｜自评：未达标（holm-content-gltf P2）
 - [ ] Gradle 物理拆后若 umbrella 自动 `register`+`setDefault`，ADR/产品文须写明「兼容例外」，否则与「禁止仅靠 classpath 静默默选」冲突｜2026-11-16｜自评：未达标（holm-three-package-split P1-doc-drift）
 - [ ] 跨 FFI 包装 `Result`/throw 时禁止再用 sticky `lastError*` 二次否决成功路径；`drain` 若不清 last，宿主不得把 last 当帧成败｜2026-11-16｜自评：未达标（kmp-wgpu-extract-v1 P0）
 - [ ] DualTrack 性能对比须标注 `renderScale` 与端基线（物理/点/CSS），避免跨端数字误读｜2026-11-16｜自评：未达标（renderscale device-verify）

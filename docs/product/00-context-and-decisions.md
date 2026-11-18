@@ -21,7 +21,7 @@
 | 结论 | 证据 |
 | --- | --- |
 | Kuikly 主路线原生 View；扩展走 expand-native-ui | Compose overview / 渲染博客 |
-| 岛上可喂业务片元 | ADR 0005；Demo `fragmentShader` |
+| 岛上可喂业务片元 / Content | ADR 0005 → ADR 0016 `HolmContent`（废对外 `fragmentShader` Attr） |
 | 双渲染后端通面（renderer-gl GLES + renderer-wgpu） | DualTrack；ADR 0006 / 0009 / 0010 |
 | 旧「特效产品」身份已推翻 | ADR 0007 |
 | 三包 + Provider 目标架构 | ADR 0008 |
@@ -138,7 +138,7 @@ Stage 0 曾在 2026-11-12 选 **Lite(A)**（ADR 0002），目标是「特效尖�
 | O0 | 历史 Stage 0 选 Lite 还是 Standard | **历史关闭 → Lite(A)**；**身份已由 ADR 0007 取代** |
 | O1 | Standard Runtime：wgpu vs 其它 | 尖刺默认 wgpu；正式全量另决 |
 | O2 | Backdrop：07 推荐默认是否采纳 | 书面前慎承诺 |
-| O3 | 3D / Filament | Full 前 |
+| O3 | 3D / Filament | **关闭 → ADR 0016**：自研最小 glTF（`HolmModelContent` + 可选 `holm-gltf`）；**不**引入 Filament；GL+wgpu 统一 API；Model 真画 Android 优先 |
 | O4 | 与 GearUI 边界 | 定仓后 |
 | O5 | 是否远期开源/多框架 | **非当前**；另 ADR |
 | O6 | 与 ParticleEngine 等消费者的接入契约（仅示例，非身份） | 另单；算力面应走 `kmp-wgpu`（ADR 0013），不绑 Holm |

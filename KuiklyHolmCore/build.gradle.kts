@@ -50,6 +50,8 @@ kotlin {
                 compileOnly("com.tencent.kuikly-open:core-render-android:${Version.getKuiklyVersion()}")
                 api(project(":holm-renderer-gl"))
                 api(project(":holm-renderer-wgpu"))
+                // 可选 Present 依赖：仅 Android Model 路径（ADR 0016）；不进 umbrella 对外必选叙事
+                implementation(project(":holm-gltf"))
             }
         }
         val jsMain by getting {
