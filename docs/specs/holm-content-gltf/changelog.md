@@ -2,6 +2,8 @@
 
 ## 2026-11-18
 
+- [FIX] Model 轨道手势改转台：手指左右/上下均与模型同向（yaw+pitch 取反；GLES/wgpu 一致）
+- 轻量治理：路径=速速改｜sediment=否｜gate=跳过｜真机表=无
 - [ADD] Demo 接入 Khronos `Duck.glb` / `Box.glb` + 资产 chip；`assets/models/ATTRIBUTION.md`（CC BY / SCEA / 本仓 hero）
 - 轻量治理：路径=速速改｜sediment=见收尾｜gate=跳过｜真机表=无本单新表
 - [NOTE] 审查回执行 r3 · 通过（Vivo 真机 OK）

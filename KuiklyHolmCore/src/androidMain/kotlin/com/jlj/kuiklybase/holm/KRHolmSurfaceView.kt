@@ -622,12 +622,13 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
                 val dy = event.y - _lastTouchY
                 _lastTouchX = event.x
                 _lastTouchY = event.y
-                _modelYaw += dx * 0.01f
-                _modelPitch = (_modelPitch - dy * 0.01f).coerceIn(-1.2f, 1.2f)
+                // 转台手感：指滑方向与模型同向（yaw/pitch 相对 orbit-camera 均取反）
+                _modelYaw -= dx * 0.01f
+                _modelPitch = (_modelPitch + dy * 0.01f).coerceIn(-1.2f, 1.2f)
                 content.setYaw(_modelYaw)
                 content.setPitch(_modelPitch)
                 if (!HolmExecutor.isWgpu(_executor)) {
-                    _modelRenderer.nudgeOrbit(dx, -dy)
+                    _modelRenderer.nudgeOrbit(-dx, dy)
                 }
                 return true
             }
