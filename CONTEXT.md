@@ -116,5 +116,6 @@ _Avoid_：`LITE_PENDING` 冒充完成；用 GLES 冒充 wgpu；另挂第二 XCom
 - Demo：Home「示例 / 双渲染后端」(`holm_dualtrack`) +「kmp-wgpu Compute 回读」；页内 chip 切隧道 / IQ / 程序化海洋 / 电缆巢；官方五席源码已删
 - iOS：ADR 0009 泵仍 ObjC；Present 经 `HolmWgpuIosBridge` → kmp-wgpu；renderer-gl GLES 子树（`gles2-ios` / `wgpu-m0*`）
 - 鸿蒙：ADR 0010 renderer-wgpu + ADR 0011 renderer-gl（同 XC EGL，`gles2-ohos`）；真机隧道/互切待勾
-- 独立仓：ADR 0015（先仓内清边界再剪到 `~/Studio/kmp/kmp-wgpu`；关 O7）
-- 后单：真机勾 v1.1 Compute / 独立仓验收表；`holm_api` 对齐
+- 独立仓：ADR 0015 已落地（`~/Studio/kmp/kmp-wgpu`；Maven `0.1.0`；关 O7；真机表已勾）
+- kmp-wgpu 分发：CocoaPods `KmpWgpuNative` `0.1.0` trunk 已收；ohpm `0.1.1` 审核中；npm / GitHub Release 待发（见 kmp-wgpu `CHANGELOG.md`）
+- 后单：`holm_api` 对齐
