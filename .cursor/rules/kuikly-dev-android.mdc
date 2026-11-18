@@ -35,7 +35,7 @@ alwaysApply: false
 ## 编码惯例（本仓）
 
 - 语言：新代码**优先 Kotlin**（KMP `commonMain` 优先）；平台逻辑放对应 `androidMain` / `iosMain` / `jsMain`；跨平台原生能力优先 Kuikly Module，与产品文档一致
-- 架构：Kuikly 壳 + Holm 局部 GPU 岛；重量档 Lite / Standard / Full 见 `docs/product/00`
+- 架构：Kuikly 壳 + Holm 局部 GPU 岛（通用底座）；后端档 `renderer-gl` / `renderer-wgpu`（Full/简单 3D 见 `docs/product/00`）
 - API：`HolmSurface` / `KRHolmSurface` / `holm_*`（D10）
 - 锚点：同源 Shader/Pass（D2）；Runtime 可选
 - Compose：包名与差异见 L2 / `kuiklyComposeDSL.mdc`；库契约见 L3 `holm_api`；决策 SoT：`docs/product/00-context-and-decisions.md`
@@ -69,7 +69,7 @@ alwaysApply: false
 
 ## 硬约束 · L3 Holm API
 
-- D12 Kuikly 业务优先；D10 命名锁定；D0 Stage 0 门禁；D2 Shader 锚点
+- D12 通用渲染底座；D10 命名锁定；D11 Provider 必设；D13 三包；D0 全量 Runtime 须书面选型；D2 Shader 锚点；D14 算力走 kmp-wgpu
 - 禁系统 Liquid Glass / WebView+Three 冒充；局部少岛；Backdrop 跟 `docs/product/07`
 - 全文：`docs/skill-references/kuikly-android-coding/project/holm_api.md`；台账：`docs/product/00-context-and-decisions.md`
 

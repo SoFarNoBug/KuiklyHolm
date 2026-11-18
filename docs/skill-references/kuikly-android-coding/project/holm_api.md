@@ -1,33 +1,39 @@
-doc_version: 20261112_1
+doc_version: 20261118_1
 layer: L3
 
 # Holm API 准则（L3 · 本仓）
 
 > **分层**：本仓库契约全文真源。编码会话红线摘要见 `.cursor/rules/kuikly-dev-*.mdc`。  
-> **依据**：根目录 `CONTEXT.md`、`AGENTS.md`、[`docs/product/00-context-and-decisions.md`](../../../../product/00-context-and-decisions.md)、[`docs/product/07-p0-hard-problems.md`](../../../../product/07-p0-hard-problems.md)。
+> **依据**：根目录 `CONTEXT.md`、`AGENTS.md`、[`docs/product/00-context-and-decisions.md`](../../../../product/00-context-and-decisions.md)、[`docs/product/07-p0-hard-problems.md`](../../../../product/07-p0-hard-problems.md)、ADR 0007 / 0008 / 0013。  
+> **对齐说明（2026-11-18）**：推翻旧「特效增强 / 五席交付中心 / 效果优先于基建」身份句；与 ADR 0007 通用底座 + ADR 0008 三包 Provider 一致。
 
 **级别**：核心规范（强制）。违反 = 该次编码不合格。
 
 ## 规则
 
-1. **身份（D12）**：Holm 是 **Kuikly 业务优先** 的局部 GPU 特效增强；**禁止**第一期做成通用多框架开源引擎或并行多 bridge。
+1. **身份（D12 · ADR 0007）**：Holm 是 **通用渲染底座**（shader-in / surface-out）——宿主定岛、传入 shader，库出呈现面；**禁止**写成「专为粒子 / 专为玻璃 / 专为某 App」；**禁止**第一期做成通用多框架开源引擎或并行多 bridge。
 2. **命名（D10）**：对外固定 `HolmSurface` / viewName `KRHolmSurface` / ABI `holm_*`；**禁止**擅自改名或去掉 `KR` 前缀。
-3. **Stage 0（D0）**：未书面选 Lite(A) / Standard(B) / 终止前，**禁止**全量 Standard Runtime（M0–M3）开工。
-4. **锚点（D2）**：观感一致靠 **同源 Shader/Pass**；统一 RHI/wgpu Runtime 为 Standard **可选**，非 Lite 强制。
-5. **效果优先**：禁止长期只交空引擎（清屏三角）而无 Kuikly 可用业务特效。
-6. **禁冒充**：禁止用系统 Liquid Glass / `UIGlassEffect` / WebView+Three 冒充 Holm 完成态或四端一致方案。
-7. **局部岛（D1/D6）**：不替换 Kuikly 主 UI 树；一页少岛；列表默认禁实时重特效；控件用 Kuikly **兄弟叠层**，不进 GPU 树。
-8. **Backdrop（见 07 H1）**：真霜化推荐宿主提交局部纹理 + 半分辨率 + 静态冻结；**明确不支持**列表滚动实时真折射；禁止文档吹嘘「全场景实时完美采样」。
-9. **桥接**：第一期唯一宿主桥接走 Kuikly `expand-native-ui`；Compose 用 `MakeKuiklyComposeNode`，**禁止** `ComposeView` 子类扩展。
-10. **能力子集（D9）**：鸿蒙等弱端经 Caps 降级；ABI 形稳、能力可不装全；不得假装 Full 已四端齐。
+3. **三包 + Provider（D11 / D13 · ADR 0008）**：目标包 `holm-core` / `holm-renderer-gl` / `holm-renderer-wgpu`；宿主须 **register Provider 并 setDefault**；仅 core 或未设 → **明确失败**，禁止 classpath 静默默选。umbrella `KuiklyHolmCore` 可自动注册为例外，Demo/宿主仍宜显式演示契约。对外 Attr：`executor=renderer-gl` / `renderer-wgpu`（废 `lite` / `runtime` 用词）。
+4. **全量 Runtime 门禁（D0）**：全量 Standard / M0–M3 级 Runtime 加深须有**书面后端选型**；不得把「再堆官方特效席」当成底座完成态。Stage 0「选 Lite 做玻璃交付」仅历史尖刺，**不是**现行身份锚。
+5. **锚点（D2）**：观感一致靠 **同源 Shader/Pass 契约**；`renderer-wgpu` 可选，非 `renderer-gl` 强制。
+6. **样本 ≠ 产品 KPI**：Demo 隧道等为通面/回归夹具；官方五席叙事废弃且源码已删；**禁止**把「官方特效目录齐全」当产品完成标准，也**禁止**把空引擎清屏三角当长期唯一交付。
+7. **禁冒充（D3）**：禁止用系统 Liquid Glass / `UIGlassEffect` / WebView+Three 冒充 Holm 完成态或四端一致方案。
+8. **局部岛（D1 / D6）**：不替换 Kuikly 主 UI 树；一页少岛；列表默认禁重实时岛；控件用 Kuikly **兄弟叠层**，不进 GPU 树。
+9. **Backdrop（见 07 H1）**：真霜化推荐宿主提交局部纹理 + 半分辨率 + 静态冻结；**明确不支持**列表滚动实时真折射；禁止文档吹嘘「全场景实时完美采样」。
+10. **桥接**：第一期唯一宿主桥接走 Kuikly `expand-native-ui`；Compose 用 `MakeKuiklyComposeNode`，**禁止** `ComposeView` 子类扩展。
+11. **能力子集（D9）**：鸿蒙等弱端经 Caps 降级；ABI 形稳、能力可不装全；不得假装 Full / 简单 3D 已四端齐。
+12. **算力边界（D14 · ADR 0013）**：通用 GPU 算力 / Compute / 无窗口加速走 **`kmp-wgpu`**；**禁止**把 Holm 扩成算力 SDK 或把原语 API 塞进 `holm-renderer-wgpu`。
 
 ## 判据速查
 
 | 场景 | 结论 |
 |---|---|
-| 未过 Stage 0 就全量上 wgpu Runtime | **FAIL** |
+| 写成「特效增强产品 / 五席完成态 / 专为某业务」 | **FAIL** |
+| 未 register Provider / 仅靠 classpath 静默出画 | **FAIL** |
 | 改名去掉 KRHolmSurface / holm_* | **FAIL** |
+| 无书面选型就全量上 M0–M3 Runtime 产品化 | **FAIL** |
 | 系统玻璃或 WebView+Three 当验收完成 | **FAIL** |
 | 整页自绘进岛 / 列表实时真折射当默认能力 | **FAIL** |
-| Lite 交付无任何业务可调特效、只有基建 | **FAIL** → 效果优先 |
+| 把通用算力 API 塞进 Holm 公开面 | **FAIL** → 走 kmp-wgpu |
+| 长期只交空清屏、无任何可喂 shader 通面且未声明基建单 | **FAIL** |
 | 仅改文档 / 未改公开契约 | 相关条可 `N/A` |

@@ -1,5 +1,15 @@
 # holm-render-substrate · changelog
 
+## 2026-11-18（`holm_api` L3 对齐 ADR 0007/0008/0013）
+
+- [MODIFY] `docs/skill-references/kuikly-android-coding/project/holm_api.md`：身份改为通用底座；补三包+Provider、算力边界；废「特效增强 / 效果优先 / 五席完成态」句；`doc_version` → `20261118_1`
+- [MODIFY] 三端 `selfcheck/holm_api.md`（android / ios / ohos）条款表同步
+- [MODIFY] `.cursor/rules/kuikly-dev-android.mdc` / `kuikly-dev-ohos.mdc` 红线摘要同步
+- [MODIFY] `CONTEXT.md`：后单「`holm_api` 对齐」→ 已对齐
+- 关闭：ADR 0007 Non-Goals「`holm_api` 全文另单」；删五席 changelog 中「`holm_api` 全文未本单重写」债
+- 本单**仅规范/文档**；无业务源码；无真机验证
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：规范对齐已定 ADR｜待批 0
+
 ## 2026-11-14（审查收口：重编 Runtime 产物 + 文档/iOS 死代码）
 
 - [MODIFY] 重编并入仓 `libholm_runtime.so` / `holm_runtime_bg.wasm`（产物已无 `holm-frost`/`holm-glow`/`holm-liquid`）

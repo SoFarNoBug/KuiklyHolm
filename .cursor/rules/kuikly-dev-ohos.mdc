@@ -31,7 +31,7 @@ alwaysApply: false
 
 ## 编码惯例（本仓鸿蒙）
 
-- Holm 岛宿主优先 `XComponent`（SURFACE/TEXTURE）+ 原生绘制 / Lite GLES 或 Standard Runtime（D9 Caps 子集）
+- Holm 岛宿主优先 `XComponent`（SURFACE/TEXTURE）+ 原生绘制 / `renderer-gl` GLES 或 `renderer-wgpu`（D9 Caps 子集）
 - 决策 SoT：`docs/product/00-context-and-decisions.md`；硬问题：`docs/product/07-p0-hard-problems.md`
 - runbook：`docs/specs/kuikly-dev-ohos/runbook.md`（业务落地后维护）
 
