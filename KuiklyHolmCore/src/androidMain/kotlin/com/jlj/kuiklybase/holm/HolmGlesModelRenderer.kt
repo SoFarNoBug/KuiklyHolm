@@ -26,6 +26,7 @@ internal class HolmGlesModelRenderer : GLSurfaceView.Renderer {
     private var _uColor: Int = -1
     private var _uLightDir: Int = -1
     private var _uLit: Int = -1
+    private var _uLightIntensity: Int = -1
     private var _aPos: Int = -1
     private var _aNrm: Int = -1
 
@@ -49,6 +50,8 @@ internal class HolmGlesModelRenderer : GLSurfaceView.Renderer {
     var onReady: (() -> Unit)? = null
     var onError: ((String, String) -> Unit)? = null
     var onPerf: ((Float, Float) -> Unit)? = null
+    /** 每帧拉取最新灯光（Content.setLights 热更新，不重载 mesh）。 */
+    var lightsProvider: (() -> List<HolmModelLight>)? = null
 
     fun setOrbit(yaw: Float, pitch: Float, enabled: Boolean) {
         _yaw = yaw
@@ -89,6 +92,12 @@ internal class HolmGlesModelRenderer : GLSurfaceView.Renderer {
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         GLES20.glClearColor(0.02f, 0.08f, 0.18f, 1f)
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
+        GLES20.glDepthFunc(GLES20.GL_LEQUAL)
+        GLES20.glDepthMask(true)
+        // 与 wgpu ModelPass cull_mode=Back 对齐（CCW 正面）
+        GLES20.glEnable(GLES20.GL_CULL_FACE)
+        GLES20.glCullFace(GLES20.GL_BACK)
+        GLES20.glFrontFace(GLES20.GL_CCW)
         _program = link(
             VERT,
             FRAG,
@@ -97,6 +106,7 @@ internal class HolmGlesModelRenderer : GLSurfaceView.Renderer {
         _uColor = GLES20.glGetUniformLocation(_program, "u_color")
         _uLightDir = GLES20.glGetUniformLocation(_program, "u_lightDir")
         _uLit = GLES20.glGetUniformLocation(_program, "u_lit")
+        _uLightIntensity = GLES20.glGetUniformLocation(_program, "u_lightIntensity")
         _aPos = GLES20.glGetAttribLocation(_program, "a_pos")
         _aNrm = GLES20.glGetAttribLocation(_program, "a_nrm")
         val pending = _pendingDoc
@@ -158,6 +168,9 @@ internal class HolmGlesModelRenderer : GLSurfaceView.Renderer {
             tickPerf(nowNs)
             return
         }
+        lightsProvider?.let { provider ->
+            _lights = provider()
+        }
         GLES20.glUseProgram(_program)
         val mvp = FloatArray(16)
         val view = FloatArray(16)
@@ -169,7 +182,10 @@ internal class HolmGlesModelRenderer : GLSurfaceView.Renderer {
         val eyeZ = _center[2] + eyeDist * cy * cos(_yaw.toDouble()).toFloat()
         Matrix.setLookAtM(view, 0, eyeX, eyeY, eyeZ, _center[0], _center[1], _center[2], 0f, 1f, 0f)
         val aspect = _width.toFloat() / _height.toFloat()
-        Matrix.perspectiveM(proj, 0, 45f, aspect, 0.05f, eyeDist * 8f)
+        // near/far 跟 eyeDist 成比例：远近比可控（减 z-fighting），且不裁到主体
+        val zNear = (eyeDist * 0.05f).coerceAtLeast(0.01f)
+        val zFar = (eyeDist * 10f).coerceAtLeast(zNear * 100f)
+        Matrix.perspectiveM(proj, 0, 45f, aspect, zNear, zFar)
         Matrix.multiplyMM(mvp, 0, proj, 0, view, 0)
         GLES20.glUniformMatrix4fv(_uMvp, 1, false, mvp, 0)
         GLES20.glUniform4f(_uColor, _color[0], _color[1], _color[2], _color[3])
@@ -186,8 +202,10 @@ internal class HolmGlesModelRenderer : GLSurfaceView.Renderer {
                 L.directionY / len,
                 L.directionZ / len,
             )
+            GLES20.glUniform1f(_uLightIntensity, L.intensity.coerceAtLeast(0f))
         } else {
             GLES20.glUniform3f(_uLightDir, 0.3f, 0.8f, 0.4f)
+            GLES20.glUniform1f(_uLightIntensity, 1f)
         }
         for (mesh in _gpuMeshes) {
             GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mesh.vbo)
@@ -301,12 +319,13 @@ internal class HolmGlesModelRenderer : GLSurfaceView.Renderer {
             uniform vec4 u_color;
             uniform vec3 u_lightDir;
             uniform int u_lit;
+            uniform float u_lightIntensity;
             void main() {
               if (u_lit == 0) {
                 gl_FragColor = u_color;
               } else {
                 float ndl = max(dot(normalize(v_nrm), normalize(u_lightDir)), 0.15);
-                gl_FragColor = vec4(u_color.rgb * ndl, u_color.a);
+                gl_FragColor = vec4(u_color.rgb * ndl * u_lightIntensity, u_color.a);
               }
             }
         """

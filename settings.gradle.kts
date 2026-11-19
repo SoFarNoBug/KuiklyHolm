@@ -52,6 +52,31 @@ if (useLocalKmpWgpu) {
     }
 }
 
+// ADR 0017：kmp-draco 未发 Central 前，旁路仓存在则默认 includeBuild；
+// 显式 kmp.draco.local=false 才走 Maven（mavenLocal / Central）。
+val kmpDracoDir = file("../kmp-draco")
+val dracoLocalProp =
+    providers.gradleProperty("kmp.draco.local").orNull
+        ?: localProps.getProperty("kmp.draco.local")
+val useLocalKmpDraco = when {
+    dracoLocalProp.equals("false", ignoreCase = true) -> false
+    dracoLocalProp.equals("true", ignoreCase = true) -> true
+    else -> kmpDracoDir.isDirectory
+}
+
+if (useLocalKmpDraco) {
+    if (!kmpDracoDir.isDirectory) {
+        throw GradleException(
+            "kmp.draco.local=true but missing ${kmpDracoDir.absolutePath} (ADR 0017)",
+        )
+    }
+    includeBuild(kmpDracoDir) {
+        dependencySubstitution {
+            substitute(module("io.github.sofarnobug:kmp-draco")).using(project(":kmp-draco"))
+        }
+    }
+}
+
 include(":holm-core")
 include(":holm-renderer-gl")
 include(":holm-renderer-wgpu")

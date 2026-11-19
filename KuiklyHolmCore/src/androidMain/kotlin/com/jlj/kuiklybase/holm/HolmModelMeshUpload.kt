@@ -90,7 +90,9 @@ internal object HolmModelMeshUpload {
         val eyeY = center[1] + eyeDist * sin(pitch.toDouble()).toFloat()
         val eyeZ = center[2] + eyeDist * cy * cos(yaw.toDouble()).toFloat()
         Matrix.setLookAtM(view, 0, eyeX, eyeY, eyeZ, center[0], center[1], center[2], 0f, 1f, 0f)
-        Matrix.perspectiveM(proj, 0, 45f, aspect.coerceAtLeast(0.01f), 0.05f, eyeDist * 8f)
+        val zNear = (eyeDist * 0.05f).coerceAtLeast(0.01f)
+        val zFar = (eyeDist * 10f).coerceAtLeast(zNear * 100f)
+        Matrix.perspectiveM(proj, 0, 45f, aspect.coerceAtLeast(0.01f), zNear, zFar)
         Matrix.multiplyMM(out, 0, proj, 0, view, 0)
     }
 }

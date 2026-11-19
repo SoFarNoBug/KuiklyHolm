@@ -34,11 +34,15 @@ import com.tencent.kuikly.compose.ui.text.font.FontWeight
 import com.tencent.kuikly.compose.ui.unit.dp
 import com.tencent.kuikly.compose.ui.unit.sp
 import com.tencent.kuikly.core.annotations.Page
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.roundToInt
+import kotlin.math.sin
 
 /**
  * @CreateDate: 2026/11/18
  * @Author: jlj
- * @Description: Android Model Content Demo（Khronos Box/Duck + 本地 hero 立方体）。
+ * @Description: Android Model Content Demo（Khronos Duck + three.js 示例 GLB）。
  */
 @Page("holm_model", supportInLocal = true)
 internal class HolmModelPager : BasePager() {
@@ -57,10 +61,23 @@ private data class DemoModelAsset(
 )
 
 private val DEMO_MODEL_ASSETS = listOf(
+    DemoModelAsset("Flamingo", "models/Flamingo.glb", "three.js examples"),
+    DemoModelAsset("Parrot", "models/Parrot.glb", "three.js examples"),
+    DemoModelAsset("Stork", "models/Stork.glb", "three.js examples"),
+    DemoModelAsset("Horse", "models/Horse.glb", "three.js examples"),
+    DemoModelAsset("Soldier", "models/Soldier.glb", "three.js examples"),
+    DemoModelAsset("SittingBox", "models/SittingBox.glb", "three.js examples"),
+    DemoModelAsset("Tokyo", "models/LittlestTokyo.glb", "three.js examples · 较大"),
+    DemoModelAsset("IonDrive", "models/PrimaryIonDrive.glb", "three.js examples · 较大"),
     DemoModelAsset("Duck", "models/Duck.glb", "Khronos · SCEA Shared Source"),
-    DemoModelAsset("Box", "models/Box.glb", "Khronos · CC BY 4.0 Cesium"),
-    DemoModelAsset("hero", "models/hero.glb", "本仓程序立方体（缺文件回落）"),
 )
+
+private val DEMO_MODEL_ASSET_ROWS = DEMO_MODEL_ASSETS.chunked(3)
+
+/** 默认 Key 灯 ≈ (0.4, 0.9, 0.2) 的球坐标初值。 */
+private const val DEFAULT_LIGHT_AZIMUTH = 63f
+private const val DEFAULT_LIGHT_ELEVATION = 64f
+private const val DEFAULT_LIGHT_INTENSITY = 1f
 
 @Composable
 private fun HolmModelScreen() {
@@ -70,18 +87,33 @@ private fun HolmModelScreen() {
     var backendText by remember { mutableStateOf("waiting…") }
     var perfText by remember { mutableStateOf("fps=—") }
     var errorText by remember { mutableStateOf("") }
+    var lightsOpen by remember { mutableStateOf(false) }
+    var litEnabled by remember { mutableStateOf(true) }
+    var lightAzimuth by remember { mutableStateOf(DEFAULT_LIGHT_AZIMUTH) }
+    var lightElevation by remember { mutableStateOf(DEFAULT_LIGHT_ELEVATION) }
+    var lightIntensity by remember { mutableStateOf(DEFAULT_LIGHT_INTENSITY) }
+
     val model = remember(asset.path) {
         HolmModelContent.fromAssets(
             path = asset.path,
-            lights = listOf(
-                HolmModelLight(
-                    directionX = 0.4f,
-                    directionY = 0.9f,
-                    directionZ = 0.2f,
-                    intensity = 1f,
-                ),
+            lights = buildDemoLights(
+                lit = litEnabled,
+                azimuthDeg = lightAzimuth,
+                elevationDeg = lightElevation,
+                intensity = lightIntensity,
             ),
             orbitEnabled = true,
+        )
+    }
+
+    fun pushLights() {
+        model.setLights(
+            buildDemoLights(
+                lit = litEnabled,
+                azimuthDeg = lightAzimuth,
+                elevationDeg = lightElevation,
+                intensity = lightIntensity,
+            ),
         )
     }
 
@@ -110,22 +142,24 @@ private fun HolmModelScreen() {
             Text(text = errorText, fontSize = 13.sp, color = Color(0xFFFF3355))
         }
         Spacer(modifier = Modifier.height(12.dp))
-        Row(modifier = Modifier.fillMaxWidth()) {
-            DEMO_MODEL_ASSETS.forEach { item ->
-                ModelExecChip(
-                    label = item.label,
-                    active = asset.path == item.path,
-                    onClick = {
-                        asset = item
-                        errorText = ""
-                        backendText = "waiting…"
-                        perfText = "fps=—"
-                    },
-                )
-                Spacer(modifier = Modifier.width(8.dp))
+        DEMO_MODEL_ASSET_ROWS.forEach { row ->
+            Row(modifier = Modifier.fillMaxWidth()) {
+                row.forEach { item ->
+                    ModelExecChip(
+                        label = item.label,
+                        active = asset.path == item.path,
+                        onClick = {
+                            asset = item
+                            errorText = ""
+                            backendText = "waiting…"
+                            perfText = "fps=—"
+                        },
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
             }
+            Spacer(modifier = Modifier.height(8.dp))
         }
-        Spacer(modifier = Modifier.height(8.dp))
         Row(modifier = Modifier.fillMaxWidth()) {
             ModelExecChip(
                 label = "renderer-gl",
@@ -148,6 +182,91 @@ private fun HolmModelScreen() {
                     perfText = "fps=—"
                 },
             )
+            Spacer(modifier = Modifier.width(8.dp))
+            ModelExecChip(
+                label = if (lightsOpen) {
+                    "灯光 ▴"
+                } else {
+                    val summary = if (litEnabled) {
+                        "I=${(lightIntensity * 10f).roundToInt() / 10f}"
+                    } else {
+                        "Unlit"
+                    }
+                    "灯光 · $summary ▾"
+                },
+                active = lightsOpen,
+                onClick = { lightsOpen = !lightsOpen },
+            )
+        }
+        if (lightsOpen) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(DemoTheme.Surface)
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+            ) {
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    ModelExecChip(
+                        label = "Unlit",
+                        active = !litEnabled,
+                        onClick = {
+                            litEnabled = false
+                            pushLights()
+                        },
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    ModelExecChip(
+                        label = "Lit",
+                        active = litEnabled,
+                        onClick = {
+                            litEnabled = true
+                            pushLights()
+                        },
+                    )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                DemoDpSlider(
+                    label = "方位角",
+                    value = lightAzimuth,
+                    valueRange = 0f..360f,
+                    snapToInt = true,
+                    steps = 71,
+                    formatValue = { "${it.roundToInt()}°" },
+                    onValueChange = { next ->
+                        lightAzimuth = next
+                        if (litEnabled) pushLights()
+                    },
+                )
+                DemoDpSlider(
+                    label = "仰角",
+                    value = lightElevation,
+                    valueRange = -89f..89f,
+                    snapToInt = true,
+                    steps = 35,
+                    formatValue = { "${it.roundToInt()}°" },
+                    onValueChange = { next ->
+                        lightElevation = next
+                        if (litEnabled) pushLights()
+                    },
+                )
+                DemoDpSlider(
+                    label = "强度",
+                    value = lightIntensity,
+                    valueRange = 0f..2f,
+                    snapToInt = false,
+                    steps = 39,
+                    formatValue = { v ->
+                        val tenths = (v * 10f).roundToInt() / 10f
+                        "$tenths"
+                    },
+                    onValueChange = { next ->
+                        lightIntensity = next
+                        if (litEnabled) pushLights()
+                    },
+                )
+            }
         }
         Spacer(modifier = Modifier.height(12.dp))
         Box(
@@ -184,6 +303,26 @@ private fun HolmModelScreen() {
             color = DemoTheme.TextSecondary,
         )
     }
+}
+
+private fun buildDemoLights(
+    lit: Boolean,
+    azimuthDeg: Float,
+    elevationDeg: Float,
+    intensity: Float,
+): List<HolmModelLight> {
+    if (!lit) return emptyList()
+    val az = azimuthDeg * (PI / 180.0)
+    val el = elevationDeg * (PI / 180.0)
+    val cy = cos(el).toFloat()
+    return listOf(
+        HolmModelLight(
+            directionX = cy * sin(az).toFloat(),
+            directionY = sin(el).toFloat(),
+            directionZ = cy * cos(az).toFloat(),
+            intensity = intensity,
+        ),
+    )
 }
 
 @Composable

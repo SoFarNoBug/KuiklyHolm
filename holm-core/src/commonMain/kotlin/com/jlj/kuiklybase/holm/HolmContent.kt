@@ -30,7 +30,7 @@ class HolmModelContent private constructor(
     val bytes: ByteArray?,
     val albedoOverrideUri: String?,
     val solidColorRgba: FloatArray?,
-    val lights: List<HolmModelLight>,
+    lights: List<HolmModelLight>,
     orbitEnabled: Boolean,
     yaw: Float,
     pitch: Float,
@@ -38,10 +38,12 @@ class HolmModelContent private constructor(
     private var _orbitEnabled: Boolean = orbitEnabled
     private var _yaw: Float = yaw
     private var _pitch: Float = pitch
+    private var _lights: List<HolmModelLight> = lights.take(MAX_LIGHTS)
 
     val orbitEnabled: Boolean get() = _orbitEnabled
     val yaw: Float get() = _yaw
     val pitch: Float get() = _pitch
+    val lights: List<HolmModelLight> get() = _lights
 
     fun setOrbitEnabled(enabled: Boolean) {
         _orbitEnabled = enabled
@@ -53,6 +55,11 @@ class HolmModelContent private constructor(
 
     fun setPitch(value: Float) {
         _pitch = value
+    }
+
+    /** 热更新灯光；不触发 glTF 重载。空列表 = unlit。 */
+    fun setLights(value: List<HolmModelLight>) {
+        _lights = value.take(MAX_LIGHTS)
     }
 
     companion object {

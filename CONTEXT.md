@@ -2,7 +2,7 @@
 
 ## 一句话
 
-**通用渲染底座**：业务定岛的位置与大小，挂上 `HolmContent`（片元或最小 glTF 模型）出帧；目标拆成 `holm-core` / `holm-renderer-gl` / `holm-renderer-wgpu`（+ 可选 `holm-gltf`），须显式 Provider。其下为与 Holm 无关的 `kmp-wgpu` 原语层（ADR 0013）。
+**通用渲染底座**：业务定岛的位置与大小，挂上 `HolmContent`（片元或最小 glTF 模型）出帧；目标拆成 `holm-core` / `holm-renderer-gl` / `holm-renderer-wgpu`（+ 可选 `holm-gltf`），须显式 Provider。其下为与 Holm 无关的 `kmp-wgpu` 原语层（ADR 0013）；Draco 比特流另走独立原语 `kmp-draco`（ADR 0017）。
 
 ## Language
 
@@ -31,8 +31,12 @@ _Avoid_：在 ShaderContent 上假装有真透视相机
 _Avoid_：游戏场景图；Filament；库内默认自转；http 加载
 
 **holm-gltf**：
-可选 Kotlin 模块：CPU 侧解析 glb → 网格/材质数据；不引则无模型能力。
-_Avoid_：把解析放进 kmp-wgpu-native；强制进 umbrella 必选依赖
+可选 Kotlin 模块：CPU 侧解析 glb → 网格/材质数据；不引则无模型能力。对 `KHR_draco` **硬依赖** `kmp-draco`（ADR 0017）。
+_Avoid_：把解析放进 kmp-wgpu-native；强制进 umbrella 必选依赖；在解析层静默吞掉 Draco 失败
+
+**kmp-draco**：
+与 Holm/Kuikly/glTF 无关的 Draco **比特流 → 分属性数组**原语（独立仓 `~/Studio/kmp/kmp-draco`；Maven `io.github.sofarnobug:kmp-draco`）。
+_Avoid_：holm-draco；把 Draco 塞进 kmp-wgpu；本库解析 glb
 
 **holm-renderer-gl**：
 轻量 GL 族后端依赖（Android/iOS GLES、H5 WebGL 等）；含片元 Present，并将含最小网格 Model Present。（原草案名 `holm-gl`）
@@ -109,6 +113,7 @@ _Avoid_：`LITE_PENDING` 冒充完成；用 GLES 冒充 wgpu；另挂第二 XCom
 | 消灭 holm-runtime 命名 | [`docs/adr/0014-rename-holm-runtime-to-kmp-wgpu-native.md`](docs/adr/0014-rename-holm-runtime-to-kmp-wgpu-native.md) |
 | kmp-wgpu 独立仓 | [`docs/adr/0015-kmp-wgpu-independent-repo.md`](docs/adr/0015-kmp-wgpu-independent-repo.md) |
 | Content + 最小 glTF | [`docs/adr/0016-holm-content-and-minimal-gltf.md`](docs/adr/0016-holm-content-and-minimal-gltf.md) |
+| kmp-draco + KHR_draco | [`docs/adr/0017-kmp-draco-under-holm-gltf.md`](docs/adr/0017-kmp-draco-under-holm-gltf.md) |
 | iOS renderer-wgpu | [`docs/adr/0009-ios-runtime-cametallayer-objc-session.md`](docs/adr/0009-ios-runtime-cametallayer-objc-session.md) |
 | 鸿蒙 renderer-wgpu | [`docs/adr/0010-ohos-runtime-xcomponent-session.md`](docs/adr/0010-ohos-runtime-xcomponent-session.md) |
 | 鸿蒙 renderer-gl | [`docs/adr/0011-ohos-lite-egl-xcomponent.md`](docs/adr/0011-ohos-lite-egl-xcomponent.md) |
@@ -137,3 +142,4 @@ _Avoid_：`LITE_PENDING` 冒充完成；用 GLES 冒充 wgpu；另挂第二 XCom
 - kmp-wgpu 分发：CocoaPods / ohpm / npm / GitHub Release **0.1.x 均已发**（npm=`@sofarnobug/kmp-wgpu-native@0.1.0`；ohpm=`@jlj/…@0.1.1`；见 kmp-wgpu `CHANGELOG.md`）
 - `holm_api` L3：已与 ADR 0007/0008/0013 对齐（2026-11-18）
 - **下波（分支 `feat/holm-model-content-android`）**：ADR 0016 — `HolmContent` 契约；自研最小 glTF；关 O3（非 Filament）；Model 真画 Android 优先
+- **Draco**：ADR 0017 — `holm-gltf` 硬依赖独立仓 `kmp-draco`（Rust `draco-core`；M0 Android）；Tokyo / `KHR_draco` 已接线；文档见 `~/Studio/kmp/kmp-draco`（README / guide / ADR 0001）

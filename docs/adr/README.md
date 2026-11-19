@@ -22,3 +22,4 @@
 | [0014](./0014-rename-holm-runtime-to-kmp-wgpu-native.md) | **改名** · 消灭 holm-runtime → kmp-wgpu-native / kmp_wgpu_*（ABI break） |
 | [0015](./0015-kmp-wgpu-independent-repo.md) | **独立仓** · kmp-wgpu 拆仓发版 + FullscreenPass + 关 O7 |
 | [0016](./0016-holm-content-and-minimal-gltf.md) | **Content + 最小 glTF** · 废 fragmentShader Attr；关 O3（非 Filament） |
+| [0017](./0017-kmp-draco-under-holm-gltf.md) | **kmp-draco** · holm-gltf 硬依赖独立 Draco 原语（KHR_draco） |

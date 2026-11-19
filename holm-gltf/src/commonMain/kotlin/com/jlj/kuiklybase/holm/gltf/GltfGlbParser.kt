@@ -60,6 +60,9 @@ internal object GltfGlbParser {
         val scenes = root.arr("scenes")
         val materials = root.arr("materials")
 
+        val requiredExt = root.values("extensionsRequired").mapNotNull { (it as? GltfJson.Str)?.v }
+        val needsDraco = requiredExt.any { it == "KHR_draco_mesh_compression" }
+
         val baseColorFactor = floatArrayOf(1f, 1f, 1f, 1f)
         if (materials.isNotEmpty()) {
             val pbr = materials[0].obj("pbrMetallicRoughness")
@@ -94,26 +97,56 @@ internal object GltfGlbParser {
                     val attrs = prim.obj("attributes") ?: continue
                     val posAcc = attrs.int("POSITION", -1)
                     if (posAcc < 0) continue
-                    val positions = readFloat3Accessor(accessors, bufferViews, bin, posAcc)
-                    val nAcc = attrs.int("NORMAL", -1)
-                    var normals = if (nAcc >= 0) {
-                        readFloat3Accessor(accessors, bufferViews, bin, nAcc)
+                    val dracoExt = prim.obj("extensions")?.obj("KHR_draco_mesh_compression")
+                    val positions: FloatArray
+                    var normals: FloatArray
+                    val uvs: FloatArray
+                    val indices: IntArray
+                    val hadNormals: Boolean
+                    if (dracoExt != null) {
+                        val decoded = decodeDracoPrimitive(dracoExt, bufferViews, bin)
+                        val attrMap = dracoExt.obj("attributes")
+                        positions = floatAttrFromDraco(decoded, attrMap, "POSITION", 3)
+                            ?: throw GltfParseException("KHR_draco missing POSITION")
+                        val nFromDraco = floatAttrFromDraco(decoded, attrMap, "NORMAL", 3)
+                        hadNormals = nFromDraco != null
+                        normals = nFromDraco ?: FloatArray(positions.size)
+                        uvs = floatAttrFromDraco(decoded, attrMap, "TEXCOORD_0", 2)
+                            ?: FloatArray(positions.size / 3 * 2)
+                        indices = if (decoded.indices.isNotEmpty()) {
+                            decoded.indices
+                        } else {
+                            IntArray(positions.size / 3) { it }
+                        }
                     } else {
-                        FloatArray(positions.size)
+                        val posView = accessors.getOrNull(posAcc)?.int("bufferView", -1) ?: -1
+                        if (posView < 0) {
+                            throw GltfParseException(
+                                "POSITION accessor $posAcc has no bufferView and no KHR_draco",
+                            )
+                        }
+                        positions = readFloat3Accessor(accessors, bufferViews, bin, posAcc)
+                        val nAcc = attrs.int("NORMAL", -1)
+                        hadNormals = nAcc >= 0
+                        normals = if (nAcc >= 0) {
+                            readFloat3Accessor(accessors, bufferViews, bin, nAcc)
+                        } else {
+                            FloatArray(positions.size)
+                        }
+                        val uvAcc = attrs.int("TEXCOORD_0", -1)
+                        uvs = if (uvAcc >= 0) {
+                            readFloat2Accessor(accessors, bufferViews, bin, uvAcc)
+                        } else {
+                            FloatArray(positions.size / 3 * 2)
+                        }
+                        val indAcc = prim.int("indices", -1)
+                        indices = if (indAcc >= 0) {
+                            readIndices(accessors, bufferViews, bin, indAcc)
+                        } else {
+                            IntArray(positions.size / 3) { it }
+                        }
                     }
-                    val uvAcc = attrs.int("TEXCOORD_0", -1)
-                    val uvs = if (uvAcc >= 0) {
-                        readFloat2Accessor(accessors, bufferViews, bin, uvAcc)
-                    } else {
-                        FloatArray(positions.size / 3 * 2)
-                    }
-                    val indAcc = prim.int("indices", -1)
-                    val indices = if (indAcc >= 0) {
-                        readIndices(accessors, bufferViews, bin, indAcc)
-                    } else {
-                        IntArray(positions.size / 3) { it }
-                    }
-                    if (nAcc < 0) {
+                    if (!hadNormals) {
                         computeFlatNormals(positions, indices, normals)
                     }
                     transformPositions(positions, world)
@@ -136,9 +169,59 @@ internal object GltfGlbParser {
             walk(ni, identity)
         }
         if (out.isEmpty()) {
-            throw GltfParseException("No mesh primitives found")
+            val hint = if (needsDraco) " (extensionsRequired includes KHR_draco_mesh_compression)" else ""
+            throw GltfParseException("No mesh primitives found$hint")
         }
         return GltfDocument(meshes = out, baseColorFactor = baseColorFactor, baseColorImage = null)
+    }
+
+    private fun decodeDracoPrimitive(
+        dracoExt: GltfJson.Obj,
+        views: List<GltfJson.Obj>,
+        bin: ByteArray,
+    ): DracoDecodedMesh {
+        val viewIndex = dracoExt.int("bufferView", -1)
+        if (viewIndex < 0 || viewIndex >= views.size) {
+            throw GltfParseException("KHR_draco bufferView missing or OOB: $viewIndex")
+        }
+        val view = views[viewIndex]
+        val offset = view.int("byteOffset", 0)
+        val length = view.int("byteLength", -1)
+        if (length < 0 || offset < 0 || offset + length > bin.size) {
+            throw GltfParseException("KHR_draco bufferView slice OOB offset=$offset length=$length")
+        }
+        val slice = bin.copyOfRange(offset, offset + length)
+        return decodeDracoBitstream(slice)
+    }
+
+    private fun floatAttrFromDraco(
+        decoded: DracoDecodedMesh,
+        attrMap: GltfJson.Obj?,
+        semantic: String,
+        components: Int,
+    ): FloatArray? {
+        val uid = attrMap?.int(semantic, -1) ?: -1
+        if (uid < 0) return null
+        val attr = decoded.byUniqueId(uid) ?: return null
+        if (attr.numComponents != components) {
+            // Allow wider attrs; take leading components
+            if (attr.numComponents < components) {
+                throw GltfParseException(
+                    "KHR_draco $semantic uniqueId=$uid comps=${attr.numComponents} < $components",
+                )
+            }
+            val n = decoded.numPoints
+            val out = FloatArray(n * components)
+            val src = attr.values
+            val srcComps = attr.numComponents
+            for (i in 0 until n) {
+                for (c in 0 until components) {
+                    out[i * components + c] = src[i * srcComps + c]
+                }
+            }
+            return out
+        }
+        return attr.values
     }
 
     private fun nodeMatrix(node: GltfJson.Obj): Mat4 {

@@ -262,6 +262,8 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
         )
 
         _modelGlView.setEGLContextClientVersion(2)
+        // Tokyo 等大场景：默认常为 16-bit depth，轨道拖转易 z-fighting 闪烁
+        _modelGlView.setEGLConfigChooser(8, 8, 8, 8, 24, 0)
         _modelGlView.setRenderer(_modelRenderer)
         _modelGlView.renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
         _modelGlView.visibility = View.GONE
@@ -283,6 +285,7 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
         _modelRenderer.onPerf = { fps, frameMs ->
             post { firePerf(fps, frameMs) }
         }
+        _modelRenderer.lightsProvider = { _modelContent?.lights.orEmpty() }
 
         _renderer.onReady = {
             post {
@@ -502,13 +505,24 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
     }
 
     internal fun enterModelPresentMode(content: HolmModelContent) {
+        val alreadyModel = _modelMode
+        // 同轨仅换资产：保留 orbit，且勿拆 Pass / 勿用旧 mesh 重灌（避免闪一下 + 视角重置）
+        val stayOnWgpu =
+            alreadyModel && HolmExecutor.isWgpu(_executor) && _modelPass != null
+        val stayOnGles =
+            alreadyModel && !HolmExecutor.isWgpu(_executor) && _modelGlView.visibility == View.VISIBLE
         _modelContent = content
         _modelMode = true
-        _readyFired = false
-        _modelYaw = content.yaw
-        _modelPitch = content.pitch.coerceIn(-1.2f, 1.2f)
         background = null
+        if (!alreadyModel) {
+            _readyFired = false
+            _modelYaw = content.yaw
+            _modelPitch = content.pitch.coerceIn(-1.2f, 1.2f)
+        }
         if (HolmExecutor.isWgpu(_executor)) {
+            if (stayOnWgpu) {
+                return
+            }
             // 真 wgpu ModelPass：占 Runtime Surface，勿挂 GLES 模型层
             _modelGlView.visibility = View.GONE
             _modelGlView.onPause()
@@ -533,21 +547,26 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
                 postCreateModelSession(surface, _runtimeWidth, _runtimeHeight)
             }
         } else {
-            eagerDestroyRuntimeSession(waitMs = 400L)
-            _runtimeView.visibility = View.GONE
-            _glView.visibility = View.GONE
-            _glView.onPause()
-            _modelGlView.visibility = View.VISIBLE
-            _modelGlView.onResume()
+            if (!stayOnGles) {
+                eagerDestroyRuntimeSession(waitMs = 400L)
+                _runtimeView.visibility = View.GONE
+                _glView.visibility = View.GONE
+                _glView.onPause()
+                _modelGlView.visibility = View.VISIBLE
+                _modelGlView.onResume()
+            }
             val color = content.solidColorRgba ?: floatArrayOf(0.85f, 0.55f, 0.25f, 1f)
             _modelRenderer.setAppearance(color, content.lights)
-            _modelRenderer.setOrbit(content.yaw, content.pitch, content.orbitEnabled)
-            _lastModelDoc?.let { doc ->
-                _modelGlView.queueEvent {
-                    _modelRenderer.upload(
-                        doc,
-                        applyBaseColorFactor = content.solidColorRgba == null,
-                    )
+            _modelRenderer.setOrbit(_modelYaw, _modelPitch, content.orbitEnabled)
+            // 首进或切轨才灌旧 doc；换资产等 onModelDocumentReady
+            if (!stayOnGles) {
+                _lastModelDoc?.let { doc ->
+                    _modelGlView.queueEvent {
+                        _modelRenderer.upload(
+                            doc,
+                            applyBaseColorFactor = content.solidColorRgba == null,
+                        )
+                    }
                 }
             }
         }
@@ -662,7 +681,19 @@ class KRHolmSurfaceView(context: Context) : KRView(context) {
         } else {
             floatArrayOf(0.3f, 0.8f, 0.4f)
         }
-        pass.setFrame(_modelMvp, packed.color, lit, lightDir)
+        // wgpu ModelPass 尚无独立 intensity；乘到 albedo 近似（GLES 有 u_lightIntensity）
+        val intensity = if (lit) lights[0].intensity.coerceAtLeast(0f) else 1f
+        val color = if (lit && intensity != 1f) {
+            floatArrayOf(
+                packed.color[0] * intensity,
+                packed.color[1] * intensity,
+                packed.color[2] * intensity,
+                packed.color[3],
+            )
+        } else {
+            packed.color
+        }
+        pass.setFrame(_modelMvp, color, lit, lightDir)
     }
 
     private fun postRuntimeModel(block: (HolmModelPass) -> Unit) {

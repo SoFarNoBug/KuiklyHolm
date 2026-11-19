@@ -23,7 +23,8 @@
 | **HolmContent** | 岛上「画什么」交付物：`HolmShaderContent` / `HolmModelContent`（ADR 0016） |
 | **HolmShaderContent** | 片元内容；取代对外 `fragmentShader` Attr（ADR 0016） |
 | **HolmModelContent** | 最小 glTF 英雄模型内容；真相机；可选轨道手势（ADR 0016） |
-| **holm-gltf** | 可选 CPU 解析模块；不引无模型能力（ADR 0016） |
+| **holm-gltf** | 可选 CPU 解析模块；不引无模型能力；`KHR_draco` 硬依赖 `kmp-draco`（ADR 0016 / 0017） |
+| **kmp-draco** | 与 Holm/glTF 无关的 Draco 比特流 → 分属性数组原语；独立仓（ADR 0017） |
 | **fragmentShader / Shadertoy 薄壳** | 历史 Attr 喂片元（ADR 0005）；对外契约由 ADR 0016 Content 取代 |
 | **setCustomFs** | 历史名；现走 `setFragmentShader` / Holm 适配转发 |
 | **包壳耗时 / wrapMs** | 片元装载中补壳墙钟；renderer-wgpu 恒 0（ADR 0012） |

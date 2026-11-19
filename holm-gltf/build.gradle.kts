@@ -25,7 +25,12 @@ kotlin {
             dependencies {
             }
         }
-        val androidMain by getting
+        val androidMain by getting {
+            dependencies {
+                // ADR 0017：KHR_draco → kmp-draco（local includeBuild 或 Maven 0.1.0）
+                implementation("io.github.sofarnobug:kmp-draco:0.1.0")
+            }
+        }
         val iosX64Main by getting
         val iosArm64Main by getting
         val iosSimulatorArm64Main by getting

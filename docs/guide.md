@@ -33,7 +33,7 @@ dependencies {
 | 统一岛 API | `holm-core`（或 umbrella `KuiklyHolmCore`） |
 | 轻量 GL 出画 | + `holm-renderer-gl` + 注册 `GlBackendProvider` |
 | wgpu / WGSL 热换 | + `holm-renderer-wgpu` + `WgpuBackendProvider` + **kmp-wgpu native** |
-| Android 最小 glTF 模型 | + `:holm-gltf`（**可选**；不进 umbrella 必选）+ `HolmModelContent` |
+| Android 最小 glTF 模型 | + `:holm-gltf`（**可选**；不进 umbrella 必选；`KHR_draco` 经 `kmp-draco`，ADR 0017）+ `HolmModelContent` |
 | 只要无窗口算力 | **不要扩 Holm** → 直接用 [kmp-wgpu](https://github.com/SoFarNoBug/kmp-wgpu) |
 
 ### 怎么选：`holm-renderer-gl` vs `holm-renderer-wgpu`
@@ -167,7 +167,7 @@ Declarative 薄壳：`HolmSurfaceView` + `HolmSurfaceAttr` / `HolmSurfaceEvent`�
 | `HolmShaderContent(source, vertexSource?, warpAmount?, scrollSpeed?)` | 片元。GL=Shadertoy **正文**；wgpu=WGSL（含 `@fragment fn fs_main`） |
 | `HolmModelContent.fromAssets` / `fromFileUri` / `fromBytes` | 最小 glTF；**仅 Android 真画**；其它端 `MODEL_UNSUPPORTED` + 清屏 |
 
-`HolmModelContent`：默认 `orbitEnabled=true`（单指拖 yaw/pitch）；`setYaw` / `setPitch` 供业务自写手势；`lights` 空=unlit，上限 `HolmModelContent.MAX_LIGHTS`（8）。资源：**不做 http**；先验 `assets/`，另有 `file://` 与 `ByteArray`。
+`HolmModelContent`：默认 `orbitEnabled=true`（单指拖 yaw/pitch）；`setYaw` / `setPitch` 供业务自写手势；`setLights` 热更新灯光（不重载 glTF）；`lights` 空=unlit，上限 `HolmModelContent.MAX_LIGHTS`（8）。资源：**不做 http**；先验 `assets/`，另有 `file://` 与 `ByteArray`。
 
 ### Attr（岛级）
 
@@ -327,7 +327,8 @@ wgpu 路径上各端**实际图形后端**（Vulkan / Metal / GLES / WebGPU…�
 | [CONTRIBUTING.md](../CONTRIBUTING.md) | 维护：起 Demo / 发版 |
 | [`holmDemo/`](../holmDemo/) | 双轨隧道 + Model 样本 |
 | [`holm-core/`](../holm-core/) | 岛 API / Content / Providers |
-| [`holm-gltf/`](../holm-gltf/) | 可选 GLB 解析（CPU） |
+| [`holm-gltf/`](../holm-gltf/) | 可选 GLB 解析（CPU）；Android 上 `KHR_draco` → `kmp-draco` |
+| [`../kmp-draco`](../../kmp-draco/) | 独立仓 Draco 比特流解码（`io.github.sofarnobug:kmp-draco`；旁路仓在则默认 includeBuild；`kmp.draco.local=false` 走 Maven） |
 | [`holm-renderer-gl/`](../holm-renderer-gl/) | Lite GL |
 | [`holm-renderer-wgpu/`](../holm-renderer-wgpu/) | wgpu Present 薄适配 |
 | [`docs/product/`](./product/) | 产品决策 SoT |
