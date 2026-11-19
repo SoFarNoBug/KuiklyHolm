@@ -23,7 +23,7 @@ layer: L3
 10. **桥接**：第一期唯一宿主桥接走 Kuikly `expand-native-ui`；Compose 用 `MakeKuiklyComposeNode`，**禁止** `ComposeView` 子类扩展。
 11. **能力子集（D9）**：鸿蒙等弱端经 Caps 降级；ABI 形稳、能力可不装全；不得假装 Full / 简单 3D 已四端齐。
 12. **算力边界（D14 · ADR 0013）**：通用 GPU 算力 / Compute / 无窗口加速走 **`kmp-wgpu`**；**禁止**把 Holm 扩成算力 SDK 或把原语 API 塞进 `holm-renderer-wgpu`。
-13. **Content 契约（ADR 0016）**：`HolmSurface` **只挂** `HolmContent`（`HolmShaderContent` / `HolmModelContent`）；Attr 过 NVI 用 `contentId` + Registry；**禁止**对外再暴露 `fragmentShader` / `vertexShader` 业务 Attr。`HolmModelContent` 真画本波 **仅 Android**；其它端须 `MODEL_UNSUPPORTED` + 清屏。glTF 解析在可选 `:holm-gltf`，**禁止**塞进 kmp-wgpu。
+13. **Content 契约（ADR 0016 / 0018）**：`HolmSurface` **只挂** `HolmContent`（`HolmShaderContent` / `HolmModelContent`）；Attr 过 NVI 用 `contentId` + Registry；**禁止**对外再暴露 `fragmentShader` / `vertexShader` 业务 Attr。`HolmModelContent` 真画 **Android + iOS**（双轨 GL/wgpu）；Ohos/H5 须 `MODEL_UNSUPPORTED` + 清屏。glTF 解析在可选 `:holm-gltf`，**禁止**塞进 kmp-wgpu。
 
 ## 判据速查
 
@@ -38,5 +38,5 @@ layer: L3
 | 把通用算力 API 塞进 Holm 公开面 | **FAIL** → 走 kmp-wgpu |
 | 长期只交空清屏、无任何可喂 shader 通面且未声明基建单 | **FAIL** |
 | 业务公开 API 仍并列 `fragmentShader` Attr | **FAIL** → Content（ADR 0016） |
-| 非 Android 假装 Model 已通 / 静默空画不报错 | **FAIL** → `MODEL_UNSUPPORTED` |
+| Ohos/H5 假装 Model 已通 / 静默空画不报错 | **FAIL** → `MODEL_UNSUPPORTED` |
 | 仅改文档 / 未改公开契约 | 相关条可 `N/A` |

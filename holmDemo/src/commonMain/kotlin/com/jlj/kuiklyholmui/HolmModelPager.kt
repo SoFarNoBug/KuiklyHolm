@@ -298,7 +298,7 @@ private fun HolmModelScreen() {
         }
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "非 Android → MODEL_UNSUPPORTED。${asset.note}。详见 assets/models/ATTRIBUTION.md",
+            text = "Android / iOS 双轨 Present；Ohos/H5 → MODEL_UNSUPPORTED。${asset.note}。详见 assets/models/ATTRIBUTION.md",
             fontSize = 11.sp,
             color = DemoTheme.TextSecondary,
         )

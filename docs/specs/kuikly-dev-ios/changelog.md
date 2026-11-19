@@ -1,5 +1,28 @@
 # changelog · kuikly-dev-ios
 
+## 2026-11-19（审查回执行 · holm-ios-glb · device-verify）
+
+- [NOTE] 审查回执行：用户确认 iPhone Duo Simulator 验证 OK → 关 `P1-device-verify`（表 `device-check-list/holm-ios-glb.md` #1–#9/#11 过；#10 负向跳过）
+- 轻量治理：路径=速速改｜sediment=否｜gate=跳过｜真机表=device-check-list/holm-ios-glb.md（已关）
+
+## 2026-11-19（审查回执行 · holm-ios-glb）
+
+- [FIX] P1-concurrency：`HolmIosModelBridge` 按岛 `createSession`/`destroySession` 分表
+- [FIX] P2-consume-snap-no-host：无 host 时 `requeueSnapshot`；setMeshes 失败亦回队
+- [FIX] P2-backend-id-gles-model：Model GLES `onReady.backend=gles2-model`
+- [FIX] P2-commonMain-holm-gltf-weight：`mobileMain` 持 `holm-gltf` + MeshUpload（js 不拉）
+- [FIX] P2-ios-native-symlink-local：guide 写明 `ln -sfn` 旁路
+- 自测：`:KuiklyHolmCore:compileKotlinIosArm64` + `compileDebugKotlinAndroid` OK
+- 轻量治理：路径=速速改｜sediment=否｜gate=已解锁｜真机表=device-check-list/holm-ios-glb.md（P1-device-verify 仍开放）｜审查回执行=holm-ios-glb P1-concurrency + 全部 P2
+
+## 2026-11-19（ADR 0018 · iOS Model 双轨 Present）
+
+- [ADD] `HolmIosModelBridge` + `KRHolmGlesModelHostView`；`KRHolmSurface` 去掉 `MODEL_UNSUPPORTED`，GLES/wgpu ModelPass 双轨
+- [ADD] iosApp 链 `KmpDracoNative.xcframework` + Bundle `models/*.glb`；`holm-gltf` ios Draco actual
+- [ADD] `HolmWgpuIosBridge` ModelPass；`HolmModelMeshUpload` 上移 commonMain
+- 自测：`:KuiklyHolmCore:compileKotlinIosArm64` / `:holmDemo:compileKotlinIosArm64` OK；真机冒烟留给 review
+- 治理收尾：路径=按计划行事｜sediment=否｜gate=已解锁｜真机表=待审核员
+
 ## 2026-11-17（ADR 0014 · 消灭 holm-runtime 命名）
 
 - [MODIFY] native / C ABI / 产物 / Bridge·Demo 名对齐 `kmp-wgpu-native` / `kmp_wgpu_*` / `HolmWgpu*` / `holm_dualtrack`（详见 dualtrack changelog + ADR 0014）

@@ -39,6 +39,10 @@ kotlin {
             iosX64Main.dependsOn(this)
             iosArm64Main.dependsOn(this)
             iosSimulatorArm64Main.dependsOn(this)
+            dependencies {
+                // ADR 0017 / iOS Model：与 androidMain 同坐标
+                implementation("io.github.sofarnobug:kmp-draco:0.1.0")
+            }
         }
         val jsMain by getting
     }

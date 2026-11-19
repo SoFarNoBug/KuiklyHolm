@@ -79,7 +79,7 @@ HolmProviders.setDefault(GlBackendProvider.ID)
 | Android arm64 | `libkmp_wgpu_native.so` | **~4.05 MB**（4 243 504 B） |
 | 鸿蒙 arm64 | `libkmp_wgpu_native.so` | **~4.0 MB**（4 195 072 B） |
 | H5 | `kmp_wgpu_native_bg.wasm` | **~2.32 MB**（2 437 508 B） |
-| iOS | `KmpWgpuNative` xcframework | 本机未挂现成产物；预期同属 **数 MB 级**，以 Pod / xcframework 实秤为准 |
+| iOS | `KmpWgpuNative` xcframework | 本地联调见下「iOS xcframework 旁路」；发版以 Pod / 入库 xcframework 实秤为准（数 MB 级） |
 
 读数口径：
 
@@ -91,6 +91,22 @@ HolmProviders.setDefault(GlBackendProvider.ID)
 | 「GL vs wgpu 增量」 | GL：走系统图形库，Holm 侧无上表这种数 MB native；wgpu：至少一份上表产物 |
 
 建议宿主在发版流水线里对 **release APK/AAB / IPA / HAP** 做一次「只 GL」vs「GL+wgpu」差分，把结果记进自己的发布说明；上表可作为接入前的数量级预期。
+
+### iOS xcframework 旁路（本仓 Demo / 本地链）
+
+`iosApp.xcodeproj` 的 `FRAMEWORK_SEARCH_PATHS` 指向仓根旁路目录（相对 `iosApp/`）：
+
+- `../kmp-wgpu-native/dist/ios` → `KmpWgpuNative.xcframework`
+- `../kmp-draco-native/dist/ios` → `KmpDracoNative.xcframework`（Model / `KHR_draco`）
+
+干净 clone 后若目录不存在，在 **KuiklyHolm 仓根**执行：
+
+```bash
+ln -sfn ../kmp-wgpu/kmp-wgpu-native kmp-wgpu-native
+ln -sfn ../kmp-draco/kmp-draco-native kmp-draco-native
+```
+
+（路径按你本机 sibling 仓布局调整。）Model GLES 的 `onReady.backend` 为 `gles2-model`（与片元 Lite 的 `gles2-ios` 区分）。
 
 ## Provider（必做）
 
@@ -165,7 +181,7 @@ Declarative 薄壳：`HolmSurfaceView` + `HolmSurfaceAttr` / `HolmSurfaceEvent`�
 |---|---|
 | `null` / 空 | 清屏，**不**报错 |
 | `HolmShaderContent(source, vertexSource?, warpAmount?, scrollSpeed?)` | 片元。GL=Shadertoy **正文**；wgpu=WGSL（含 `@fragment fn fs_main`） |
-| `HolmModelContent.fromAssets` / `fromFileUri` / `fromBytes` | 最小 glTF；**仅 Android 真画**；其它端 `MODEL_UNSUPPORTED` + 清屏 |
+| `HolmModelContent.fromAssets` / `fromFileUri` / `fromBytes` | 最小 glTF；**Android + iOS 真画**（ADR 0018）；Ohos/H5 `MODEL_UNSUPPORTED` + 清屏 |
 
 `HolmModelContent`：默认 `orbitEnabled=true`（单指拖 yaw/pitch）；`setYaw` / `setPitch` 供业务自写手势；`setLights` 热更新灯光（不重载 glTF）；`lights` 空=unlit，上限 `HolmModelContent.MAX_LIGHTS`（8）。资源：**不做 http**；先验 `assets/`，另有 `file://` 与 `ByteArray`。
 
@@ -220,7 +236,7 @@ Declarative 薄壳：`HolmSurfaceView` + `HolmSurfaceAttr` / `HolmSurfaceEvent`�
 | code | 典型原因 |
 |---|---|
 | `BLOCKED` | 未 register / 未 setDefault；或 wgpu 缺 native / 不可用（**不**静默回 GL） |
-| `MODEL_UNSUPPORTED` | 非 Android 端挂了 `HolmModelContent`（本波不真画） |
+| `MODEL_UNSUPPORTED` | Ohos/H5 挂了 `HolmModelContent`（ADR 0018：Android+iOS 已真画） |
 | `MODEL_LOAD` | Android 读 assets / 解析 glTF 失败 |
 | `SHADER_WRAP` / `SHADER_COMPILE` / `SHADER_LINK` / `SHADER_CUSTOM` | 片元包壳或编译/装载失败 |
 | `TICK` | Present / 泵帧回合失败 |
@@ -288,7 +304,7 @@ fun HolmIsland(fs: String) {
 ```
 
 - GL 路径喂 **GLSL Shadertoy 正文**；wgpu 路径喂 **WGSL**（两端样本见 Demo `NeonTunnelShaders` 等）。
-- 完整双轨：`holmDemo` → page `holm_dualtrack`；Model：`holm_model`（Android）。
+- 完整双轨：`holmDemo` → page `holm_dualtrack`；Model：`holm_model`（Android + iOS，ADR 0018）。
 
 ## 能力矩阵
 
@@ -297,7 +313,7 @@ fun HolmIsland(fs: String) {
 | renderer-gl | ✅ | ✅ | ✅ | ✅ |
 | renderer-wgpu | ✅ | ✅ | ✅ | ✅ |
 | ShaderContent 热换 | ✅ | ✅ | ✅ | ✅ |
-| ModelContent（glTF） | ✅ GL=GLES 网格；wgpu=`ModelPass`（真 wgpu） | BLOCKED | BLOCKED | BLOCKED |
+| ModelContent（glTF） | ✅ GL=GLES；wgpu=`ModelPass` | ✅ GLES + Metal ModelPass（ADR 0018） | BLOCKED | BLOCKED |
 | Provider 未设 | 失败 | 失败 | 失败 | 失败 |
 | `onPerf` 真实提交 | ✅ | ✅ | ✅ | ✅ |
 
@@ -312,7 +328,7 @@ wgpu 路径上各端**实际图形后端**（Vulkan / Metal / GLES / WebGPU…�
 | 用 `maxFps` 当实测 FPS | Android 设 30 仍觉得「统计错」 | 读 `onPerf.fps`；Android 限帧仅为提示 |
 | GL/WGSL 方言喂错轨 | 编译失败 / 红字 | Content 源码与 `executor` 方言一致；热切注意方言 |
 | 业务仍传 `fragmentShader` Attr | 编译失败 / 无效 | 改用 `HolmShaderContent`（ADR 0016） |
-| 非 Android 挂 Model | `MODEL_UNSUPPORTED` | 本波仅 Android 真画 |
+| Ohos/H5 挂 Model | `MODEL_UNSUPPORTED` | Android+iOS 真画（ADR 0018）；其它端仍 BLOCKED |
 | 只用 Shader 却引 `:holm-gltf` | 包体变大 | Model 可选依赖；Shader 宿主可不引 |
 | 列表里挂多岛实时泵 | 掉帧 / 耗电 | 局部少岛；列表默认禁实时重岛 |
 | 无窗口 GPGPU 塞进 Holm | API 不对口 | 直接用 kmp-wgpu Headless |

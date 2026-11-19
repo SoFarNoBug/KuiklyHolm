@@ -45,13 +45,20 @@ kotlin {
             }
         }
 
+        // Android + iOS Model Present 共用（holm-gltf 不进 jsMain，审查 P2-commonMain-holm-gltf-weight）
+        val mobileMain by creating {
+            dependsOn(commonMain)
+            dependencies {
+                implementation(project(":holm-gltf"))
+            }
+        }
+
         val androidMain by getting {
+            dependsOn(mobileMain)
             dependencies {
                 compileOnly("com.tencent.kuikly-open:core-render-android:${Version.getKuiklyVersion()}")
                 api(project(":holm-renderer-gl"))
                 api(project(":holm-renderer-wgpu"))
-                // 可选 Present 依赖：仅 Android Model 路径（ADR 0016）；不进 umbrella 对外必选叙事
-                implementation(project(":holm-gltf"))
             }
         }
         val jsMain by getting {
@@ -65,7 +72,7 @@ kotlin {
         val iosArm64Main by getting
         val iosSimulatorArm64Main by getting
         val iosMain by creating {
-            dependsOn(commonMain)
+            dependsOn(mobileMain)
             dependencies {
                 api(project(":holm-renderer-gl"))
                 api(project(":holm-renderer-wgpu"))

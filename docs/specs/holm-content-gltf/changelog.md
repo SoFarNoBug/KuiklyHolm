@@ -2,6 +2,12 @@
 
 ## 2026-11-19
 
+- [NOTE] 审查回执行 holm-ios-glb：用户确认 iPhone Duo Simulator OK → 关 `P1-device-verify`（见 kuikly-dev-ios changelog + `device-check-list/holm-ios-glb.md`）
+- 轻量治理：路径=速速改｜sediment=否｜gate=跳过｜真机表=device-check-list/holm-ios-glb.md（已关）
+- [NOTE] 审查回执行 holm-ios-glb：关 P1-concurrency + 全部 P2（见 kuikly-dev-ios changelog）；`P1-device-verify` 仍开放
+- 轻量治理：路径=速速改｜sediment=否｜gate=已解锁｜真机表=device-check-list/holm-ios-glb.md
+- [ADD] ADR 0018：iOS Model 真画双轨（GLES + Metal ModelPass）；Draco ios + Bundle 模型；Demo/guide/`holm_api` 同步
+- 轻量治理：路径=按计划行事｜sediment=否｜gate=已解锁｜真机表=待审核员
 - [FIX] GLES Model 开启背面剔除（`GL_CULL_FACE` / Back / CCW），与 wgpu ModelPass 对齐，减轻 Tokyo 双轨明暗不一致
 - 轻量治理：路径=速速改｜sediment=否｜gate=跳过｜真机表=无
 - [ADD] `HolmModelContent.setLights` 热更新（不重载 glTF）；GLES `u_lightIntensity`；wgpu 强度乘 albedo 近似；Demo 可展开灯光 sheet（方位/仰角/强度滑杆）

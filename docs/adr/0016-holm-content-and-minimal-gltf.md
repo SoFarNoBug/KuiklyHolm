@@ -15,7 +15,7 @@
 3. **相机 / 手势**：仅 `HolmModelContent` 有真相机；默认库内单指轨道，可关并由业务回写角度。不内置自转；业务用角度 API 自己转。Shader 不装假相机。
 4. **模型栈（关 O3）**：**不引入 Filament**。自研最小 glTF：库读网格并画（第一版画文件内全部静态 mesh）；业务可配基础色 override、透视相机、N 盏灯（默认 **unlit**，库不自动配灯；上限见 Caps/接入文档）。解析在可选 Kotlin 模块 **`holm-gltf`**；GL / wgpu 两条 Present 都要，业务 API 统一，仍显式 `executor`。wgpu 网格 Present 走 **kmp-wgpu `ModelPass`**（独立于 FullscreenPass；ADR 0013 原语层），**禁止**用 GLES 层冒充 wgpu。不用模型的宿主可不引 `holm-gltf`。
 5. **资源**：支持 assets / `file://` / 字节；**排除 http**。先验 Android assets；读+解析在后台，回渲染线程上传。
-6. **范围**：本波 common Content 化；**Model 真画先保证 Android**；其它端 Model 可 BLOCKED。自动 framing（包围盒）保证打开看得见。材质默认用 glb；显式 albedo/solid 才覆盖。
+6. **范围**：本波 common Content 化；**Model 真画先保证 Android**（后由 [ADR 0018](0018-ios-model-dual-track-present.md) 扩至 iOS）；Ohos/H5 Model 仍 BLOCKED。自动 framing（包围盒）保证打开看得见。材质默认用 glb；显式 albedo/solid 才覆盖。
 
 ## Considered Options
 

@@ -1,6 +1,7 @@
 #import "KRHolmSurface.h"
 #import "KRHolmMetalHostView.h"
 #import "KRHolmGlesHostView.h"
+#import "KRHolmGlesModelHostView.h"
 #import <OpenKuiklyIOSRender/KRComponentDefine.h>
 #import <QuartzCore/QuartzCore.h>
 #import <holmDemo/holmDemo.h>
@@ -16,6 +17,7 @@ static const CGFloat kHolmDefaultRenderScale = 1.0;
 static NSString *const kHolmExecutorWgpu = @"renderer-wgpu";
 static NSString *const kHolmExecutorGl = @"renderer-gl";
 static NSString *const kHolmBackendGlesIos = @"gles2-ios";
+static NSString *const kHolmBackendGlesModel = @"gles2-model";
 
 static CGFloat HolmNormalizeRenderScale(CGFloat value) {
     if (!(value > 0.0) || !isfinite(value)) {
@@ -38,14 +40,21 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
 @interface KRHolmSurface ()
 @property (nonatomic, strong, nullable) KRHolmMetalHostView *metalHost;
 @property (nonatomic, strong, nullable) KRHolmGlesHostView *glesHost;
+@property (nonatomic, strong, nullable) KRHolmGlesModelHostView *glesModelHost;
+@property (nonatomic, strong, nullable) UIPanGestureRecognizer *modelPan;
 @property (nonatomic, strong, nullable) CADisplayLink *displayLink;
 @property (nonatomic, strong, nullable) KRHolmDisplayLinkProxy *displayLinkProxy;
 @property (nonatomic, assign) uint64_t sessionHandle;
+@property (nonatomic, assign) uint64_t modelHandle;
+@property (nonatomic, assign) int64_t modelSessionId;
 @property (nonatomic, assign) uint32_t lastSessionW;
 @property (nonatomic, assign) uint32_t lastSessionH;
 @property (nonatomic, copy) NSString *executor;
 @property (nonatomic, copy) NSString *scene;
 @property (nonatomic, copy) NSString *fragmentShader;
+@property (nonatomic, copy) NSString *contentId;
+@property (nonatomic, copy) NSString *contentKind;
+@property (nonatomic, assign) BOOL modelMode;
 @property (nonatomic, assign) BOOL playing;
 @property (nonatomic, assign) NSInteger maxFps;
 @property (nonatomic, assign) CGFloat renderScale;
@@ -84,10 +93,15 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
         _executor = kHolmExecutorGl;
         _scene = @"";
         _fragmentShader = @"";
+        _contentId = @"";
+        _contentKind = @"empty";
+        _modelMode = NO;
         _playing = YES;
         _maxFps = kHolmDefaultMaxFps;
         _renderScale = kHolmDefaultRenderScale;
         _sessionHandle = 0;
+        _modelHandle = 0;
+        _modelSessionId = 0;
         _minFrameInterval = 0;
         self.opaque = YES;
         self.backgroundColor = [UIColor colorWithRed:0.02 green:0.08 blue:0.28 alpha:1];
@@ -106,10 +120,15 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
         _metalHost.frame = self.bounds;
         [_metalHost holm_updateDrawableSize];
         [self holm_resizeSessionIfNeeded];
+        [self holm_resizeModelIfNeeded];
     }
     if (_glesHost) {
         _glesHost.frame = self.bounds;
         [_glesHost holm_resizeBuffersIfNeeded];
+    }
+    if (_glesModelHost) {
+        _glesModelHost.frame = self.bounds;
+        [_glesModelHost holm_resizeBuffersIfNeeded];
     }
 }
 
@@ -140,26 +159,42 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
     _readyFired = NO;
     _blockedNotified = NO;
     _backendId = nil;
-    [self holm_applyExecutorMode];
+    if (_modelMode) {
+        [self holm_ensureModelSession];
+        [HolmDemoHolmIosModelBridge.shared setExecutorSessionId:_modelSessionId executor:_executor];
+        [self holm_applyModelPresent];
+    } else {
+        [self holm_applyExecutorMode];
+    }
 }
 
 - (void)setCss_contentId:(NSString *)css_contentId {
-    // Android/JS 用 Registry；iOS 靠 contentKind + fragmentShader 桥字段。
-    (void)css_contentId;
+    NSString *next = css_contentId.length ? css_contentId : @"";
+    if ([next isEqualToString:_contentId]) {
+        return;
+    }
+    _contentId = [next copy];
+    if (_modelMode) {
+        [self holm_attachModelContent];
+    }
 }
 
 - (void)setCss_contentKind:(NSString *)css_contentKind {
     NSString *kind = css_contentKind.length ? css_contentKind.lowercaseString : @"empty";
+    if ([kind isEqualToString:_contentKind]) {
+        return;
+    }
+    _contentKind = [kind copy];
     if ([kind isEqualToString:@"model"]) {
         _fragmentShader = @"";
-        if (_sessionHandle != 0 && [self holm_isWgpu]) {
-            [self holm_applyRuntimeShaders];
-        } else if (_glesHost && ![self holm_isWgpu]) {
-            [self holm_applyLiteShaders];
-        }
-        [self holm_fireError:@"MODEL_UNSUPPORTED"
-                     message:@"HolmModelContent not implemented on iOS (ADR 0016)"];
+        _modelMode = YES;
+        [self holm_applyModelPresent];
         return;
+    }
+    if (_modelMode) {
+        _modelMode = NO;
+        [self holm_teardownModel];
+        [self holm_applyExecutorMode];
     }
     if ([kind isEqualToString:@"empty"]) {
         _fragmentShader = @"";
@@ -201,7 +236,10 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
     if (_sessionHandle != 0) {
         [HolmDemoHolmWgpuIosBridge.shared setPlayingHandle:_sessionHandle playing:_playing];
     }
-    if (_playing && ([self holm_isWgpu] ? _sessionHandle != 0 : _glesHost != nil)) {
+    if (_modelHandle != 0) {
+        [HolmDemoHolmWgpuIosBridge.shared setPlayingModelHandle:_modelHandle playing:_playing];
+    }
+    if (_playing && [self holm_canPump]) {
         [self holm_startDisplayLink];
     } else if (!_playing) {
         [self holm_stopDisplayLink];
@@ -229,9 +267,11 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
     }
     _renderScale = next;
     [_glesHost holm_setRenderScale:_renderScale];
+    [_glesModelHost holm_setRenderScale:_renderScale];
     [_metalHost holm_setRenderScale:_renderScale];
     if (_metalHost) {
         [self holm_resizeSessionIfNeeded];
+        [self holm_resizeModelIfNeeded];
     }
 }
 
@@ -347,18 +387,263 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
     if (!self.window) {
         return;
     }
+    if (_modelMode) {
+        [self holm_applyModelPresent];
+        return;
+    }
     if ([self holm_isWgpu]) {
         [self holm_teardownLite];
+        [self holm_teardownModel];
         [self holm_startRuntime];
     } else {
         [self holm_teardownRuntime];
+        [self holm_teardownModel];
         [self holm_startLite];
     }
 }
 
 - (void)holm_teardownAll {
+    [self holm_teardownModel];
     [self holm_teardownRuntime];
     [self holm_teardownLite];
+}
+
+#pragma mark - Model Present
+
+- (void)holm_applyModelPresent {
+    if (!self.window || !_modelMode) {
+        return;
+    }
+    [self holm_ensureModelSession];
+    // 卸 shader 层，保留 orbit/pending mesh 在 Bridge session
+    [self holm_teardownLite];
+    if ([self holm_isWgpu]) {
+        [self holm_teardownGlesModelOnly];
+        [self holm_startModelWgpu];
+    } else {
+        [self holm_teardownModelWgpuOnly];
+        [self holm_startModelGles];
+    }
+    [self holm_attachModelContent];
+    [self holm_ensureModelPan];
+}
+
+- (void)holm_ensureModelSession {
+    if (_modelSessionId != 0) {
+        return;
+    }
+    _modelSessionId = [HolmDemoHolmIosModelBridge.shared createSession];
+}
+
+- (void)holm_attachModelContent {
+    if (!_modelMode) {
+        return;
+    }
+    if (_contentId.length == 0) {
+        return;
+    }
+    [self holm_ensureModelSession];
+    [HolmDemoHolmIosModelBridge.shared attachSessionId:_modelSessionId
+                                             contentId:_contentId
+                                              executor:_executor];
+    NSString *errCode = [HolmDemoHolmIosModelBridge.shared lastErrorCodeSessionId:_modelSessionId];
+    if (errCode.length > 0) {
+        NSString *msg = [HolmDemoHolmIosModelBridge.shared lastErrorMessageSessionId:_modelSessionId];
+        [self holm_fireError:errCode message:msg.length ? msg : @"model attach failed"];
+        [HolmDemoHolmIosModelBridge.shared clearErrorSessionId:_modelSessionId];
+    }
+}
+
+- (void)holm_teardownModel {
+    [self holm_teardownGlesModelOnly];
+    [self holm_teardownModelWgpuOnly];
+    if (_modelPan) {
+        [self removeGestureRecognizer:_modelPan];
+        _modelPan = nil;
+    }
+    if (_modelSessionId != 0) {
+        [HolmDemoHolmIosModelBridge.shared destroySessionSessionId:_modelSessionId];
+        _modelSessionId = 0;
+    }
+    _modelMode = NO;
+}
+
+- (void)holm_teardownGlesModelOnly {
+    if (_glesModelHost) {
+        [_glesModelHost holm_teardownGL];
+        [_glesModelHost removeFromSuperview];
+        _glesModelHost = nil;
+    }
+}
+
+- (void)holm_teardownModelWgpuOnly {
+    if (_modelHandle != 0) {
+        [HolmDemoHolmWgpuIosBridge.shared destroyModelHandle:_modelHandle];
+        _modelHandle = 0;
+    }
+    if (_sessionHandle == 0 && _metalHost) {
+        [_metalHost removeFromSuperview];
+        _metalHost = nil;
+        _lastSessionW = 0;
+        _lastSessionH = 0;
+    }
+}
+
+- (void)holm_startModelGles {
+    NSString *providerErr = [HolmDemoHolmWgpuIosBridge.shared requireProviderExecutor:kHolmExecutorGl];
+    if (providerErr.length > 0) {
+        [self holm_fireBlocked:providerErr];
+        return;
+    }
+    if (!_glesModelHost) {
+        _glesModelHost = [[KRHolmGlesModelHostView alloc] initWithFrame:self.bounds];
+        _glesModelHost.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        [self addSubview:_glesModelHost];
+    }
+    [_glesModelHost holm_setRenderScale:_renderScale];
+    if (![_glesModelHost holm_setupGL]) {
+        [self holm_fireError:@"MODEL_GL" message:@"KRHolmGlesModelHostView setupGL failed"];
+        return;
+    }
+    _backendId = kHolmBackendGlesModel;
+    [self holm_startDisplayLink];
+}
+
+- (void)holm_startModelWgpu {
+    NSString *providerErr = [HolmDemoHolmWgpuIosBridge.shared requireProviderExecutor:kHolmExecutorWgpu];
+    if (providerErr.length > 0) {
+        [self holm_fireBlocked:providerErr];
+        return;
+    }
+    if (_modelHandle != 0) {
+        [self holm_startDisplayLink];
+        return;
+    }
+    if (![HolmDemoHolmWgpuIosBridge.shared hasWgpu]) {
+        [self holm_fireBlocked:@"kmp_wgpu has_wgpu=0. No silent GLES stand-in."];
+        return;
+    }
+    if (!_metalHost) {
+        _metalHost = [[KRHolmMetalHostView alloc] initWithFrame:self.bounds];
+        _metalHost.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        [self addSubview:_metalHost];
+    }
+    [_metalHost holm_setRenderScale:_renderScale];
+    [_metalHost holm_updateDrawableSize];
+    if (_metalHost.metalLayer.device == nil) {
+        [self holm_fireBlocked:@"CAMetalLayer.device is nil. No silent GLES stand-in."];
+        return;
+    }
+    CGSize px = _metalHost.metalLayer.drawableSize;
+    int32_t w = (int32_t)MAX(1.0, px.width);
+    int32_t h = (int32_t)MAX(1.0, px.height);
+    int64_t layerPtr = (int64_t)(__bridge void *)_metalHost.metalLayer;
+    int64_t handle = [HolmDemoHolmWgpuIosBridge.shared createModelMetalLayerPtr:layerPtr width:w height:h];
+    if (handle == 0) {
+        NSString *detail = [HolmDemoHolmWgpuIosBridge.shared lastCreateError];
+        [self holm_fireBlocked:[NSString stringWithFormat:
+            @"ModelPass create failed: %@. No silent GLES stand-in.",
+            detail.length ? detail : @"(no detail)"]];
+        return;
+    }
+    _modelHandle = (uint64_t)handle;
+    _lastSessionW = (uint32_t)w;
+    _lastSessionH = (uint32_t)h;
+    NSString *backend = [HolmDemoHolmWgpuIosBridge.shared backendIdModelHandle:_modelHandle];
+    _backendId = backend.length ? backend : @"wgpu-m0";
+    [self holm_startDisplayLink];
+}
+
+- (void)holm_resizeModelIfNeeded {
+    if (_modelHandle == 0 || !_metalHost) {
+        return;
+    }
+    CGSize px = _metalHost.metalLayer.drawableSize;
+    uint32_t w = (uint32_t)MAX(1.0, px.width);
+    uint32_t h = (uint32_t)MAX(1.0, px.height);
+    if (w == _lastSessionW && h == _lastSessionH) {
+        return;
+    }
+    _lastSessionW = w;
+    _lastSessionH = h;
+    [HolmDemoHolmWgpuIosBridge.shared resizeModelHandle:_modelHandle width:(int32_t)w height:(int32_t)h];
+}
+
+- (void)holm_ensureModelPan {
+    if (_modelPan) {
+        return;
+    }
+    _modelPan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(holm_onModelPan:)];
+    [self addGestureRecognizer:_modelPan];
+}
+
+- (void)holm_onModelPan:(UIPanGestureRecognizer *)gr {
+    if (!_modelMode || _modelSessionId == 0) {
+        return;
+    }
+    CGPoint t = [gr translationInView:self];
+    [gr setTranslation:CGPointZero inView:self];
+    float dx = (float)t.x;
+    float dy = (float)t.y;
+    HolmDemoHolmIosModelBridge *bridge = HolmDemoHolmIosModelBridge.shared;
+    [bridge nudgeOrbitSessionId:_modelSessionId dx:dx dy:dy];
+    if (_glesModelHost) {
+        [_glesModelHost holm_setOrbitYaw:[bridge yawSessionId:_modelSessionId]
+                                  pitch:[bridge pitchSessionId:_modelSessionId]
+                                enabled:[bridge orbitEnabledSessionId:_modelSessionId]];
+    }
+}
+
+- (void)holm_consumeModelUploadIfAny {
+    if (_modelSessionId == 0) {
+        return;
+    }
+    HolmDemoHolmIosModelBridge *bridge = HolmDemoHolmIosModelBridge.shared;
+    HolmDemoHolmIosModelSnapshot *snap = [bridge consumeSnapshotSessionId:_modelSessionId];
+    if (!snap) {
+        return;
+    }
+    if (!_glesModelHost && _modelHandle == 0) {
+        // 无 Present 宿主：还回 pending，下帧再试（P2-consume-snap-no-host）
+        [bridge requeueSnapshotSessionId:_modelSessionId snapshot:snap];
+        return;
+    }
+    if (_glesModelHost) {
+        [_glesModelHost holm_uploadSnapshot:snap];
+        HolmDemoKotlinFloatArray *light = [bridge lightDirIntensitySessionId:_modelSessionId];
+        BOOL lit = light.size > 0 && [light getIndex:0] > 0.5f;
+        float lx = light.size > 1 ? [light getIndex:1] : 0.3f;
+        float ly = light.size > 2 ? [light getIndex:2] : 0.8f;
+        float lz = light.size > 3 ? [light getIndex:3] : 0.4f;
+        float inten = light.size > 4 ? [light getIndex:4] : 1.f;
+        [_glesModelHost holm_setLit:lit lightDirX:lx y:ly z:lz intensity:inten];
+        if (!_readyFired) {
+            _readyFired = YES;
+            _blockedNotified = NO;
+            _pendingErrorCode = nil;
+            _pendingErrorMessage = nil;
+            _backendId = kHolmBackendGlesModel;
+            [self holm_fireReady];
+        }
+    } else if (_modelHandle != 0) {
+        BOOL ok = [HolmDemoHolmWgpuIosBridge.shared setMeshesModelHandle:_modelHandle
+                                                                  verts:snap.verts
+                                                                indices:snap.indices];
+        if (!ok) {
+            [bridge requeueSnapshotSessionId:_modelSessionId snapshot:snap];
+            [self holm_fireError:@"MODEL_MESH" message:@"ModelPass setMeshes failed"];
+            return;
+        }
+        if (!_readyFired) {
+            _readyFired = YES;
+            _blockedNotified = NO;
+            _pendingErrorCode = nil;
+            _pendingErrorMessage = nil;
+            NSString *backend = [HolmDemoHolmWgpuIosBridge.shared backendIdModelHandle:_modelHandle];
+            _backendId = backend.length ? backend : @"wgpu-m0";
+            [self holm_fireReady];
+        }
+    }
 }
 
 #pragma mark - Lite
@@ -592,6 +877,12 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
 }
 
 - (BOOL)holm_canPump {
+    if (_modelMode) {
+        if ([self holm_isWgpu]) {
+            return _modelHandle != 0;
+        }
+        return _glesModelHost != nil;
+    }
     if ([self holm_isWgpu]) {
         return _sessionHandle != 0;
     }
@@ -634,7 +925,42 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
     }
     _lastFrameTs = now;
 
-    if ([self holm_isWgpu]) {
+    if (_modelMode) {
+        HolmDemoHolmIosModelBridge *bridge = HolmDemoHolmIosModelBridge.shared;
+        NSString *errCode = [bridge lastErrorCodeSessionId:_modelSessionId];
+        if (errCode.length > 0) {
+            NSString *msg = [bridge lastErrorMessageSessionId:_modelSessionId];
+            [self holm_fireError:errCode message:msg.length ? msg : @"model load failed"];
+            [bridge clearErrorSessionId:_modelSessionId];
+        }
+        [self holm_consumeModelUploadIfAny];
+        if (_glesModelHost) {
+            HolmDemoKotlinFloatArray *light = [bridge lightDirIntensitySessionId:_modelSessionId];
+            BOOL lit = light.size > 0 && [light getIndex:0] > 0.5f;
+            float lx = light.size > 1 ? [light getIndex:1] : 0.3f;
+            float ly = light.size > 2 ? [light getIndex:2] : 0.8f;
+            float lz = light.size > 3 ? [light getIndex:3] : 0.4f;
+            float inten = light.size > 4 ? [light getIndex:4] : 1.f;
+            [_glesModelHost holm_setLit:lit lightDirX:lx y:ly z:lz intensity:inten];
+            [_glesModelHost holm_drawFrame];
+        } else if (_modelHandle != 0) {
+            CGSize px = _metalHost.metalLayer.drawableSize;
+            float aspect = (float)MAX(1.0, px.width) / (float)MAX(1.0, px.height);
+            if (![HolmDemoHolmWgpuIosBridge.shared presentModelFrameHandle:_modelHandle
+                                                               sessionId:_modelSessionId
+                                                                  aspect:aspect
+                                                                  dtSecs:dt
+                                                                 playing:_playing]) {
+                if (_readyFired && !_blockedNotified) {
+                    _blockedNotified = YES;
+                    NSString *code = [HolmDemoHolmWgpuIosBridge.shared lastErrorCodeModelHandle:_modelHandle];
+                    NSString *msg = [HolmDemoHolmWgpuIosBridge.shared lastErrorMessageModelHandle:_modelHandle];
+                    [self holm_fireError:code.length ? code : @"TICK"
+                                 message:msg.length ? msg : @"ModelPass tick failed"];
+                }
+            }
+        }
+    } else if ([self holm_isWgpu]) {
         if (![HolmDemoHolmWgpuIosBridge.shared tickHandle:_sessionHandle dtSecs:dt]) {
             if (!_blockedNotified) {
                 _blockedNotified = YES;
@@ -674,6 +1000,8 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
         CGSize px = CGSizeMake(1, 1);
         if (_metalHost) {
             px = _metalHost.metalLayer.drawableSize;
+        } else if (_glesModelHost) {
+            px = _glesModelHost.drawablePixelSize;
         } else if (_glesHost) {
             px = _glesHost.drawablePixelSize;
         }
@@ -696,7 +1024,11 @@ static CGFloat HolmNormalizeRenderScale(CGFloat value) {
     }
     NSString *backend = _backendId;
     if (!backend) {
-        backend = [self holm_isWgpu] ? @"wgpu-m0" : kHolmBackendGlesIos;
+        if (_modelMode && ![self holm_isWgpu]) {
+            backend = kHolmBackendGlesModel;
+        } else {
+            backend = [self holm_isWgpu] ? @"wgpu-m0" : kHolmBackendGlesIos;
+        }
     }
     _css_onReady(@{
         @"backend": backend,
