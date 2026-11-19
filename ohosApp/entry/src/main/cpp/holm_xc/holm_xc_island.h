@@ -8,6 +8,7 @@
 #define HOLM_XC_ISLAND_H
 
 #include "holm_xc_lite_gl.h"
+#include "holm_xc_model_gl.h"
 
 #include <napi/native_api.h>
 #include <cstdint>
@@ -22,6 +23,9 @@ struct HolmXcIsland {
     std::string executor = "renderer-gl";
     std::string fragmentShader;
     std::string scene;
+    /** empty | shader | model（ADR 0019） */
+    std::string contentKind = "empty";
+    std::string contentId;
     bool playing = true;
     int32_t maxFps = 60;
     /** 相对 XComponent 物理像素基线；(0,1]，默认 1=不降采样 */
@@ -29,6 +33,14 @@ struct HolmXcIsland {
 
     uint64_t sessionHandle = 0;
     HolmXcLiteGl liteGl;
+    int64_t modelSessionId = 0;
+    uint64_t modelHandle = 0;
+    HolmXcModelGl modelGl;
+    bool modelMeshUploaded = false;
+    /** Model orbit：C-API DispatchTouchEvent 跟踪（配 libraryname 时 ArkTS onTouch 不触发） */
+    float modelLastTouchX = 0.f;
+    float modelLastTouchY = 0.f;
+    bool modelTouchActive = false;
     void *nativeWindow = nullptr;
     OH_NativeXComponent *component = nullptr;
     bool frameRegistered = false;

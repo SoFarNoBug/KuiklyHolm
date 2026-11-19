@@ -42,6 +42,8 @@ export class KRHolmSurface extends KuiklyRenderBaseView {
 
   xcId: string = '';
   cssExecutor: string = EXECUTOR_GL;
+  cssContentId: string = '';
+  cssContentKind: string = 'empty';
   cssFragmentShader: string = '';
   cssMaxFps: number = DEFAULT_MAX_FPS;
   cssRenderScale: number = DEFAULT_RENDER_SCALE;
@@ -77,21 +79,18 @@ export class KRHolmSurface extends KuiklyRenderBaseView {
         return true;
       }
       case PROP_CONTENT_ID: {
-        // Registry 在 Kotlin 堆；Ohos 靠 contentKind + fragmentShader 桥
+        this.cssContentId = (propValue as string) ?? '';
+        this.pushContentId();
         return true;
       }
       case PROP_CONTENT_KIND: {
         const kind = ((propValue as string) ?? 'empty').toLowerCase();
-        if (kind === 'model') {
-          this.cssFragmentShader = '';
-          this.pushFragmentShader();
-          this.fireLocalError('MODEL_UNSUPPORTED', 'HolmModelContent not implemented on Ohos (ADR 0016)');
-          return true;
-        }
-        if (kind === 'empty') {
+        this.cssContentKind = kind;
+        if (kind === 'model' || kind === 'empty') {
           this.cssFragmentShader = '';
           this.pushFragmentShader();
         }
+        this.pushContentKind();
         return true;
       }
       case PROP_FRAGMENT_SHADER: {
@@ -158,6 +157,8 @@ export class KRHolmSurface extends KuiklyRenderBaseView {
       this.pushCallbacks();
       // 先片元再 executor，与 common HolmSurface 一致，避免首包错方言
       this.pushFragmentShader();
+      this.pushContentId();
+      this.pushContentKind();
       this.pushExecutor();
       this.pushPlaying();
       this.pushMaxFps();
@@ -190,6 +191,22 @@ export class KRHolmSurface extends KuiklyRenderBaseView {
       holmXc.setExecutor(this.xcId, this.cssExecutor);
     } catch (_e) {
       // so 未就绪时由 bindNative 再推
+    }
+  }
+
+  private pushContentId(): void {
+    try {
+      holmXc.setContentId(this.xcId, this.cssContentId);
+    } catch (_e) {
+      // ignore
+    }
+  }
+
+  private pushContentKind(): void {
+    try {
+      holmXc.setContentKind(this.xcId, this.cssContentKind);
+    } catch (_e) {
+      // ignore
     }
   }
 
@@ -285,6 +302,7 @@ export struct KRHolmSurfaceArk {
   }
 
   build() {
+    // Model orbit：配 libraryname 时 ArkTS onTouch 不触发，改走 C-API DispatchTouchEvent
     Stack() {
       XComponent({
         id: this.renderView.xcId,

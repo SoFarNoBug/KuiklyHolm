@@ -19,4 +19,10 @@ object HolmOhos {
         _resfileDir = resfileDir
         _cacheDir = cacheDir
     }
+
+    /** Ability 注入的 resourceDir；可读性探测用。 */
+    fun resfileDir(): String = _resfileDir.orEmpty()
+
+    /** Ability 注入的 cacheDir；Demo 将 rawfile models 拷贝至此供 Model 读。 */
+    fun cacheDir(): String = _cacheDir.orEmpty()
 }

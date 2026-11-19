@@ -16,6 +16,6 @@
 | H10 | 桥接 | expand-native-ui；无 ComposeView 子类扩展 |
 | H11 | Caps/D9 | 弱端子集诚实 |
 | H12 | 算力边界 D14 | 算力走 kmp-wgpu；未把原语塞进 Holm 公开面 |
-| H13 | Content ADR 0016/0018 | 只挂 HolmContent；无公开 fragmentShader Attr；Ohos/H5 Model→MODEL_UNSUPPORTED；Android+iOS 真画；gltf 可选模块 |
+| H13 | Content ADR 0016/0018/0019 | 只挂 HolmContent；无公开 fragmentShader Attr；H5 Model→MODEL_UNSUPPORTED；Android+iOS+Ohos 真画；gltf 可选模块 |
 
 命中条件：改 Holm 公开 API / Bridge / Shader 契约 / Provider / 后端边界。纯文档或未改契约 → 全表 `N/A` +「未改库契约」。

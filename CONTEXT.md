@@ -142,5 +142,5 @@ _Avoid_：`LITE_PENDING` 冒充完成；用 GLES 冒充 wgpu；另挂第二 XCom
 - kmp-wgpu 分发：CocoaPods / ohpm / npm / GitHub Release **0.1.x 均已发**（npm=`@sofarnobug/kmp-wgpu-native@0.1.0`；ohpm=`@jlj/…@0.1.1`；见 kmp-wgpu `CHANGELOG.md`）
 - `holm_api` L3：已与 ADR 0007/0008/0013 对齐（2026-11-18）
 - **Model Content**：ADR 0016 — `HolmContent` 契约；自研最小 glTF；关 O3（非 Filament）
-- **Model 真画**：Android + iOS 双轨（ADR 0018）；Ohos/H5 仍 `MODEL_UNSUPPORTED`
+- **Model 真画**：Android + iOS + Ohos 双轨（ADR 0018/0019）；H5 仍 `MODEL_UNSUPPORTED`
 - **Draco**：ADR 0017 — `holm-gltf` 硬依赖独立仓 `kmp-draco`（Rust `draco-core`；M1 iOS/Ohos/Wasm）；Tokyo / `KHR_draco` 已接线；文档见 `~/Studio/kmp/kmp-draco`

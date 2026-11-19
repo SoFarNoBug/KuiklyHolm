@@ -23,7 +23,6 @@ void *SharedHandle()
     if (g_sharedHandle != nullptr) {
         return g_sharedHandle;
     }
-    // XComponent 独立加载 libholm_xc：libshared 常为 RTLD_LOCAL，RTLD_DEFAULT 看不到 @CName。
     g_sharedHandle = dlopen("libshared.so", RTLD_NOW | RTLD_NOLOAD);
     if (g_sharedHandle == nullptr) {
         g_sharedHandle = dlopen("libshared.so", RTLD_NOW | RTLD_GLOBAL);
@@ -53,6 +52,13 @@ bool Bind(T &slot, const char *name)
     return true;
 }
 
+template <typename T>
+void BindOptional(T &slot, const char *name)
+{
+    slot = nullptr;
+    (void)Bind(slot, name);
+}
+
 } // namespace
 
 bool HolmOhosBridgeResolve(HolmOhosBridgeApi *outApi)
@@ -75,9 +81,32 @@ bool HolmOhosBridgeResolve(HolmOhosBridgeApi *outApi)
         !Bind(api.lastCreateError, "holm_ohos_bridge_last_create_error")) {
         return false;
     }
-    // ADR 0015: setScene optional（nullable no-op）
     api.setScene = nullptr;
-    (void)Bind(api.setScene, "holm_ohos_bridge_set_scene");
+    BindOptional(api.setScene, "holm_ohos_bridge_set_scene");
+
+    // ADR 0019：Model 符号可选；缺则 Shader 双轨仍可用
+    BindOptional(api.createModel, "holm_ohos_bridge_create_model");
+    BindOptional(api.destroyModel, "holm_ohos_bridge_destroy_model");
+    BindOptional(api.resizeModel, "holm_ohos_bridge_resize_model");
+    BindOptional(api.tickModelFrame, "holm_ohos_bridge_tick_model_frame");
+    BindOptional(api.uploadModelMeshes, "holm_ohos_bridge_upload_model_meshes");
+    BindOptional(api.backendIdModel, "holm_ohos_bridge_backend_id_model");
+    BindOptional(api.lastErrorCodeModel, "holm_ohos_bridge_last_error_code_model");
+    BindOptional(api.lastErrorMessageModel, "holm_ohos_bridge_last_error_message_model");
+
+    BindOptional(api.modelSessionCreate, "holm_ohos_model_session_create");
+    BindOptional(api.modelSessionDestroy, "holm_ohos_model_session_destroy");
+    BindOptional(api.modelAttach, "holm_ohos_model_attach");
+    BindOptional(api.modelSetExecutor, "holm_ohos_model_set_executor");
+    BindOptional(api.modelNudge, "holm_ohos_model_nudge");
+    BindOptional(api.modelIsReady, "holm_ohos_model_is_ready");
+    BindOptional(api.modelClearError, "holm_ohos_model_clear_error");
+    BindOptional(api.modelLastErrorCode, "holm_ohos_model_last_error_code");
+    BindOptional(api.modelLastErrorMessage, "holm_ohos_model_last_error_message");
+    BindOptional(api.modelPeekMesh, "holm_ohos_model_peek_mesh");
+    BindOptional(api.modelCopyMesh, "holm_ohos_model_copy_mesh");
+    BindOptional(api.modelFillLight, "holm_ohos_model_fill_light");
+
     *outApi = api;
     return true;
 }

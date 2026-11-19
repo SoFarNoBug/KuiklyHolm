@@ -8,6 +8,9 @@
 
 ## 候选
 
+- [ ] Ohos GLES Model mesh 上传只消费 pending snapshot，禁止每帧 currentPacked/glBufferData 整模重灌｜2026-11-19｜自评：已达标（holm-ohos-glb-r3；Tokyo 帧预算）
+- [ ] Model attach/parse 失败须清 packed+ready（或等价），禁止 isReady 仍指旧 mesh 却已换 contentId｜2026-11-19｜自评：未达标（holm-ohos-glb P0-silent-fail）
+- [ ] Ohos Model parse 须异步（对齐 iOS），禁止持岛锁的 NAPI/帧路径同步 Draco｜2026-11-19｜自评：未达标（holm-ohos-glb P1-main-thread-io）
 - [ ] iOS Model Present 状态按岛实例分表，避免全局 `object` Bridge 多岛互踩｜2026-11-19｜自评：未达标（holm-ios-glb P1-concurrency）
 - [ ] 本地 xcframework 旁路（`kmp-*-native` symlink）须在 guide/README 写明，干净 clone 可复现链库｜2026-11-19｜自评：未达标（holm-ios-glb P2）
 - [ ] Content Registry 过 NVI：View 销毁/卸岛必须 unregister 当前 contentId，避免 map 泄漏｜2026-11-18｜自评：未达标（holm-content-gltf P2）

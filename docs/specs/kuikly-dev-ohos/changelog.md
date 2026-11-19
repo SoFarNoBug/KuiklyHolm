@@ -1,5 +1,51 @@
 # changelog · kuikly-dev-ohos
 
+## 2026-11-19（审查 r4 · 通过）
+
+- [NOTE] 用户确认 P2 回执行后真机 OK → r4 关 `P2-model-session-map-unsync` / `P2-per-frame-float-alloc`；`P2-maxfps-ge55-peak` 仍可选
+- 轻量治理：路径=速速改｜sediment=否｜gate=跳过｜真机表=device-check-list/holm-ohos-glb.md｜审查=holm-ohos-glb-r4
+
+## 2026-11-19（审查 r3 回执行 · P2 map 锁 + 帧 scratch）
+
+- [FIX] `HolmOhosModelBridge`：`_sessions` `AtomicReference` 不可变快照+CAS（K/N 无 synchronized）；帧路径 Session scratch（关 P2-model-session-map-unsync / P2-per-frame-float-alloc）
+- [FIX] `presentModelFrame`：去每帧 `floatArrayOf`；`setFrame` 前 `_lightDirScratch`
+- 自测：`./ohos_build.sh` + `runOhosApp.sh` SUCCESS；HAP 已装并拉起 `FMR0223927006189`
+- 轻量治理：路径=速速改｜sediment=否｜gate=已解锁｜真机表=holm-ohos-glb（r3 已通过）｜审查回执行=r3 P2×2
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：审查可选 P2｜待批 0
+
+## 2026-11-19（真机回修 · Model FPS）
+
+- [FIX] GLES `peekMeshSizes`/`copyMesh` 仅 pending：停每帧整模 `glBufferData`（Tokyo ~3fps）
+- [FIX] wgpu `presentModelFrame` 改用 `colorRgba`，去掉每帧 `currentPacked` 整模分配
+- [FIX] `ExpectedRateRange` ≥55 走峰值档（120）：避免 90Hz 面板 `expected=60` 合成 ~45
+- 自测：`./ohos_build.sh` + `runOhosApp.sh` SUCCESS；HAP 已装 `FMR0223927006189`；锁屏挡 `aa start`，请解锁后验 GLES Tokyo FPS + wgpu 不再钉 ~45
+- 轻量治理：路径=速速改｜sediment=否｜gate=已解锁｜真机表=device-check-list/holm-ohos-glb.md｜理由：帧预算热路径
+- 治理收尾：门禁 跳过｜三问 否/否/否｜理由：纯业务热路径｜待批 0（已达标）
+
+## 2026-11-19（真机回修 · Model GLES MVP + Native 触摸）
+
+- [FIX] `SetLookAtM` 叉乘对齐 `HolmModelMeshUpload`（up=Y）；修复 GLES 只清屏不出模
+- [FIX] Model orbit：`DispatchTouchEvent` + `GetTouchEvent`（官方：配 `libraryname` 时 ArkTS onTouch 不触发）；去掉无效 ETS onTouch
+- 自测：HAP 已装 `FMR0223927006189`（`libholm_xc.so` 11:56 已重编）；锁屏挡 `aa start`，请解锁后开 Demo 验 GLES 出模 + 双轨拖转
+- 轻量治理：路径=速速改｜sediment=否｜gate=已解锁｜真机表=device-check-list/holm-ohos-glb.md｜待批 0
+
+## 2026-11-19（审查回执行 · holm-ohos-glb P0/P1/P2）
+
+- [FIX] P0-silent-fail：parse 失败清 `_packed`/`_ready`；加载中先清旧 mesh
+- [FIX] P1-main-thread-io / plan-soft-drift：`Worker` 异步 parse + handoff；壳 `TryCompleteModelPresent` 帧轮询（加载中不 FireError）
+- [FIX] P2-nudge-gles-yaw-dup：GLES nudge 单路径
+- 自测：`./ohos_build.sh` SUCCESS（51s）；`holm_xc_plugin.cpp` 须 DevEco 重编 entry；真机仍待勾（尤其 #4/#5/#10）
+- 轻量治理：路径=速速改｜sediment=否｜gate=已解锁｜真机表=device-check-list/holm-ohos-glb.md｜审查回执行=holm-ohos-glb P0+P1+P2｜待批 0
+
+## 2026-11-19（ADR 0019 · Ohos Model 双轨 Present）
+
+- [ADD] `HolmOhosModelBridge` + `holm_xc_model_gl` GLES 网格；`HolmModelPass` / `holm_ohos_bridge_*` ModelPass
+- [ADD] `holm-gltf` ohosArm64 + Draco；rawfile `models/*.glb` → cache；ETS 去 `MODEL_UNSUPPORTED`
+- [ADD] ADR 0019；真机表 `device-check-list/holm-ohos-glb.md`
+- [FIX] `settings.ohos`：`includeBuild` 显式 `name=kmp-wgpu-ohos` / `kmp-draco-ohos`（避免双 `ohosInclude` 路径撞名）
+- 自测：`./ohos_build.sh` **BUILD SUCCESSFUL**（1m24s；`libshared.so`≈31MiB 已拷 entry）；真机步仍待勾 `holm-ohos-glb.md`
+- 轻量治理：路径=按计划行事｜sediment=否｜gate=已解锁｜真机表=device-check-list/holm-ohos-glb.md｜待批 0
+
 ## 2026-11-17（ADR 0014 · 消灭 holm-runtime 命名）
 
 - [MODIFY] native / C ABI / 产物 / Bridge·Demo 名对齐 `kmp-wgpu-native` / `kmp_wgpu_*` / `HolmWgpu*` / `holm_dualtrack`（详见 dualtrack changelog + ADR 0014）

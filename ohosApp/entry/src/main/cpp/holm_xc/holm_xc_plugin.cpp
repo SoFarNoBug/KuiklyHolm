@@ -1,7 +1,7 @@
 /**
  * @file holm_xc_plugin.cpp
- * @brief ADR 0010/0011 · libholm_xc.so：XComponent OnFrame + Runtime/Lite 双轨
- * Present 经 KN holm_ohos_bridge_*（dlsym）；禁止直调 kmp_wgpu_session_*。
+ * @brief ADR 0010/0011/0019 · libholm_xc.so：XComponent OnFrame + Shader/Model 双轨
+ * Present 经 KN holm_ohos_bridge_*（dlsym）；禁止直调 kmp_wgpu_*。
  * @date 2026-11-16
  * @author jlj
  */
@@ -31,6 +31,8 @@ namespace {
 constexpr const char *kExecutorWgpu = "renderer-wgpu";
 constexpr const char *kExecutorGl = "renderer-gl";
 constexpr const char *kBackendGles2Ohos = "gles2-ohos";
+constexpr const char *kBackendGles2Model = "gles2-model";
+constexpr const char *kContentModel = "model";
 constexpr double kNsPerSec = 1e9;
 
 HolmOhosBridgeApi g_bridgeApi {};
@@ -128,9 +130,11 @@ void ApplyExpectedFps(HolmXcIsland &island)
         range.max = 60;
         range.expected = 60;
     } else {
+        // ≥55：勿把 expected 钉在 60。90Hz 面板上 expected=60 常被合成成 ~45。
+        // 峰值档回调；业务真要软限走 maxFps<55 + minFrameInterval。
         range.min = 1;
-        range.max = island.maxFps;
-        range.expected = island.maxFps;
+        range.max = 120;
+        range.expected = 120;
     }
     OH_NativeXComponent_SetExpectedFrameRateRange(island.component, &range);
 }
@@ -302,6 +306,34 @@ void DestroyLite(HolmXcIsland &island)
     HolmXcLiteGlDestroy(island.liteGl);
 }
 
+void DestroyModelGpu(HolmXcIsland &island)
+{
+    if (island.modelHandle != 0) {
+        if (EnsureBridgeResolved() && Bridge().destroyModel != nullptr) {
+            Bridge().destroyModel(static_cast<int64_t>(island.modelHandle));
+        }
+        island.modelHandle = 0;
+    }
+    HolmXcModelGlDestroy(island.modelGl);
+    island.modelMeshUploaded = false;
+}
+
+void DestroyModelSession(HolmXcIsland &island)
+{
+    DestroyModelGpu(island);
+    if (island.modelSessionId != 0) {
+        if (EnsureBridgeResolved() && Bridge().modelSessionDestroy != nullptr) {
+            Bridge().modelSessionDestroy(island.modelSessionId);
+        }
+        island.modelSessionId = 0;
+    }
+}
+
+bool IsModel(const HolmXcIsland &island)
+{
+    return island.contentKind == kContentModel;
+}
+
 void UnregisterFrame(HolmXcIsland &island)
 {
     if (island.component != nullptr && island.frameRegistered) {
@@ -319,7 +351,162 @@ void TeardownAllGpu(HolmXcIsland &island)
     UnregisterFrame(island);
     DestroyRuntimeSession(island);
     DestroyLite(island);
+    DestroyModelSession(island);
     island.nativeWindow = nullptr;
+}
+
+void GetSurfaceSize(HolmXcIsland &island, void *window, uint32_t &outW, uint32_t &outH);
+void EnsureFrameRegistered(HolmXcIsland &island);
+
+/** 仅在 Kotlin pending snapshot 存在时上传（peek 无 pending → 早退）。orbit 由触摸直写 modelGl。 */
+void PullModelMeshToGles(HolmXcIsland &island)
+{
+    if (!EnsureBridgeResolved() || Bridge().modelPeekMesh == nullptr || Bridge().modelCopyMesh == nullptr) {
+        return;
+    }
+    if (!island.modelGl.ready || island.modelSessionId == 0) {
+        return;
+    }
+    int32_t vertFloats = 0;
+    int32_t indexCount = 0;
+    Bridge().modelPeekMesh(island.modelSessionId, &vertFloats, &indexCount);
+    if (vertFloats < 6 || indexCount < 3) {
+        return;
+    }
+    std::vector<float> verts(static_cast<size_t>(vertFloats));
+    std::vector<int32_t> indices(static_cast<size_t>(indexCount));
+    int32_t outV = 0;
+    int32_t outI = 0;
+    float center3[3] = {0, 0, 0};
+    float radius = 1.f;
+    float color4[4] = {0.85f, 0.55f, 0.25f, 1.f};
+    float yaw = 0.4f;
+    float pitch = 0.3f;
+    const int rc = Bridge().modelCopyMesh(island.modelSessionId, verts.data(), vertFloats, indices.data(), indexCount,
+                                          &outV, &outI, center3, &radius, color4, &yaw, &pitch);
+    if (rc != 1) {
+        return;
+    }
+    HolmXcModelGlSetMeshes(island.modelGl, verts.data(), outV, indices.data(), outI, center3[0], center3[1],
+                           center3[2], radius, color4[0], color4[1], color4[2], color4[3]);
+    HolmXcModelGlSetOrbit(island.modelGl, yaw, pitch, true);
+    if (Bridge().modelFillLight != nullptr) {
+        float light[5] = {0, 0.3f, 0.8f, 0.4f, 1.f};
+        Bridge().modelFillLight(island.modelSessionId, light);
+        HolmXcModelGlSetLit(island.modelGl, light[0] > 0.5f, light[1], light[2], light[3], light[4]);
+    }
+}
+
+bool ModelGpuReady(const HolmXcIsland &island)
+{
+    return island.modelHandle != 0 || island.modelGl.ready;
+}
+
+/** attach 已发出；异步 parse 完成后建 GPU / FireReady；加载中不报错。 */
+void TryCompleteModelPresent(HolmXcIsland &island, void *window)
+{
+    if (window == nullptr || island.modelSessionId == 0 || !EnsureBridgeResolved()) {
+        return;
+    }
+    if (ModelGpuReady(island)) {
+        return;
+    }
+    const bool ready =
+        Bridge().modelIsReady != nullptr && Bridge().modelIsReady(island.modelSessionId) != 0;
+    if (!ready) {
+        char codeBuf[64] = {0};
+        if (Bridge().modelLastErrorCode != nullptr) {
+            Bridge().modelLastErrorCode(island.modelSessionId, codeBuf, static_cast<int32_t>(sizeof(codeBuf)));
+        }
+        if (codeBuf[0] != '\0') {
+            char msgBuf[512] = {0};
+            if (Bridge().modelLastErrorMessage != nullptr) {
+                Bridge().modelLastErrorMessage(island.modelSessionId, msgBuf, static_cast<int32_t>(sizeof(msgBuf)));
+            }
+            if (!island.blockedNotified) {
+                island.blockedNotified = true;
+                FireError(island, codeBuf, msgBuf[0] ? msgBuf : "model attach failed");
+            }
+        }
+        return;
+    }
+
+    uint32_t w = 1;
+    uint32_t h = 1;
+    GetSurfaceSize(island, window, w, h);
+    if (IsRuntime(island)) {
+        if (Bridge().createModel == nullptr) {
+            FireError(island, "BLOCKED", "create_model unresolved");
+            return;
+        }
+        const int64_t handle = Bridge().createModel(window, static_cast<int32_t>(w), static_cast<int32_t>(h));
+        if (handle == 0) {
+            char errBuf[512] = {0};
+            if (Bridge().lastCreateError != nullptr) {
+                Bridge().lastCreateError(errBuf, static_cast<int32_t>(sizeof(errBuf)));
+            }
+            FireError(island, "BLOCKED", errBuf[0] ? errBuf : "ModelPass create failed");
+            island.blockedNotified = true;
+            return;
+        }
+        island.modelHandle = static_cast<uint64_t>(handle);
+        if (Bridge().uploadModelMeshes != nullptr) {
+            Bridge().uploadModelMeshes(handle, island.modelSessionId);
+            island.modelMeshUploaded = true;
+        }
+        char backend[64] = {0};
+        if (Bridge().backendIdModel != nullptr) {
+            Bridge().backendIdModel(handle, backend, static_cast<int32_t>(sizeof(backend)));
+        }
+        if (!island.readyFired) {
+            island.readyFired = true;
+            island.blockedNotified = false;
+            FireReady(island, backend[0] ? backend : "wgpu-m0");
+        }
+    } else {
+        std::string errCode;
+        std::string errMsg;
+        if (!HolmXcModelGlCreate(island.modelGl, window, w, h, &errCode, &errMsg)) {
+            FireError(island, errCode.empty() ? "NO_GLES" : errCode.c_str(),
+                      errMsg.empty() ? "Model GLES create failed" : errMsg.c_str());
+            return;
+        }
+        PullModelMeshToGles(island);
+        if (!island.readyFired) {
+            island.readyFired = true;
+            island.blockedNotified = false;
+            FireReady(island, kBackendGles2Model);
+        }
+    }
+}
+
+void StartModelIfNeeded(HolmXcIsland &island, void *window)
+{
+    if (window == nullptr) {
+        FireError(island, "BLOCKED", "OHNativeWindow null");
+        return;
+    }
+    if (!EnsureBridgeResolved() || Bridge().modelSessionCreate == nullptr) {
+        FireError(island, "BLOCKED", "holm_ohos_model_* unresolved");
+        island.blockedNotified = true;
+        return;
+    }
+    DestroyRuntimeSession(island);
+    DestroyLite(island);
+    DestroyModelGpu(island);
+
+    if (island.modelSessionId == 0) {
+        island.modelSessionId = Bridge().modelSessionCreate();
+    }
+    if (island.modelSessionId == 0) {
+        FireError(island, "MODEL_LOAD", "model session create failed");
+        return;
+    }
+    if (Bridge().modelAttach != nullptr) {
+        Bridge().modelAttach(island.modelSessionId, island.contentId.c_str(), island.executor.c_str());
+    }
+    EnsureFrameRegistered(island);
+    TryCompleteModelPresent(island, window);
 }
 
 float NormalizeRenderScale(float value)
@@ -515,7 +702,75 @@ void OnFramePump(OH_NativeXComponent *component, uint64_t timestamp, uint64_t /*
         }
     }
 
-    if (IsRuntime(island)) {
+    if (IsModel(island)) {
+        if (!ModelGpuReady(island) && island.nativeWindow != nullptr) {
+            island.deferJs = true;
+            TryCompleteModelPresent(island, island.nativeWindow);
+            if (!ModelGpuReady(island)) {
+                lock.unlock();
+                FlushDeferredJs(island);
+                return;
+            }
+            lock.unlock();
+            FlushDeferredJs(island);
+            lock.lock();
+        }
+        if (IsRuntime(island)) {
+            if (island.modelHandle == 0 || island.modelSessionId == 0 || !EnsureBridgeResolved() ||
+                Bridge().tickModelFrame == nullptr) {
+                return;
+            }
+            if (!island.modelMeshUploaded && Bridge().uploadModelMeshes != nullptr) {
+                if (Bridge().uploadModelMeshes(static_cast<int64_t>(island.modelHandle), island.modelSessionId) ==
+                    1) {
+                    island.modelMeshUploaded = true;
+                }
+            }
+            const float aspect = island.modelGl.viewH > 0
+                                     ? static_cast<float>(island.modelGl.viewW) /
+                                           static_cast<float>(std::max(1, island.modelGl.viewH))
+                                     : 1.f;
+            // wgpu ModelPass 用 native size；aspect 由 bridge fillMvp 算
+            uint32_t bw = 1;
+            uint32_t bh = 1;
+            GetSurfaceSize(island, island.nativeWindow, bw, bh);
+            const float aspectWgpu =
+                static_cast<float>(bw) / static_cast<float>(std::max(1u, bh));
+            if (Bridge().tickModelFrame(static_cast<int64_t>(island.modelHandle), island.modelSessionId, aspectWgpu,
+                                        static_cast<float>(dt), island.playing ? 1 : 0) == 0) {
+                if (!island.blockedNotified) {
+                    island.blockedNotified = true;
+                    char codeBuf[64] = {0};
+                    char msgBuf[512] = {0};
+                    if (Bridge().lastErrorCodeModel != nullptr) {
+                        Bridge().lastErrorCodeModel(static_cast<int64_t>(island.modelHandle), codeBuf,
+                                                    static_cast<int32_t>(sizeof(codeBuf)));
+                    }
+                    if (Bridge().lastErrorMessageModel != nullptr) {
+                        Bridge().lastErrorMessageModel(static_cast<int64_t>(island.modelHandle), msgBuf,
+                                                       static_cast<int32_t>(sizeof(msgBuf)));
+                    }
+                    FireError(island, codeBuf[0] ? codeBuf : "TICK",
+                              msgBuf[0] ? msgBuf : "ModelPass tick failed");
+                }
+                return;
+            }
+            (void)aspect;
+        } else {
+            if (!island.modelGl.ready) {
+                return;
+            }
+            PullModelMeshToGles(island);
+            if (Bridge().modelFillLight != nullptr && island.modelSessionId != 0) {
+                float light[5] = {0, 0.3f, 0.8f, 0.4f, 1.f};
+                Bridge().modelFillLight(island.modelSessionId, light);
+                HolmXcModelGlSetLit(island.modelGl, light[0] > 0.5f, light[1], light[2], light[3], light[4]);
+            }
+            const float aspect = static_cast<float>(island.modelGl.viewW) /
+                                 static_cast<float>(std::max(1, island.modelGl.viewH));
+            HolmXcModelGlDrawFrame(island.modelGl, aspect);
+        }
+    } else if (IsRuntime(island)) {
         if (island.sessionHandle == 0 || !EnsureBridgeResolved()) {
             return;
         }
@@ -733,7 +988,9 @@ void StartRuntimeIfNeeded(HolmXcIsland &island, void *window)
 
 void StartExecutorIfNeeded(HolmXcIsland &island, void *window)
 {
-    if (IsRuntime(island)) {
+    if (IsModel(island)) {
+        StartModelIfNeeded(island, window);
+    } else if (IsRuntime(island)) {
         StartRuntimeIfNeeded(island, window);
     } else {
         StartLiteIfNeeded(island, window);
@@ -788,6 +1045,30 @@ void OnSurfaceChanged(OH_NativeXComponent *component, void *window)
     uint32_t h = 1;
     GetSurfaceSize(island, window, w, h);
 
+    if (IsModel(island)) {
+        if (IsRuntime(island)) {
+            if (island.modelHandle == 0) {
+                StartModelIfNeeded(island, window);
+                return;
+            }
+            if (EnsureBridgeResolved() && Bridge().resizeModel != nullptr) {
+                Bridge().resizeModel(static_cast<int64_t>(island.modelHandle), static_cast<int32_t>(w),
+                                     static_cast<int32_t>(h));
+            }
+            return;
+        }
+        if (!island.modelGl.ready) {
+            StartModelIfNeeded(island, window);
+            return;
+        }
+        std::string errCode;
+        std::string errMsg;
+        if (!HolmXcModelGlResize(island.modelGl, w, h, &errCode, &errMsg)) {
+            FireError(island, errCode.c_str(), errMsg.c_str());
+        }
+        return;
+    }
+
     if (IsRuntime(island)) {
         if (island.sessionHandle == 0) {
             StartRuntimeIfNeeded(island, window);
@@ -827,7 +1108,81 @@ void OnSurfaceDestroyed(OH_NativeXComponent *component, void * /*window*/)
     it->second.readyFired = false;
 }
 
-void DispatchTouchEvent(OH_NativeXComponent * /*component*/, void * /*window*/) {}
+/** Model orbit nudge（双轨共用）；dx/dy 为 XComponent 局部 px。 */
+void ApplyModelOrbitNudge(HolmXcIsland &island, float dx, float dy)
+{
+    if (!IsModel(island) || island.modelSessionId == 0) {
+        return;
+    }
+    if (EnsureBridgeResolved() && Bridge().modelNudge != nullptr) {
+        Bridge().modelNudge(island.modelSessionId, dx, dy);
+    }
+    if (island.modelGl.ready) {
+        island.modelGl.yaw -= dx * 0.01f;
+        float pitch = island.modelGl.pitch - dy * 0.01f;
+        if (pitch < -1.2f) {
+            pitch = -1.2f;
+        }
+        if (pitch > 1.2f) {
+            pitch = 1.2f;
+        }
+        island.modelGl.pitch = pitch;
+    }
+}
+
+/**
+ * 配 libraryname 时 ArkTS onTouch 不触发（官方 XComponent 说明）；触摸仅走本回调。
+ * @see https://developer.huawei.com/consumer/cn/doc/harmonyOS-references/ts-basic-components-xcomponent
+ */
+void DispatchTouchEvent(OH_NativeXComponent *component, void *window)
+{
+    if (component == nullptr) {
+        return;
+    }
+    OH_NativeXComponent_TouchEvent touchEvent;
+    std::memset(&touchEvent, 0, sizeof(touchEvent));
+    if (OH_NativeXComponent_GetTouchEvent(component, window, &touchEvent) !=
+        OH_NATIVEXCOMPONENT_RESULT_SUCCESS) {
+        return;
+    }
+    std::string id = ReadXcId(component);
+    if (id.empty()) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(HolmXcMutex());
+    auto it = HolmXcIslands().find(id);
+    if (it == HolmXcIslands().end()) {
+        return;
+    }
+    HolmXcIsland &island = it->second;
+    if (!IsModel(island)) {
+        return;
+    }
+    const float x = touchEvent.x;
+    const float y = touchEvent.y;
+    switch (touchEvent.type) {
+        case OH_NATIVEXCOMPONENT_DOWN:
+            island.modelLastTouchX = x;
+            island.modelLastTouchY = y;
+            island.modelTouchActive = true;
+            break;
+        case OH_NATIVEXCOMPONENT_MOVE:
+            if (island.modelTouchActive) {
+                const float dx = x - island.modelLastTouchX;
+                const float dy = y - island.modelLastTouchY;
+                island.modelLastTouchX = x;
+                island.modelLastTouchY = y;
+                ApplyModelOrbitNudge(island, dx, dy);
+            }
+            break;
+        case OH_NATIVEXCOMPONENT_UP:
+        case OH_NATIVEXCOMPONENT_CANCEL:
+            island.modelTouchActive = false;
+            break;
+        default:
+            break;
+    }
+}
 
 OH_NativeXComponent_Callback gXcCallback = {
     .OnSurfaceCreated = OnSurfaceCreated,
@@ -907,16 +1262,112 @@ napi_value NapiSetExecutor(napi_env env, napi_callback_info info)
     island->readyFired = false;
     island->blockedNotified = false;
     island->deferJs = true;
-    // 切轨：先卸当前轨 GPU，再启目标轨（同 window）
-    if (IsRuntime(*island)) {
+    if (IsModel(*island)) {
+        if (Bridge().modelSetExecutor != nullptr && island->modelSessionId != 0) {
+            Bridge().modelSetExecutor(island->modelSessionId, island->executor.c_str());
+        }
+        DestroyModelGpu(*island);
+        StartModelIfNeeded(*island, island->nativeWindow);
+    } else if (IsRuntime(*island)) {
         DestroyLite(*island);
+        DestroyModelGpu(*island);
         StartRuntimeIfNeeded(*island, island->nativeWindow);
     } else {
         DestroyRuntimeSession(*island);
+        DestroyModelGpu(*island);
         StartLiteIfNeeded(*island, island->nativeWindow);
     }
     lock.unlock();
     FlushDeferredJs(*island);
+    return undefined;
+}
+
+napi_value NapiSetContentKind(napi_env env, napi_callback_info info)
+{
+    size_t argc = 2;
+    napi_value args[2] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    napi_value undefined = nullptr;
+    napi_get_undefined(env, &undefined);
+    std::unique_lock<std::mutex> lock(HolmXcMutex());
+    HolmXcIsland *island = IslandFromArg0(env, info, 2);
+    if (island == nullptr) {
+        return undefined;
+    }
+    std::string kind;
+    ReadUtf8Arg(env, args[1], kind);
+    for (auto &c : kind) {
+        c = static_cast<char>(tolower(c));
+    }
+    if (kind != kContentModel) {
+        kind = kind.empty() ? "empty" : kind;
+    }
+    if (kind == island->contentKind) {
+        return undefined;
+    }
+    const bool wasModel = IsModel(*island);
+    island->contentKind = kind;
+    island->readyFired = false;
+    island->blockedNotified = false;
+    island->deferJs = true;
+    if (wasModel && !IsModel(*island)) {
+        DestroyModelSession(*island);
+    }
+    if (IsModel(*island)) {
+        DestroyRuntimeSession(*island);
+        DestroyLite(*island);
+        StartModelIfNeeded(*island, island->nativeWindow);
+    } else if (island->nativeWindow != nullptr) {
+        StartExecutorIfNeeded(*island, island->nativeWindow);
+    }
+    lock.unlock();
+    FlushDeferredJs(*island);
+    return undefined;
+}
+
+napi_value NapiSetContentId(napi_env env, napi_callback_info info)
+{
+    size_t argc = 2;
+    napi_value args[2] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    napi_value undefined = nullptr;
+    napi_get_undefined(env, &undefined);
+    std::unique_lock<std::mutex> lock(HolmXcMutex());
+    HolmXcIsland *island = IslandFromArg0(env, info, 2);
+    if (island == nullptr) {
+        return undefined;
+    }
+    ReadUtf8Arg(env, args[1], island->contentId);
+    if (IsModel(*island) && island->nativeWindow != nullptr) {
+        island->readyFired = false;
+        island->blockedNotified = false;
+        island->modelMeshUploaded = false;
+        island->deferJs = true;
+        StartModelIfNeeded(*island, island->nativeWindow);
+        lock.unlock();
+        FlushDeferredJs(*island);
+        return undefined;
+    }
+    return undefined;
+}
+
+napi_value NapiNudgeModelOrbit(napi_env env, napi_callback_info info)
+{
+    size_t argc = 3;
+    napi_value args[3] = {nullptr};
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    napi_value undefined = nullptr;
+    napi_get_undefined(env, &undefined);
+    std::lock_guard<std::mutex> lock(HolmXcMutex());
+    HolmXcIsland *island = IslandFromArg0(env, info, 3);
+    if (island == nullptr) {
+        return undefined;
+    }
+    double dx = 0;
+    double dy = 0;
+    napi_get_value_double(env, args[1], &dx);
+    napi_get_value_double(env, args[2], &dy);
+    ApplyModelOrbitNudge(*island, static_cast<float>(dx), static_cast<float>(dy));
     return undefined;
 }
 
@@ -1122,6 +1573,9 @@ napi_value Init(napi_env env, napi_value exports)
     ExportFn(env, exports, "abiVersion", NapiAbiVersion);
     ExportFn(env, exports, "ensureIsland", NapiEnsureIsland);
     ExportFn(env, exports, "setExecutor", NapiSetExecutor);
+    ExportFn(env, exports, "setContentKind", NapiSetContentKind);
+    ExportFn(env, exports, "setContentId", NapiSetContentId);
+    ExportFn(env, exports, "nudgeModelOrbit", NapiNudgeModelOrbit);
     ExportFn(env, exports, "setFragmentShader", NapiSetFragmentShader);
     ExportFn(env, exports, "setPlaying", NapiSetPlaying);
     ExportFn(env, exports, "setMaxFps", NapiSetMaxFps);

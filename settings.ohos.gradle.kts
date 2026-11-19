@@ -44,9 +44,35 @@ if (useLocalKmpWgpu) {
         )
     }
     includeBuild(kmpWgpuOhosDir) {
+        name = "kmp-wgpu-ohos"
         dependencySubstitution {
             substitute(module("io.github.sofarnobug:kmp-wgpu")).using(project(":kmp-wgpu"))
             substitute(module("io.github.sofarnobug:kmp-wgpu-surface")).using(project(":kmp-wgpu-surface"))
+        }
+    }
+}
+
+// ADR 0017 / 0019：kmp-draco Ohos；旁路仓存在则默认 includeBuild（与主 settings 同口径）
+val kmpDracoDir = file("../kmp-draco")
+val kmpDracoLocalProp =
+    providers.gradleProperty("kmp.draco.local").orNull
+        ?: localProps.getProperty("kmp.draco.local")
+val useLocalKmpDraco = when {
+    kmpDracoLocalProp.equals("false", ignoreCase = true) -> false
+    kmpDracoLocalProp.equals("true", ignoreCase = true) -> true
+    else -> kmpDracoDir.isDirectory
+}
+if (useLocalKmpDraco) {
+    val kmpDracoOhosDir = file("../kmp-draco/ohosInclude")
+    if (!kmpDracoOhosDir.isDirectory) {
+        throw GradleException(
+            "kmp.draco.local=true but missing ${kmpDracoOhosDir.absolutePath} (ADR 0019 Ohos)",
+        )
+    }
+    includeBuild(kmpDracoOhosDir) {
+        name = "kmp-draco-ohos"
+        dependencySubstitution {
+            substitute(module("io.github.sofarnobug:kmp-draco")).using(project(":kmp-draco"))
         }
     }
 }
@@ -57,6 +83,8 @@ include(":holm-renderer-gl")
 project(":holm-renderer-gl").buildFileName = "build.ohos.gradle.kts"
 include(":holm-renderer-wgpu")
 project(":holm-renderer-wgpu").buildFileName = "build.ohos.gradle.kts"
+include(":holm-gltf")
+project(":holm-gltf").buildFileName = "build.ohos.gradle.kts"
 include(":KuiklyHolmCore")
 project(":KuiklyHolmCore").buildFileName = buildFileName
 include(":holmDemo")

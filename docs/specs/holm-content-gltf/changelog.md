@@ -2,6 +2,16 @@
 
 ## 2026-11-19
 
+- [NOTE] 审查 holm-ohos-glb r4 · 通过（关 map/scratch P2；见 kuikly-dev-ohos changelog）
+- [FIX] Ohos Model P2：session map 加锁 + 帧路径 FloatArray scratch（见 kuikly-dev-ohos changelog）
+- 轻量治理：路径=速速改｜sediment=否｜gate=已解锁｜真机表=holm-ohos-glb
+- [FIX] Ohos Model FPS：GLES 仅 pending 上传 mesh；wgpu 去每帧 snapshot；ExpectedRate 90Hz 不再钉 45（见 kuikly-dev-ohos changelog）
+- 轻量治理：路径=速速改｜sediment=否｜gate=已解锁｜真机表=device-check-list/holm-ohos-glb.md
+- [FIX] 审查回执行 holm-ohos-glb：Ohos Model 异步 parse + 失败清 ready；壳帧轮询完成 Present（见 kuikly-dev-ohos changelog）
+- 轻量治理：路径=速速改｜sediment=否｜gate=已解锁｜真机表=device-check-list/holm-ohos-glb.md｜审查回执行=P0/P1/P2
+- [ADD] ADR 0019：鸿蒙 Model 双轨 Present（GLES `gles2-model` + wgpu ModelPass）；H5 仍 BLOCKED
+- [NOTE] Ohos 编冒烟：`./ohos_build.sh` SUCCESS；`settings.ohos` 双 ohosInclude 命名消歧；真机表待勾
+- 轻量治理：路径=按计划行事｜sediment=否｜gate=已解锁｜真机表=device-check-list/holm-ohos-glb.md
 - [NOTE] 审查回执行 holm-ios-glb：用户确认 iPhone Duo Simulator OK → 关 `P1-device-verify`（见 kuikly-dev-ios changelog + `device-check-list/holm-ios-glb.md`）
 - 轻量治理：路径=速速改｜sediment=否｜gate=跳过｜真机表=device-check-list/holm-ios-glb.md（已关）
 - [NOTE] 审查回执行 holm-ios-glb：关 P1-concurrency + 全部 P2（见 kuikly-dev-ios changelog）；`P1-device-verify` 仍开放

@@ -30,7 +30,8 @@ target_link_libraries(entry PUBLIC libace_napi.z.so libhilog_ndk.z.so kuikly_sha
 add_library(holm_xc SHARED
         holm_xc/holm_xc_plugin.cpp
         holm_xc/holm_ohos_bridge.cpp
-        holm_xc/holm_xc_lite_gl.cpp)
+        holm_xc/holm_xc_lite_gl.cpp
+        holm_xc/holm_xc_model_gl.cpp)
 target_include_directories(holm_xc PRIVATE
         ${NATIVERENDER_ROOT_PATH}/holm_xc)
 target_link_libraries(holm_xc PUBLIC

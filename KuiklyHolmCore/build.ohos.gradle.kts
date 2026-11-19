@@ -46,7 +46,16 @@ kotlin {
                 compileOnly("com.tencent.kuikly-open:core-render-android:${Version.getKuiklyOhosVersion()}")
             }
         }
+        // 与主工程 mobileMain 同目录：MeshUpload + holm-gltf（ADR 0019 Ohos）
+        val mobileMain by creating {
+            dependsOn(commonMain)
+            kotlin.srcDir("src/mobileMain/kotlin")
+            dependencies {
+                implementation(project(":holm-gltf"))
+            }
+        }
         val ohosArm64Main by getting {
+            dependsOn(mobileMain)
             dependencies {
                 api(project(":holm-renderer-gl"))
                 api(project(":holm-renderer-wgpu"))

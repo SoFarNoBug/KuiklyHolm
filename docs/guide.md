@@ -181,7 +181,7 @@ Declarative 薄壳：`HolmSurfaceView` + `HolmSurfaceAttr` / `HolmSurfaceEvent`�
 |---|---|
 | `null` / 空 | 清屏，**不**报错 |
 | `HolmShaderContent(source, vertexSource?, warpAmount?, scrollSpeed?)` | 片元。GL=Shadertoy **正文**；wgpu=WGSL（含 `@fragment fn fs_main`） |
-| `HolmModelContent.fromAssets` / `fromFileUri` / `fromBytes` | 最小 glTF；**Android + iOS 真画**（ADR 0018）；Ohos/H5 `MODEL_UNSUPPORTED` + 清屏 |
+| `HolmModelContent.fromAssets` / `fromFileUri` / `fromBytes` | 最小 glTF；**Android + iOS + Ohos 真画**（ADR 0018/0019）；H5 `MODEL_UNSUPPORTED` + 清屏 |
 
 `HolmModelContent`：默认 `orbitEnabled=true`（单指拖 yaw/pitch）；`setYaw` / `setPitch` 供业务自写手势；`setLights` 热更新灯光（不重载 glTF）；`lights` 空=unlit，上限 `HolmModelContent.MAX_LIGHTS`（8）。资源：**不做 http**；先验 `assets/`，另有 `file://` 与 `ByteArray`。
 
@@ -236,7 +236,7 @@ Declarative 薄壳：`HolmSurfaceView` + `HolmSurfaceAttr` / `HolmSurfaceEvent`�
 | code | 典型原因 |
 |---|---|
 | `BLOCKED` | 未 register / 未 setDefault；或 wgpu 缺 native / 不可用（**不**静默回 GL） |
-| `MODEL_UNSUPPORTED` | Ohos/H5 挂了 `HolmModelContent`（ADR 0018：Android+iOS 已真画） |
+| `MODEL_UNSUPPORTED` | H5 挂了 `HolmModelContent`（ADR 0018/0019：Android+iOS+Ohos 已真画） |
 | `MODEL_LOAD` | Android 读 assets / 解析 glTF 失败 |
 | `SHADER_WRAP` / `SHADER_COMPILE` / `SHADER_LINK` / `SHADER_CUSTOM` | 片元包壳或编译/装载失败 |
 | `TICK` | Present / 泵帧回合失败 |
@@ -313,7 +313,7 @@ fun HolmIsland(fs: String) {
 | renderer-gl | ✅ | ✅ | ✅ | ✅ |
 | renderer-wgpu | ✅ | ✅ | ✅ | ✅ |
 | ShaderContent 热换 | ✅ | ✅ | ✅ | ✅ |
-| ModelContent（glTF） | ✅ GL=GLES；wgpu=`ModelPass` | ✅ GLES + Metal ModelPass（ADR 0018） | BLOCKED | BLOCKED |
+| ModelContent（glTF） | ✅ GL=GLES；wgpu=`ModelPass` | ✅ GLES + Metal ModelPass（ADR 0018） | ✅ GLES + ModelPass（ADR 0019） | BLOCKED |
 | Provider 未设 | 失败 | 失败 | 失败 | 失败 |
 | `onPerf` 真实提交 | ✅ | ✅ | ✅ | ✅ |
 
@@ -328,7 +328,7 @@ wgpu 路径上各端**实际图形后端**（Vulkan / Metal / GLES / WebGPU…�
 | 用 `maxFps` 当实测 FPS | Android 设 30 仍觉得「统计错」 | 读 `onPerf.fps`；Android 限帧仅为提示 |
 | GL/WGSL 方言喂错轨 | 编译失败 / 红字 | Content 源码与 `executor` 方言一致；热切注意方言 |
 | 业务仍传 `fragmentShader` Attr | 编译失败 / 无效 | 改用 `HolmShaderContent`（ADR 0016） |
-| Ohos/H5 挂 Model | `MODEL_UNSUPPORTED` | Android+iOS 真画（ADR 0018）；其它端仍 BLOCKED |
+| H5 挂 Model | `MODEL_UNSUPPORTED` | Android+iOS+Ohos 真画（ADR 0018/0019）；H5 仍 BLOCKED |
 | 只用 Shader 却引 `:holm-gltf` | 包体变大 | Model 可选依赖；Shader 宿主可不引 |
 | 列表里挂多岛实时泵 | 掉帧 / 耗电 | 局部少岛；列表默认禁实时重岛 |
 | 无窗口 GPGPU 塞进 Holm | API 不对口 | 直接用 kmp-wgpu Headless |
