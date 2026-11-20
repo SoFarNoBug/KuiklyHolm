@@ -93,7 +93,14 @@ private fun HolmModelScreen() {
     var lightElevation by remember { mutableStateOf(DEFAULT_LIGHT_ELEVATION) }
     var lightIntensity by remember { mutableStateOf(DEFAULT_LIGHT_INTENSITY) }
 
-    val model = remember(asset.path) {
+    // H5 双包无共享 Registry：灯光须进 Content 再过 NVI bridge（勿只 setLights 变异）
+    val model = remember(
+        asset.path,
+        litEnabled,
+        lightAzimuth,
+        lightElevation,
+        lightIntensity,
+    ) {
         HolmModelContent.fromAssets(
             path = asset.path,
             lights = buildDemoLights(
@@ -103,17 +110,6 @@ private fun HolmModelScreen() {
                 intensity = lightIntensity,
             ),
             orbitEnabled = true,
-        )
-    }
-
-    fun pushLights() {
-        model.setLights(
-            buildDemoLights(
-                lit = litEnabled,
-                azimuthDeg = lightAzimuth,
-                elevationDeg = lightElevation,
-                intensity = lightIntensity,
-            ),
         )
     }
 
@@ -211,19 +207,13 @@ private fun HolmModelScreen() {
                     ModelExecChip(
                         label = "Unlit",
                         active = !litEnabled,
-                        onClick = {
-                            litEnabled = false
-                            pushLights()
-                        },
+                        onClick = { litEnabled = false },
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     ModelExecChip(
                         label = "Lit",
                         active = litEnabled,
-                        onClick = {
-                            litEnabled = true
-                            pushLights()
-                        },
+                        onClick = { litEnabled = true },
                     )
                 }
                 Spacer(modifier = Modifier.height(6.dp))
@@ -234,10 +224,7 @@ private fun HolmModelScreen() {
                     snapToInt = true,
                     steps = 71,
                     formatValue = { "${it.roundToInt()}°" },
-                    onValueChange = { next ->
-                        lightAzimuth = next
-                        if (litEnabled) pushLights()
-                    },
+                    onValueChange = { lightAzimuth = it },
                 )
                 DemoDpSlider(
                     label = "仰角",
@@ -246,10 +233,7 @@ private fun HolmModelScreen() {
                     snapToInt = true,
                     steps = 35,
                     formatValue = { "${it.roundToInt()}°" },
-                    onValueChange = { next ->
-                        lightElevation = next
-                        if (litEnabled) pushLights()
-                    },
+                    onValueChange = { lightElevation = it },
                 )
                 DemoDpSlider(
                     label = "强度",
@@ -261,10 +245,7 @@ private fun HolmModelScreen() {
                         val tenths = (v * 10f).roundToInt() / 10f
                         "$tenths"
                     },
-                    onValueChange = { next ->
-                        lightIntensity = next
-                        if (litEnabled) pushLights()
-                    },
+                    onValueChange = { lightIntensity = it },
                 )
             }
         }
@@ -298,7 +279,7 @@ private fun HolmModelScreen() {
         }
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Android / iOS 双轨 Present；Ohos/H5 → MODEL_UNSUPPORTED。${asset.note}。详见 assets/models/ATTRIBUTION.md",
+            text = "四端双轨 Present（ADR 0018/19/20）；H5 gl=webgl-model / wgpu=ModelPass。${asset.note}。详见 assets/models/ATTRIBUTION.md",
             fontSize = 11.sp,
             color = DemoTheme.TextSecondary,
         )

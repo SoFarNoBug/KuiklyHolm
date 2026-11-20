@@ -58,6 +58,17 @@ object HolmWgpuNative {
         }, onError = onError)
     }
 
+    /** ADR 0020 · ModelPass（与 Fullscreen 分型；无 WebGPU → onError）。 */
+    fun createModelPass(
+        canvas: HTMLCanvasElement,
+        width: Int,
+        height: Int,
+        onSuccess: (HolmModelPass) -> Unit,
+        onError: (String) -> Unit,
+    ) {
+        HolmModelPass.create(canvas, width, height, onSuccess = onSuccess, onError = onError)
+    }
+
     private fun deviceOf(session: dynamic): Device? {
         if (session == null) return null
         return Device.wrap(session as Any, com.jlj.kmp.wgpu.jsPlatform())

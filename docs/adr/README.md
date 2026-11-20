@@ -23,3 +23,6 @@
 | [0015](./0015-kmp-wgpu-independent-repo.md) | **独立仓** · kmp-wgpu 拆仓发版 + FullscreenPass + 关 O7 |
 | [0016](./0016-holm-content-and-minimal-gltf.md) | **Content + 最小 glTF** · 废 fragmentShader Attr；关 O3（非 Filament） |
 | [0017](./0017-kmp-draco-under-holm-gltf.md) | **kmp-draco** · holm-gltf 硬依赖独立 Draco 原语（KHR_draco） |
+| [0018](./0018-ios-model-dual-track-present.md) | **iOS Model** · GLES + Metal ModelPass 双轨 |
+| [0019](./0019-ohos-model-dual-track-present.md) | **鸿蒙 Model** · GLES + wgpu ModelPass 双轨 |
+| [0020](./0020-h5-model-dual-track-present.md) | **H5 Model** · WebGL + wasm ModelPass 双轨 |

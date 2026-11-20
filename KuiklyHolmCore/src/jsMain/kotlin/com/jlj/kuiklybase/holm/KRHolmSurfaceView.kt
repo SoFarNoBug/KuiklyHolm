@@ -1,5 +1,6 @@
 package com.jlj.kuiklybase.holm
 
+import com.jlj.kuiklybase.holm.gltf.GltfDocument
 import com.tencent.kuikly.core.render.web.export.IKuiklyRenderViewExport
 import com.tencent.kuikly.core.render.web.ktx.KuiklyRenderCallback
 import kotlinx.browser.document
@@ -25,6 +26,17 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
     private var _renderScale: Float = HolmSurfaceAttr.DEFAULT_RENDER_SCALE
     private var _executor: String = HolmSurfaceAttr.DEFAULT_EXECUTOR
     private var _contentId: String = ""
+    /** Attr 桥 contentKind；Model 时禁止抢先 Lite Offscreen。 */
+    private var _bridgeContentKind: String = ""
+    private var _bridgeModelAsset: String = ""
+    private var _bridgeModelFileUri: String = ""
+    private var _bridgeModelOrbit: Boolean = true
+    private var _bridgeModelYaw: Float = 0f
+    private var _bridgeModelPitch: Float = 0f
+    private var _bridgeModelLightsRaw: String = ""
+    private var _bridgeModelSolidRaw: String = ""
+    /** H5 双包 fromBytes：Base64 过 NVI（Demo 主路径仍用 asset）。 */
+    private var _bridgeModelBytesB64: String = ""
     private var _fragmentShader: String = ""
     private var _vertexShader: String = ""
     private var _runtimeBlockedNotified: Boolean = false
@@ -62,6 +74,42 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
     private var _visibilityHandler: ((Event) -> Unit)? = null
     private var _pumpId: Int = 0
 
+    // ADR 0020 · Model Present（WebGL / wasm ModelPass）
+    private var _modelMode: Boolean = false
+    private var _modelContent: HolmModelContent? = null
+    private var _modelRenderer: HolmWebGlModelRenderer? = null
+    private var _modelPass: HolmModelPass? = null
+    private var _modelPacked: HolmModelMeshUpload.Packed? = null
+    private var _lastModelDoc: GltfDocument? = null
+    private var _modelYaw: Float = 0.4f
+    private var _modelPitch: Float = 0.3f
+    private val _modelMvp = FloatArray(16)
+    private var _modelRafId: Int = 0
+    private var _modelLastTs: Double = 0.0
+    private var _modelAccMs: Double = 0.0
+    private var _modelPerfWindowMs: Double = 0.0
+    private var _modelPerfFrames: Int = 0
+    private var _modelPointerDown: Boolean = false
+    private var _modelLastPointerX: Float = 0f
+    private var _modelLastPointerY: Float = 0f
+    private var _modelPointerHandler: ((Event) -> Unit)? = null
+    /** none | webgl | webgpu — 切 API 必须换 canvas（浏览器上下文互斥）。 */
+    private var _canvasContextKind: String = "none"
+    private var _modelLoadGen: Int = 0
+    /** 已成功 Present 的资产键（a:path / f:uri）；灯光热更勿整模重载。 */
+    private var _modelLoadedSource: String = ""
+
+    internal fun nextModelLoadGen(): Int {
+        _modelLoadGen += 1
+        return _modelLoadGen
+    }
+
+    internal fun modelLoadGen(): Int = _modelLoadGen
+
+    internal fun bumpModelLoadGen() {
+        _modelLoadGen += 1
+    }
+
     override val ele: HTMLElement
         get() = _canvas
 
@@ -80,17 +128,75 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
             }
             HolmSurfaceAttr.PROP_BRIDGE_CONTENT_KIND -> {
                 val kind = propValue.toString()
+                _bridgeContentKind = kind
                 if (kind == HolmSurfaceAttr.CONTENT_KIND_MODEL) {
-                    // contentId 路径已对 HolmModelContent fireError；此处跳过避免双红字
-                    if (HolmContentRegistry.get(_contentId) !is HolmModelContent) {
-                        _fragmentShader = ""
-                        _vertexShader = ""
-                        postScene()
-                        fireError(
-                            HolmExecutor.ERROR_MODEL_UNSUPPORTED,
-                            "HolmModelContent not implemented on H5 (ADR 0016)",
-                        )
+                    _fragmentShader = ""
+                    _vertexShader = ""
+                    // Attr 常晚于 onAddToParent：若 Lite Worker 已 Offscreen，立刻拆掉
+                    if (_started && !_modelMode) {
+                        destroyPump()
                     }
+                    // H5 双包：Registry 常 miss，等 modelAssetPath 桥；同堆命中则立刻 Present
+                    applyModelFromBridgeOrRegistry()
+                }
+                true
+            }
+            HolmSurfaceAttr.PROP_BRIDGE_MODEL_ASSET -> {
+                val next = propValue.toString()
+                if (next != _bridgeModelAsset) {
+                    _bridgeModelAsset = next
+                    applyModelFromBridgeOrRegistry()
+                }
+                true
+            }
+            HolmSurfaceAttr.PROP_BRIDGE_MODEL_FILE_URI -> {
+                val next = propValue.toString()
+                if (next != _bridgeModelFileUri) {
+                    _bridgeModelFileUri = next
+                    applyModelFromBridgeOrRegistry()
+                }
+                true
+            }
+            HolmSurfaceAttr.PROP_BRIDGE_MODEL_ORBIT -> {
+                _bridgeModelOrbit = propValue.toBool()
+                applyModelBridgeOrbitLightsOnly()
+                true
+            }
+            HolmSurfaceAttr.PROP_BRIDGE_MODEL_YAW -> {
+                // 仅缓存；已 Present 后轨道角以手势为准，勿每帧用 Content 初值盖掉
+                _bridgeModelYaw = propValue.toHolmFloat(0f)
+                true
+            }
+            HolmSurfaceAttr.PROP_BRIDGE_MODEL_PITCH -> {
+                _bridgeModelPitch = propValue.toHolmFloat(0f)
+                true
+            }
+            HolmSurfaceAttr.PROP_BRIDGE_MODEL_LIGHTS -> {
+                val next = propValue.toString()
+                if (next != _bridgeModelLightsRaw) {
+                    _bridgeModelLightsRaw = next
+                    applyModelBridgeOrbitLightsOnly()
+                }
+                true
+            }
+            HolmSurfaceAttr.PROP_BRIDGE_MODEL_SOLID -> {
+                val next = propValue.toString()
+                if (next != _bridgeModelSolidRaw) {
+                    _bridgeModelSolidRaw = next
+                    // 同源已 Present：只热更色，勿整模重载（与 lights 同路径）
+                    if (_modelMode && _modelPacked != null && _modelLoadedSource.isNotEmpty()) {
+                        applyModelBridgeOrbitLightsOnly()
+                    } else {
+                        applyModelFromBridgeOrRegistry()
+                    }
+                }
+                true
+            }
+            HolmSurfaceAttr.PROP_BRIDGE_MODEL_BYTES_B64 -> {
+                val next = propValue.toString()
+                if (next != _bridgeModelBytesB64) {
+                    _bridgeModelBytesB64 = next
+                    applyModelFromBridgeOrRegistry()
                 }
                 true
             }
@@ -98,7 +204,10 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                 val next = propValue.toString()
                 if (next != _fragmentShader) {
                     _fragmentShader = next
-                    if (fragmentMatchesCurrentExecutor(_fragmentShader)) {
+                    // Model 岛 / 过渡空片元：禁止再走 Lite wrap → SHADER_WRAP
+                    if (isModelContentActiveOrPending()) {
+                        // no-op
+                    } else if (fragmentMatchesCurrentExecutor(_fragmentShader)) {
                         postScene()
                     } else {
                         fireShaderCompiled(false, 0f, 0f, _executor)
@@ -110,7 +219,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                 val next = propValue.toString()
                 if (next != _vertexShader) {
                     _vertexShader = next
-                    if (!HolmExecutor.isWgpu(_executor)) {
+                    if (!isModelContentActiveOrPending() && !HolmExecutor.isWgpu(_executor)) {
                         postScene()
                     }
                 }
@@ -118,7 +227,11 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
             }
             HolmSurfaceAttr.PROP_PLAYING -> {
                 _playing = propValue.toBool()
-                postPlaying(effectivePlaying())
+                if (_modelMode) {
+                    postModelPlaying(effectivePlaying())
+                } else {
+                    postPlaying(effectivePlaying())
+                }
                 true
             }
             HolmSurfaceAttr.PROP_BRIDGE_WARP -> {
@@ -162,7 +275,28 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
                     _runtimeBlockedNotified = false
                     _runtimeSessionStarted = false
                     clearWasmLoadPoll()
-                    applyExecutorMode()
+                    if (_modelMode) {
+                        val content = _modelContent
+                        if (content != null) {
+                            enterModelPresentMode(content)
+                            _modelPacked?.let { packed ->
+                                if (HolmExecutor.isWgpu(_executor)) {
+                                    _modelPass?.let { pass ->
+                                        pass.setMeshes(packed.verts, packed.indices)
+                                        pushModelFrameToPass(pass)
+                                    }
+                                } else {
+                                    _modelRenderer?.setOrbit(_modelYaw, _modelPitch, content.orbitEnabled)
+                                    _modelRenderer?.setAppearance(packed.color, content.lights)
+                                    _modelRenderer?.uploadPacked(packed)
+                                }
+                            }
+                        } else {
+                            applyExecutorMode()
+                        }
+                    } else {
+                        applyExecutorMode()
+                    }
                 }
                 true
             }
@@ -195,6 +329,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
 
     private fun applyHolmContentFromRegistry() {
         if (_contentId.isEmpty()) {
+            clearModelPresent()
             _fragmentShader = ""
             _vertexShader = ""
             postScene()
@@ -202,11 +337,18 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
         }
         when (val content = HolmContentRegistry.get(_contentId)) {
             null -> {
-                _fragmentShader = ""
-                _vertexShader = ""
-                postScene()
+                // H5：业务包 Registry 与本 View 分堆；Model 走 bridge attrs
+                if (_bridgeContentKind == HolmSurfaceAttr.CONTENT_KIND_MODEL) {
+                    applyModelFromBridgeOrRegistry()
+                } else {
+                    clearModelPresent()
+                    _fragmentShader = ""
+                    _vertexShader = ""
+                    postScene()
+                }
             }
             is HolmShaderContent -> {
+                clearModelPresent()
                 _warpAmount = content.warpAmount
                 _scrollSpeed = content.scrollSpeed
                 _fragmentShader = content.source
@@ -221,41 +363,181 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
             is HolmModelContent -> {
                 _fragmentShader = ""
                 _vertexShader = ""
-                postScene()
-                fireError(
-                    HolmExecutor.ERROR_MODEL_UNSUPPORTED,
-                    "HolmModelContent not implemented on H5 (ADR 0016)",
+                // 先标 mode，避免并发 startPump / resolveLite 打出 SHADER_WRAP
+                _modelMode = true
+                beginModelPresent(content)
+            }
+        }
+    }
+
+    /** Registry 同堆优先；否则用 NVI bridge 重建 HolmModelContent（ADR 0020 H5）。 */
+    private fun applyModelFromBridgeOrRegistry() {
+        if (_bridgeContentKind != HolmSurfaceAttr.CONTENT_KIND_MODEL) return
+        val fromReg = HolmContentRegistry.get(_contentId) as? HolmModelContent
+        if (fromReg != null) {
+            _modelMode = true
+            beginModelPresent(fromReg)
+            return
+        }
+        val asset = _bridgeModelAsset.trim()
+        val fileUri = _bridgeModelFileUri.trim()
+        val bytesB64 = _bridgeModelBytesB64.trim()
+        if (asset.isEmpty() && fileUri.isEmpty() && bytesB64.isEmpty()) {
+            return
+        }
+        val sourceKey = when {
+            asset.isNotEmpty() -> "a:$asset"
+            fileUri.isNotEmpty() -> "f:$fileUri"
+            else -> "b:${bytesB64.length}:${bytesB64.hashCode()}"
+        }
+        val lights = HolmModelNviCodec.decodeLights(_bridgeModelLightsRaw)
+        // 同源且已有网格：只热更灯/色/轨道，禁止整模重载（Unlit/Lit 否则 Tokyo 卡顿）
+        if (
+            _modelMode &&
+            sourceKey.isNotEmpty() &&
+            sourceKey == _modelLoadedSource &&
+            _modelPacked != null
+        ) {
+            applyModelBridgeOrbitLightsOnly()
+            return
+        }
+        val color = HolmModelNviCodec.decodeColor(_bridgeModelSolidRaw)
+        val content = when {
+            asset.isNotEmpty() -> HolmModelContent.fromAssets(
+                path = asset,
+                solidColorRgba = color,
+                lights = lights,
+                orbitEnabled = _bridgeModelOrbit,
+                yaw = _bridgeModelYaw,
+                pitch = _bridgeModelPitch,
+            )
+            fileUri.isNotEmpty() -> HolmModelContent.fromFileUri(
+                uri = fileUri,
+                solidColorRgba = color,
+                lights = lights,
+                orbitEnabled = _bridgeModelOrbit,
+                yaw = _bridgeModelYaw,
+                pitch = _bridgeModelPitch,
+            )
+            else -> {
+                val decoded = HolmModelNviCodec.decodeBytesB64(bytesB64)
+                    ?: return
+                HolmModelContent.fromBytes(
+                    data = decoded,
+                    solidColorRgba = color,
+                    lights = lights,
+                    orbitEnabled = _bridgeModelOrbit,
+                    yaw = _bridgeModelYaw,
+                    pitch = _bridgeModelPitch,
                 )
             }
         }
+        _modelMode = true
+        beginModelPresent(content)
+    }
+
+    private fun applyModelBridgeOrbitLightsOnly() {
+        if (!_modelMode || _bridgeContentKind != HolmSurfaceAttr.CONTENT_KIND_MODEL) {
+            applyModelFromBridgeOrRegistry()
+            return
+        }
+        val content = _modelContent ?: run {
+            applyModelFromBridgeOrRegistry()
+            return
+        }
+        val lights = HolmModelNviCodec.decodeLights(_bridgeModelLightsRaw)
+        content.setLights(lights)
+        content.setOrbitEnabled(_bridgeModelOrbit)
+        // solid 热更：就地改 packed.color（勿吞进同源 return）
+        val packed = _modelPacked
+        if (packed != null) {
+            applySolidColorToPacked(packed)
+        }
+        // 保留 View 上拖转后的 _modelYaw/_modelPitch（灯光热更不得重置视角）
+        if (!HolmExecutor.isWgpu(_executor)) {
+            if (packed != null) {
+                _modelRenderer?.setAppearance(packed.color, lights)
+            }
+            _modelRenderer?.setOrbit(_modelYaw, _modelPitch, content.orbitEnabled)
+        } else {
+            _modelPass?.let { pushModelFrameToPass(it) }
+        }
+    }
+
+    private fun applySolidColorToPacked(packed: HolmModelMeshUpload.Packed) {
+        val solid = HolmModelNviCodec.decodeColor(_bridgeModelSolidRaw)
+        if (solid != null && solid.size >= 4) {
+            packed.color[0] = solid[0]
+            packed.color[1] = solid[1]
+            packed.color[2] = solid[2]
+            packed.color[3] = solid[3]
+            return
+        }
+        val factor = _lastModelDoc?.baseColorFactor ?: return
+        if (factor.size >= 3) {
+            packed.color[0] = factor[0]
+            packed.color[1] = factor[1]
+            packed.color[2] = factor[2]
+            packed.color[3] = factor.getOrElse(3) { 1f }
+        }
+    }
+
+    private fun clearModelPresent() {
+        if (_modelMode || _modelContent != null) {
+            HolmJsModelPresenter.detach(this)
+        }
+        _modelContent = null
+        _modelLoadedSource = ""
+    }
+
+    private fun beginModelPresent(content: HolmModelContent) {
+        _modelContent = content
+        // 同岛切资产：须再发 onReady（Demo 会先把文案打回 waiting…）
+        _readyFired = false
+        HolmJsModelPresenter.attach(this, content)
     }
 
     override fun onAddToParent(parent: Element) {
         _attached = true
         if (HolmExecutor.isWgpu(_executor)) {
             applyExecutorMode()
-        } else if (!_started) {
+        } else if (!_started && !isModelContentActiveOrPending()) {
+            // Model 岛禁止 Lite Worker/Offscreen（否则 canvas transfer → WebGL Model 永挂）
             startPump()
         }
         attachObservers()
-        if (!HolmExecutor.isWgpu(_executor)) {
+        if (_modelMode) {
+            postModelPlaying(effectivePlaying())
+        } else if (!HolmExecutor.isWgpu(_executor)) {
             postPlaying(effectivePlaying())
         }
     }
 
+    /** Attr/Registry/本 View 任一路表明 Model — 禁止 Lite Offscreen。 */
+    private fun isModelContentActiveOrPending(): Boolean {
+        if (_modelMode || _modelContent != null) return true
+        if (_bridgeContentKind == HolmSurfaceAttr.CONTENT_KIND_MODEL) return true
+        if (_contentId.isEmpty()) return false
+        return HolmContentRegistry.get(_contentId) is HolmModelContent
+    }
+
     override fun onRemoveFromParent(parent: Element) {
         _attached = false
+        HolmJsModelPresenter.cancelPending(this)
         if (_contentId.isNotEmpty()) {
             HolmContentRegistry.unregister(_contentId)
             _contentId = ""
         }
         clearWasmLoadPoll()
+        detachModelPointer()
         detachObservers()
+        destroyModelHost()
         destroyPump()
     }
 
     private fun startPump() {
         if (_started) return
+        if (_modelMode || isModelContentActiveOrPending()) return
         try {
             ensurePumpDispatch()
             // 同实例 remount：上次 transfer 过的 canvas 必须换新才能再 Worker / 主线程 getContext
@@ -409,6 +691,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
     }
 
     private fun postSet() {
+        if (_modelMode) return
         if (HolmExecutor.isWgpu(_executor)) {
             if (_runtimeUsesWorker) {
                 if (!_started) return
@@ -430,6 +713,7 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
     }
 
     private fun postScene() {
+        if (_modelMode) return
         if (HolmExecutor.isWgpu(_executor)) {
             if (_runtimeUsesWorker) {
                 if (!_started) return
@@ -456,6 +740,16 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
 
     /** wrap 失败：返回空串，泵侧 rebuild 失败并保留上次程序（无官方席回退）。 */
     private fun resolveLiteFragmentOrEmpty(): String {
+        // Model 岛 / kind=model 过渡：无片元，禁止 SHADER_WRAP
+        if (_modelMode || isModelContentActiveOrPending()) {
+            _lastLiteWrapMs = 0f
+            return ""
+        }
+        // 空 scene+空 custom：官方席已删；静默空串（切 Content 过渡噪声，勿红字）
+        if (_fragmentShader.isBlank() && _scene.isBlank()) {
+            _lastLiteWrapMs = 0f
+            return ""
+        }
         val t0 = js("typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()")
             .unsafeCast<Double>()
         return try {
@@ -597,6 +891,16 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
         if (w == _lastW && h == _lastH) return
         _lastW = w
         _lastH = h
+        if (_modelMode) {
+            _canvas.width = w.coerceAtLeast(1)
+            _canvas.height = h.coerceAtLeast(1)
+            if (HolmExecutor.isWgpu(_executor)) {
+                _modelPass?.resize(w.coerceAtLeast(1), h.coerceAtLeast(1))
+            } else {
+                _modelRenderer?.resize(w.coerceAtLeast(1), h.coerceAtLeast(1))
+            }
+            return
+        }
         if (HolmExecutor.isWgpu(_executor)) {
             if (_runtimeUsesWorker) {
                 if (!_started) return
@@ -744,7 +1048,11 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
         }
         if (_visibilityHandler == null) {
             val handler: (Event) -> Unit = {
-                postPlaying(effectivePlaying())
+                if (_modelMode) {
+                    postModelPlaying(effectivePlaying())
+                } else {
+                    postPlaying(effectivePlaying())
+                }
             }
             _visibilityHandler = handler
             document.addEventListener("visibilitychange", handler)
@@ -1104,6 +1412,10 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
     }
 
     private fun applyExecutorMode() {
+        if (_modelMode) {
+            // Model 切轨由 enterModelPresentMode 承接，勿走 Shader Lite/Fullscreen
+            return
+        }
         HolmUmbrellaBootstrap.ensure()
         try {
             HolmProviders.requireForExecutor(_executor)
@@ -1248,16 +1560,559 @@ class KRHolmSurfaceView : IKuiklyRenderViewExport {
     }
 
     private fun fireReady() {
-        // Runtime 路径以 present 结果写入的 `_backend` 为准（失败不得假报 wgpu-m0）
+        // Runtime / Model 路径以 present 结果写入的 `_backend` 为准（失败不得假报 wgpu-m0）
+        val backend = when {
+            _modelMode && HolmExecutor.isWgpu(_executor) ->
+                _backend.ifBlank { HolmExecutor.BACKEND_WGPU_M0 }
+            _modelMode -> "webgl-model"
+            else -> _backend
+        }
+        if (_modelMode && !HolmExecutor.isWgpu(_executor)) {
+            _backend = "webgl-model"
+        }
         _onReady?.invoke(
             mapOf(
-                "backend" to _backend,
+                "backend" to backend,
                 "quality" to "auto",
                 "scene" to _scene,
                 "executor" to _executor,
             ),
         )
     }
+
+    // region ADR 0020 Model Present
+
+    internal fun enterModelPresentMode(content: HolmModelContent) {
+        val alreadyModel = _modelMode
+        val stayOnWgpu = alreadyModel && HolmExecutor.isWgpu(_executor) && _modelPass != null
+        val stayOnWebGl = alreadyModel && !HolmExecutor.isWgpu(_executor) && _modelRenderer != null
+        _modelContent = content
+        _modelMode = true
+        if (!alreadyModel) {
+            _readyFired = false
+            _modelYaw = content.yaw
+            _modelPitch = content.pitch.coerceIn(-1.2f, 1.2f)
+        }
+        HolmUmbrellaBootstrap.ensure()
+        try {
+            HolmProviders.requireForExecutor(_executor)
+        } catch (e: IllegalStateException) {
+            _backend = HolmExecutor.BACKEND_WGPU_BLOCKED
+            if (!_runtimeBlockedNotified) {
+                _runtimeBlockedNotified = true
+                fireError(HolmExecutor.ERROR_BLOCKED, e.message ?: HolmProviders.missingDefaultMessage())
+            }
+            if (!_readyFired) {
+                _readyFired = true
+                fireReady()
+            }
+            return
+        }
+        if (HolmExecutor.isWgpu(_executor)) {
+            if (stayOnWgpu) return
+            destroyModelWebGl()
+            destroyPump()
+            // P0：WebGL↔WebGPU / Shader→Model 须换元，禁止复用已 branding 的 canvas
+            resetCanvasForModelApi("webgpu")
+            attachModelPointer()
+            if (!HolmWgpuNative.isAvailable()) {
+                if (HolmWgpuNative.isLoadPending()) {
+                    // 等 wasm ready 后再进 ModelPass
+                    if (!_runtimeLoadWaiting) {
+                        _runtimeLoadWaiting = true
+                        _runtimeLoadPollId = js(
+                            """
+                            (function(retry) {
+                              var n = 0;
+                              var t = setInterval(function() {
+                                n++;
+                                if (window.__kmpWgpu && window.__kmpWgpu.ready === true) {
+                                  clearInterval(t); retry(t);
+                                } else if (window.__kmpWgpu && window.__kmpWgpu.error) {
+                                  clearInterval(t); retry(t);
+                                } else if (n >= 40) {
+                                  clearInterval(t); retry(t);
+                                }
+                              }, 50);
+                              return t;
+                            })
+                            """,
+                        ).unsafeCast<(((Int) -> Unit) -> Int)>()({ id ->
+                            if (_runtimeLoadPollId == id) _runtimeLoadPollId = 0
+                            _runtimeLoadWaiting = false
+                            if (_attached && _modelMode && HolmExecutor.isWgpu(_executor)) {
+                                enterModelPresentMode(content)
+                            }
+                        })
+                    }
+                    return
+                }
+                _backend = HolmExecutor.BACKEND_WGPU_BLOCKED
+                if (!_runtimeBlockedNotified) {
+                    _runtimeBlockedNotified = true
+                    fireError(HolmExecutor.ERROR_BLOCKED, HolmWgpuNative.blockedMessage())
+                }
+                if (!_readyFired) {
+                    _readyFired = true
+                    fireReady()
+                }
+                return
+            }
+            startModelWgpuPass()
+        } else {
+            if (stayOnWebGl) {
+                val color = content.solidColorRgba ?: floatArrayOf(0.85f, 0.55f, 0.25f, 1f)
+                _modelRenderer?.setAppearance(color, content.lights)
+                _modelRenderer?.setOrbit(_modelYaw, _modelPitch, content.orbitEnabled)
+                return
+            }
+            destroyModelWgpu()
+            destroyPump()
+            resetCanvasForModelApi("webgl")
+            attachModelPointer()
+            startModelWebGl()
+        }
+    }
+
+    /**
+     * 浏览器：同一 canvas 不能在 WebGL / WebGPU 间切换上下文。
+     * 非 stay 路径一律换元（含 Shader Lite/Runtime 残留 branding）；重绑 RO + pointer。
+     */
+    private fun resetCanvasForModelApi(@Suppress("UNUSED_PARAMETER") api: String) {
+        detachModelPointer()
+        replaceCanvasInPlace()
+        _canvasContextKind = "none"
+        if (_attached) {
+            attachObservers()
+        }
+    }
+
+    internal fun onModelDocumentReady(content: HolmModelContent, doc: GltfDocument) {
+        if (!_modelMode) return
+        _modelContent = content
+        _lastModelDoc = doc
+        val packed = HolmModelMeshUpload.pack(doc, content.solidColorRgba)
+        _modelPacked = packed
+        val asset = content.assetPath?.trim().orEmpty()
+        val fileUri = content.fileUri?.trim().orEmpty()
+        val bytesB64 = _bridgeModelBytesB64.trim()
+        val contentBytes = content.bytes
+        _modelLoadedSource = when {
+            asset.isNotEmpty() -> "a:$asset"
+            fileUri.isNotEmpty() -> "f:$fileUri"
+            contentBytes != null && bytesB64.isNotEmpty() ->
+                "b:${bytesB64.length}:${bytesB64.hashCode()}"
+            contentBytes != null -> "b:${contentBytes.size}"
+            else -> ""
+        }
+        if (HolmExecutor.isWgpu(_executor)) {
+            val pass = _modelPass
+            if (pass != null) {
+                pass.setMeshes(packed.verts, packed.indices)
+                pushModelFrameToPass(pass)
+                _readyFired = true
+                fireReady()
+            }
+        } else {
+            _modelRenderer?.setAppearance(packed.color, content.lights)
+            _modelRenderer?.setOrbit(_modelYaw, _modelPitch, content.orbitEnabled)
+            _modelRenderer?.uploadPacked(packed)
+            // 切资产后 Demo 会先把文案打回 waiting…；同岛热换也必须再发 onReady
+            _readyFired = true
+            fireReady()
+        }
+    }
+
+    internal fun onModelLoadFailed(code: String, message: String) {
+        fireError(code, message)
+        _modelPacked = null
+        _lastModelDoc = null
+        if (HolmExecutor.isWgpu(_executor)) {
+            _modelPass?.setMeshes(FloatArray(0), IntArray(0))
+        } else {
+            _modelRenderer?.clearGpu()
+        }
+        // P2：失败也 ready，避免 Demo 永停 waiting…
+        if (!_readyFired) {
+            _readyFired = true
+            fireReady()
+        }
+    }
+
+    internal fun exitModelPresentMode() {
+        _modelMode = false
+        _modelContent = null
+        _modelPacked = null
+        _lastModelDoc = null
+        _modelLoadedSource = ""
+        detachModelPointer()
+        destroyModelHost()
+        // 回 Shader 泵：WebGPU branding 或残留 Offscreen 都须换元
+        if (_canvasContextKind == "webgpu" || canvasControlTransferred()) {
+            replaceCanvasInPlace()
+            _canvasContextKind = "none"
+            if (_attached) attachObservers()
+        }
+        if (_attached && _bridgeContentKind != HolmSurfaceAttr.CONTENT_KIND_MODEL) {
+            applyExecutorMode()
+        }
+    }
+
+    private fun startModelWebGl() {
+        destroyModelWebGl()
+        // 若仍被 Lite Worker Offscreen 占着，再换一次元
+        if (canvasControlTransferred()) {
+            detachModelPointer()
+            replaceCanvasInPlace()
+            _canvasContextKind = "none"
+            if (_attached) attachObservers()
+            attachModelPointer()
+        }
+        val size = readBufferSize()
+        _lastW = size.first
+        _lastH = size.second
+        _canvas.width = size.first
+        _canvas.height = size.second
+        val renderer = HolmWebGlModelRenderer()
+        renderer.onReady = {
+            _backend = "webgl-model"
+            clearPendingError()
+            if (!_readyFired && _modelPacked != null) {
+                _readyFired = true
+                fireReady()
+            }
+        }
+        renderer.onError = { code, message ->
+            fireError(code, message)
+            if (!_readyFired) {
+                _readyFired = true
+                fireReady()
+            }
+        }
+        renderer.onPerf = { fps, frameMs -> firePerf(fps, frameMs) }
+        renderer.lightsProvider = { _modelContent?.lights.orEmpty() }
+        _modelRenderer = renderer
+        val color = _modelContent?.solidColorRgba ?: floatArrayOf(0.85f, 0.55f, 0.25f, 1f)
+        renderer.setAppearance(color, _modelContent?.lights.orEmpty())
+        renderer.setOrbit(_modelYaw, _modelPitch, _modelContent?.orbitEnabled ?: true)
+        renderer.setPlaying(effectivePlaying())
+        var ok = renderer.attach(_canvas, size.first, size.second)
+        if (!ok && canvasControlTransferred()) {
+            // attach 失败且仍 Offscreen：换元重试一次
+            detachModelPointer()
+            replaceCanvasInPlace()
+            _canvasContextKind = "none"
+            if (_attached) attachObservers()
+            attachModelPointer()
+            _canvas.width = size.first
+            _canvas.height = size.second
+            ok = renderer.attach(_canvas, size.first, size.second)
+        }
+        if (!ok) {
+            _modelRenderer = null
+            if (!_readyFired) {
+                _readyFired = true
+                fireReady()
+            }
+            return
+        }
+        _canvasContextKind = "webgl"
+        _modelPacked?.let { renderer.uploadPacked(it) }
+        _started = true
+        _backend = "webgl-model"
+        clearPendingError()
+    }
+
+    /** canvas 是否已 transferControlToOffscreen（getContext 会抛）。 */
+    private fun canvasControlTransferred(): Boolean {
+        return try {
+            js(
+                """
+                (function(c) {
+                  try {
+                    c.getContext('webgl');
+                    return false;
+                  } catch (e) {
+                    var m = (e && e.message) ? String(e.message) : String(e);
+                    return /offscreen/i.test(m);
+                  }
+                })
+                """,
+            ).unsafeCast<(HTMLCanvasElement) -> Boolean>()(_canvas)
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
+    private fun startModelWgpuPass() {
+        destroyModelWgpu()
+        val size = readBufferSize()
+        _lastW = size.first
+        _lastH = size.second
+        HolmWgpuNative.createModelPass(
+            canvas = _canvas,
+            width = size.first,
+            height = size.second,
+            onSuccess = { pass ->
+                if (!_attached || !_modelMode || !HolmExecutor.isWgpu(_executor)) {
+                    pass.destroy()
+                    return@createModelPass
+                }
+                _modelPass = pass
+                _canvasContextKind = "webgpu"
+                val backend = pass.backendId()
+                _backend = if (backend.isNotBlank()) backend else HolmExecutor.BACKEND_WGPU_M0
+                _modelPacked?.let { packed ->
+                    pass.setMeshes(packed.verts, packed.indices)
+                    pushModelFrameToPass(pass)
+                }
+                pass.setPlaying(effectivePlaying())
+                clearPendingError()
+                _started = true
+                if (!_readyFired && _modelPacked != null) {
+                    _readyFired = true
+                    fireReady()
+                }
+                startModelWgpuLoop()
+            },
+            onError = { message ->
+                if (!_attached || !_modelMode) return@createModelPass
+                _backend = HolmExecutor.BACKEND_WGPU_BLOCKED
+                if (!_runtimeBlockedNotified) {
+                    _runtimeBlockedNotified = true
+                    fireError(HolmExecutor.ERROR_BLOCKED, message)
+                }
+                if (!_readyFired) {
+                    _readyFired = true
+                    fireReady()
+                }
+            },
+        )
+    }
+
+    private fun pushModelFrameToPass(pass: HolmModelPass) {
+        val packed = _modelPacked ?: return
+        val content = _modelContent
+        val aspect = if (_lastH > 0) _lastW.toFloat() / _lastH.toFloat() else 1f
+        HolmModelMeshUpload.mvp(
+            _modelMvp,
+            packed.center,
+            packed.radius,
+            _modelYaw,
+            _modelPitch,
+            aspect,
+        )
+        val lights = content?.lights.orEmpty()
+        val lit = lights.isNotEmpty()
+        val lightDir = if (lit) {
+            floatArrayOf(lights[0].directionX, lights[0].directionY, lights[0].directionZ)
+        } else {
+            floatArrayOf(0.3f, 0.8f, 0.4f)
+        }
+        val intensity = if (lit) lights[0].intensity.coerceAtLeast(0f) else 1f
+        val color = if (lit && intensity != 1f) {
+            floatArrayOf(
+                packed.color[0] * intensity,
+                packed.color[1] * intensity,
+                packed.color[2] * intensity,
+                packed.color[3],
+            )
+        } else {
+            packed.color
+        }
+        pass.setFrame(_modelMvp, color, lit, lightDir)
+    }
+
+    private fun startModelWgpuLoop() {
+        stopModelWgpuLoop()
+        if (!effectivePlaying() || _modelPass == null) return
+        lateinit var onFrame: (Double) -> Unit
+        lateinit var scheduleNext: (Double) -> Unit
+        onFrame = frame@{ now ->
+            _modelRafId = 0
+            if (!_modelMode || !HolmExecutor.isWgpu(_executor) || _modelPass == null) return@frame
+            if (!effectivePlaying()) return@frame
+            // 对齐 WebGL Model：每 rAF 一帧。勿用 maxFps=60 累加器（浏览器 rAF 常 <16.67ms → 半帧≈30）
+            if (_modelLastTs == 0.0) _modelLastTs = now
+            val dtMs = (now - _modelLastTs).coerceIn(0.0, 50.0)
+            _modelLastTs = now
+            if (_maxFps in 1..59) {
+                _modelAccMs += dtMs
+                val minFrameMs = 1000.0 / _maxFps.toDouble()
+                if (_modelAccMs < minFrameMs) {
+                    scheduleNext(now)
+                    return@frame
+                }
+                // 保留余量，避免清零导致长期偏慢（抖动时少丢节拍）
+                _modelAccMs -= minFrameMs
+                if (_modelAccMs > minFrameMs * 2.0) {
+                    _modelAccMs = 0.0
+                }
+            } else {
+                _modelAccMs = 0.0
+            }
+            val dtSecs = (dtMs / 1000.0).toFloat().coerceAtLeast(1f / 120f)
+            val pass = _modelPass ?: return@frame
+            pushModelFrameToPass(pass)
+            val ok = pass.tick(dtSecs)
+            if (!ok) {
+                val drained = flushModelErrors(pass)
+                _backend = HolmExecutor.BACKEND_WGPU_BLOCKED
+                if (!_runtimeBlockedNotified) {
+                    _runtimeBlockedNotified = true
+                    if (drained == 0) {
+                        fireError(
+                            pass.lastErrorCode().ifBlank { "TICK" },
+                            pass.lastErrorMessage().ifBlank { "ModelPass tick failed" },
+                        )
+                    }
+                }
+                stopModelWgpuLoop()
+                return@frame
+            }
+            flushModelErrors(pass)
+            if (_onPerf != null) {
+                if (_modelPerfWindowMs == 0.0) {
+                    _modelPerfWindowMs = now
+                    _modelPerfFrames = 0
+                } else {
+                    _modelPerfFrames += 1
+                    val elapsed = now - _modelPerfWindowMs
+                    if (elapsed >= 1000.0) {
+                        val fps = (_modelPerfFrames * 1000.0 / elapsed).toFloat()
+                        val frameMs = if (fps > 0.01f) 1000f / fps else 0f
+                        firePerf(fps, frameMs)
+                        _modelPerfWindowMs = now
+                        _modelPerfFrames = 0
+                    }
+                }
+            }
+            scheduleNext(now)
+        }
+        scheduleNext = sched@{ _ ->
+            if (!effectivePlaying() || _modelPass == null) return@sched
+            _modelRafId = js("requestAnimationFrame").unsafeCast<((Double) -> Unit) -> Int>()(onFrame)
+        }
+        scheduleNext(js("performance.now()").unsafeCast<Double>())
+    }
+
+    private fun stopModelWgpuLoop() {
+        if (_modelRafId != 0) {
+            js("cancelAnimationFrame").unsafeCast<(Int) -> Unit>()(_modelRafId)
+            _modelRafId = 0
+        }
+        _modelLastTs = 0.0
+        _modelAccMs = 0.0
+        _modelPerfWindowMs = 0.0
+        _modelPerfFrames = 0
+    }
+
+    private fun flushModelErrors(pass: HolmModelPass): Int {
+        val errs = pass.drainErrors()
+        if (errs.isEmpty()) return 0
+        for ((code, message) in errs) {
+            fireError(code.ifBlank { "WGPU_VALIDATION" }, message)
+        }
+        return errs.size
+    }
+
+    private fun postModelPlaying(playing: Boolean) {
+        if (HolmExecutor.isWgpu(_executor)) {
+            _modelPass?.setPlaying(playing)
+            if (playing) startModelWgpuLoop() else stopModelWgpuLoop()
+        } else {
+            _modelRenderer?.setPlaying(playing)
+        }
+    }
+
+    private fun destroyModelHost() {
+        destroyModelWebGl()
+        destroyModelWgpu()
+    }
+
+    private fun destroyModelWebGl() {
+        val renderer = _modelRenderer
+        _modelRenderer = null
+        renderer?.destroy()
+    }
+
+    private fun destroyModelWgpu() {
+        stopModelWgpuLoop()
+        val pass = _modelPass
+        _modelPass = null
+        pass?.destroy()
+    }
+
+    private fun attachModelPointer() {
+        // 换 canvas 后必须重绑；旧 handler 已在 detachModelPointer 清掉
+        if (_modelPointerHandler != null) return
+        val handler: (Event) -> Unit = handler@{ ev ->
+            if (!_modelMode) return@handler
+            val content = _modelContent
+            if (content == null || !content.orbitEnabled) return@handler
+            val type = ev.type
+            when (type) {
+                "pointerdown" -> {
+                    val pe = ev.asDynamic()
+                    _modelPointerDown = true
+                    _modelLastPointerX = (pe.clientX as Number).toFloat()
+                    _modelLastPointerY = (pe.clientY as Number).toFloat()
+                    try {
+                        _canvas.asDynamic().setPointerCapture(pe.pointerId)
+                    } catch (_: Throwable) {
+                        // ignore
+                    }
+                    ev.preventDefault()
+                }
+                "pointermove" -> {
+                    if (!_modelPointerDown) return@handler
+                    val pe = ev.asDynamic()
+                    val x = (pe.clientX as Number).toFloat()
+                    val y = (pe.clientY as Number).toFloat()
+                    val dx = x - _modelLastPointerX
+                    val dy = y - _modelLastPointerY
+                    _modelLastPointerX = x
+                    _modelLastPointerY = y
+                    _modelYaw -= dx * 0.01f
+                    _modelPitch = (_modelPitch + dy * 0.01f).coerceIn(-1.2f, 1.2f)
+                    content.setYaw(_modelYaw)
+                    content.setPitch(_modelPitch)
+                    if (!HolmExecutor.isWgpu(_executor)) {
+                        _modelRenderer?.nudgeOrbit(-dx, dy)
+                    }
+                    ev.preventDefault()
+                }
+                "pointerup", "pointercancel" -> {
+                    _modelPointerDown = false
+                    val pe = ev.asDynamic()
+                    try {
+                        _canvas.asDynamic().releasePointerCapture(pe.pointerId)
+                    } catch (_: Throwable) {
+                        // ignore
+                    }
+                }
+            }
+        }
+        _modelPointerHandler = handler
+        _canvas.addEventListener("pointerdown", handler)
+        _canvas.addEventListener("pointermove", handler)
+        _canvas.addEventListener("pointerup", handler)
+        _canvas.addEventListener("pointercancel", handler)
+        _canvas.style.asDynamic().touchAction = "none"
+    }
+
+    private fun detachModelPointer() {
+        val handler = _modelPointerHandler ?: return
+        _canvas.removeEventListener("pointerdown", handler)
+        _canvas.removeEventListener("pointermove", handler)
+        _canvas.removeEventListener("pointerup", handler)
+        _canvas.removeEventListener("pointercancel", handler)
+        _modelPointerHandler = null
+        _modelPointerDown = false
+        runCatching { _canvas.style.asDynamic().touchAction = "" }
+    }
+
+    // endregion
 
     private fun fireError(code: String, message: String) {
         _pendingErrorCode = code

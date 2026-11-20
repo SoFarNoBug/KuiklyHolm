@@ -98,6 +98,48 @@ class HolmSurfaceAttr : ComposeAttr() {
         return this
     }
 
+    /** H5 双包 / 无 Registry 堆：Model 资产路径（内部桥，非公开业务 API）。 */
+    fun bridgeModelAsset(value: String): HolmSurfaceAttr {
+        PROP_BRIDGE_MODEL_ASSET with value
+        return this
+    }
+
+    fun bridgeModelFileUri(value: String): HolmSurfaceAttr {
+        PROP_BRIDGE_MODEL_FILE_URI with value
+        return this
+    }
+
+    fun bridgeModelOrbit(value: Boolean): HolmSurfaceAttr {
+        PROP_BRIDGE_MODEL_ORBIT with if (value) 1 else 0
+        return this
+    }
+
+    fun bridgeModelYaw(value: Float): HolmSurfaceAttr {
+        PROP_BRIDGE_MODEL_YAW with value
+        return this
+    }
+
+    fun bridgeModelPitch(value: Float): HolmSurfaceAttr {
+        PROP_BRIDGE_MODEL_PITCH with value
+        return this
+    }
+
+    fun bridgeModelLights(value: String): HolmSurfaceAttr {
+        PROP_BRIDGE_MODEL_LIGHTS with value
+        return this
+    }
+
+    fun bridgeModelSolidColor(value: String): HolmSurfaceAttr {
+        PROP_BRIDGE_MODEL_SOLID with value
+        return this
+    }
+
+    /** H5 双包 fromBytes：Base64；过大则空串（请改 asset）。 */
+    fun bridgeModelBytesB64(value: String): HolmSurfaceAttr {
+        PROP_BRIDGE_MODEL_BYTES_B64 with value
+        return this
+    }
+
     companion object {
         const val PROP_PLAYING: String = "playing"
         const val PROP_MAX_FPS: String = "maxFps"
@@ -110,6 +152,14 @@ class HolmSurfaceAttr : ComposeAttr() {
         const val PROP_BRIDGE_VERTEX: String = "vertexShader"
         const val PROP_BRIDGE_WARP: String = "warpAmount"
         const val PROP_BRIDGE_SCROLL: String = "scrollSpeed"
+        const val PROP_BRIDGE_MODEL_ASSET: String = "modelAssetPath"
+        const val PROP_BRIDGE_MODEL_FILE_URI: String = "modelFileUri"
+        const val PROP_BRIDGE_MODEL_ORBIT: String = "modelOrbit"
+        const val PROP_BRIDGE_MODEL_YAW: String = "modelYaw"
+        const val PROP_BRIDGE_MODEL_PITCH: String = "modelPitch"
+        const val PROP_BRIDGE_MODEL_LIGHTS: String = "modelLights"
+        const val PROP_BRIDGE_MODEL_SOLID: String = "modelSolidColor"
+        const val PROP_BRIDGE_MODEL_BYTES_B64: String = "modelBytesB64"
         const val CONTENT_KIND_EMPTY: String = "empty"
         const val CONTENT_KIND_SHADER: String = "shader"
         const val CONTENT_KIND_MODEL: String = "model"
@@ -302,6 +352,21 @@ fun HolmSurface(
                         bridgeContentKind(HolmSurfaceAttr.CONTENT_KIND_MODEL)
                         bridgeFragmentShader("")
                         bridgeVertexShader("")
+                        // H5：nativevue2 与 h5App 各有一份 Registry，须把 Model 载荷过 NVI
+                        bridgeModelAsset(content.assetPath.orEmpty())
+                        bridgeModelFileUri(content.fileUri.orEmpty())
+                        bridgeModelBytesB64(
+                            if (content.assetPath.isNullOrBlank() && content.fileUri.isNullOrBlank()) {
+                                HolmModelNviCodec.encodeBytesB64(content.bytes)
+                            } else {
+                                ""
+                            },
+                        )
+                        bridgeModelOrbit(content.orbitEnabled)
+                        bridgeModelYaw(content.yaw)
+                        bridgeModelPitch(content.pitch)
+                        bridgeModelLights(HolmModelNviCodec.encodeLights(content.lights))
+                        bridgeModelSolidColor(HolmModelNviCodec.encodeColor(content.solidColorRgba))
                     }
                 }
                 playing(playing)

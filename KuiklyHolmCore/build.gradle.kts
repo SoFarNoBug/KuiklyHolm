@@ -45,12 +45,16 @@ kotlin {
             }
         }
 
-        // Android + iOS Model Present 共用（holm-gltf 不进 jsMain，审查 P2-commonMain-holm-gltf-weight）
-        val mobileMain by creating {
+        // Model Present 共用 MeshUpload + holm-gltf（ADR 0020：jsMain 亦接入）
+        val modelPresentMain by creating {
             dependsOn(commonMain)
             dependencies {
                 implementation(project(":holm-gltf"))
             }
+        }
+        // Android + iOS
+        val mobileMain by creating {
+            dependsOn(modelPresentMain)
         }
 
         val androidMain by getting {
@@ -62,6 +66,7 @@ kotlin {
             }
         }
         val jsMain by getting {
+            dependsOn(modelPresentMain)
             dependencies {
                 implementation("com.tencent.kuikly-open.core-render-web:base:${Version.getKuiklyVersion()}")
                 api(project(":holm-renderer-gl"))

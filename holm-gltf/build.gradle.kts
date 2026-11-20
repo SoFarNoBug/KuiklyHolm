@@ -44,7 +44,12 @@ kotlin {
                 implementation("io.github.sofarnobug:kmp-draco:0.1.0")
             }
         }
-        val jsMain by getting
+        val jsMain by getting {
+            dependencies {
+                // ADR 0020：H5 Draco → window.__kmpDraco
+                implementation("io.github.sofarnobug:kmp-draco:0.1.0")
+            }
+        }
     }
 }
 

@@ -55,6 +55,33 @@
 <body>
 <div id="root"></div>
 <script src="http://127.0.0.1:8083/nativevue2.js" type="text/javascript"></script>
+<!-- ADR 0020 · kmp-draco（独立 __kmp_draco_bindgen，避免与 wgpu wasm_bindgen 冲突） -->
+<script src="kmp-draco-native/kmp_draco_native.js" type="text/javascript"></script>
+<script src="kmp-draco-native/kmp_draco_glue.js" type="text/javascript"></script>
+<script type="text/javascript">
+  (function () {
+    // glue 已挂 window.__kmpDraco；ready 对齐 __kmpWgpu（ADR 0020 / review P1）
+    if (window.__kmpDraco) {
+      window.__kmpDraco.ready = false;
+    }
+    if (typeof __kmp_draco_bindgen !== 'function') {
+      console.warn('kmp-draco: __kmp_draco_bindgen missing');
+      if (window.__kmpDraco) window.__kmpDraco.error = 'bindgen missing';
+      return;
+    }
+    __kmp_draco_bindgen('kmp-draco-native/kmp_draco_native_bg.wasm')
+      .then(function () {
+        if (window.__kmpDraco) window.__kmpDraco.ready = true;
+      })
+      .catch(function (e) {
+        console.warn('kmp-draco wasm init failed', e);
+        if (window.__kmpDraco) {
+          window.__kmpDraco.ready = false;
+          window.__kmpDraco.error = (e && e.message) ? e.message : String(e);
+        }
+      });
+  })();
+</script>
 <!-- DualTrack B：kmp-wgpu-native wasm（no-modules）；失败时 __kmpWgpu.ready=false，Kotlin 侧 BLOCKED -->
 <script src="kmp-wgpu-native/kmp_wgpu_native.js" type="text/javascript"></script>
 <script type="text/javascript">
@@ -72,6 +99,8 @@
           abiVersion: function () { return wasm_bindgen.kmp_wgpu_abi_version(); },
           hasWgpu: function () { return wasm_bindgen.kmp_wgpu_has_wgpu(); },
           createSession: function (canvas) { return wasm_bindgen.KmpWgpuSession.create(canvas); },
+          // ADR 0020 · ModelPass（与 Fullscreen Session 分型；仅 WebGPU）
+          createModelSession: function (canvas) { return wasm_bindgen.KmpWgpuModelSession.create(canvas); },
           // ADR 0013 v1.1 · headless Compute（与 Surface Session 分型）
           createHeadless: function () { return wasm_bindgen.HeadlessComputeSession.create(); },
         };

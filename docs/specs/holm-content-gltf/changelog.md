@@ -2,6 +2,12 @@
 
 ## 2026-11-19
 
+- [FIX] 审查 holm-h5-glb-r2：禁 Lite Offscreen 争用 + 消 `SHADER_WRAP`（见 kuikly-dev-h5 changelog）
+- 轻量治理：路径=速速改｜sediment=否｜gate=已解锁｜真机表=device-check-list/holm-h5-glb.md｜审查回执行=r2 P0
+- [FIX] 审查 holm-h5-glb 回执行：H5 Model 切轨换 canvas；Draco ready 门闸；见 kuikly-dev-h5 changelog
+- 轻量治理：路径=速速改｜sediment=否｜gate=已解锁｜真机表=device-check-list/holm-h5-glb.md｜审查回执行=P0
+- [ADD] ADR 0020：H5 Model 双轨真画 — WebGL `webgl-model` + wasm ModelPass；Core jsMain 接 `:holm-gltf` / Draco；`KRHolmSurfaceView` 卸 `MODEL_UNSUPPORTED`；Demo footer / guide 已齐
+- 轻量治理：路径=按计划行事｜sediment=否｜gate=已解锁｜真机表=device-check-list/holm-h5-glb.md（待审核员）
 - [NOTE] 审查 holm-ohos-glb r4 · 通过（关 map/scratch P2；见 kuikly-dev-ohos changelog）
 - [FIX] Ohos Model P2：session map 加锁 + 帧路径 FloatArray scratch（见 kuikly-dev-ohos changelog）
 - 轻量治理：路径=速速改｜sediment=否｜gate=已解锁｜真机表=holm-ohos-glb

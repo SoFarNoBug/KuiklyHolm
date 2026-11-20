@@ -8,6 +8,11 @@
 
 ## 候选
 
+- [ ] H5 双包（业务 nativevue2 ≠ 宿主 h5App）时 HolmContentRegistry 不可共享；Model 须 NVI bridge 载荷（对齐 Shader fragment 桥），否则静默无 Present｜2026-11-20｜自评：已达标（holm-h5-glb-r3 代码；仍须防 fromBytes/solid 漏桥）
+- [ ] H5 Model Present 禁止先挂 Lite Worker/Offscreen；与 Model WebGL 争用同一 canvas 即主路径失效｜2026-11-19｜自评：已达标（holm-h5-glb-r3 Chrome；原 r2 P0）
+- [ ] H5 Model wgpu 泵帧勿对默认 maxFps=60 用 rAF 累加器（易半帧）；应对齐 WebGL 每 rAF｜2026-11-20｜自评：已达标（holm-h5-glb-r3）
+- [ ] H5/Web 上 WebGL 与 WebGPU 不得复用同一 canvas 切换 Present；切轨须换元并重绑手势｜2026-11-19｜自评：已达标（代码 r1→r2；仍须配合 Offscreen 禁争用）
+- [ ] H5 Model Draco/wasm 须有 ready 门闸（对齐 `__kmpWgpu.ready`），禁止竞态 MODEL_LOAD｜2026-11-19｜自评：已达标（holm-h5-glb-r2；冒烟 ready=true）
 - [ ] Ohos GLES Model mesh 上传只消费 pending snapshot，禁止每帧 currentPacked/glBufferData 整模重灌｜2026-11-19｜自评：已达标（holm-ohos-glb-r3；Tokyo 帧预算）
 - [ ] Model attach/parse 失败须清 packed+ready（或等价），禁止 isReady 仍指旧 mesh 却已换 contentId｜2026-11-19｜自评：未达标（holm-ohos-glb P0-silent-fail）
 - [ ] Ohos Model parse 须异步（对齐 iOS），禁止持岛锁的 NAPI/帧路径同步 Draco｜2026-11-19｜自评：未达标（holm-ohos-glb P1-main-thread-io）
